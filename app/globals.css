@@ -12,3 +12,64 @@ body {
   height: 100%;
   overflow: hidden;
 }
+
+@keyframes bg-wave {
+  0% {
+    transform: translateX(0);
+  }
+  100% {
+    transform: translateX(-50%);
+  }
+}
+
+@keyframes gradient-shift {
+  0%,
+  100% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+}
+
+@keyframes aurora-blob-0 {
+  0%,
+  100% {
+    transform: translate(-50%, -50%) scale(1) rotate(0deg);
+  }
+  25% {
+    transform: translate(-40%, -60%) scale(1.15) rotate(5deg);
+  }
+  50% {
+    transform: translate(-55%, -45%) scale(0.95) rotate(-3deg);
+  }
+  75% {
+    transform: translate(-45%, -55%) scale(1.1) rotate(2deg);
+  }
+}
+
+@keyframes aurora-blob-1 {
+  0%,
+  100% {
+    transform: translate(-50%, -50%) scale(1.1) rotate(0deg);
+  }
+  33% {
+    transform: translate(-35%, -50%) scale(0.9) rotate(-8deg);
+  }
+  66% {
+    transform: translate(-62%, -55%) scale(1.2) rotate(5deg);
+  }
+}
+
+@keyframes aurora-blob-2 {
+  0%,
+  100% {
+    transform: translate(-50%, -50%) scale(0.95) rotate(0deg);
+  }
+  40% {
+    transform: translate(-55%, -40%) scale(1.1) rotate(10deg);
+  }
+  80% {
+    transform: translate(-44%, -58%) scale(1.15) rotate(-5deg);
+  }
+}
