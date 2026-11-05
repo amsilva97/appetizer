@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import BackgroundRenderer from "@/components/background-renderer";
 import EditorPanel from "@/components/editor-panel";
 import AppWidget from "@/components/widgets/app-widget";
@@ -33,7 +33,35 @@ export default function Home() {
   const [bgEditorOpen, setBgEditorOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
 
+  const [loaded, setLoaded] = useState(false);
   const dragRef = useRef<DragState | null>(null);
+  const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Load from YAML on mount
+  useEffect(() => {
+    fetch("/api/state")
+      .then((r) => r.json())
+      .then(({ layout }) => {
+        if (layout) {
+          if (layout.background) setBg(layout.background);
+          if (Array.isArray(layout.widgets)) setWidgets(layout.widgets);
+        }
+      })
+      .finally(() => setLoaded(true));
+  }, []);
+
+  // Auto-save to YAML (debounced 1 s) after initial load
+  useEffect(() => {
+    if (!loaded) return;
+    if (saveTimer.current) clearTimeout(saveTimer.current);
+    saveTimer.current = setTimeout(() => {
+      fetch("/api/state", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ background: bg, widgets }),
+      });
+    }, 1000);
+  }, [bg, widgets, loaded]);
 
   const handleWidgetMouseDown = useCallback(
     (e: React.MouseEvent, widget: WidgetInstance) => {
