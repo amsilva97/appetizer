@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import Editor from "@/components/editor";
 import BackgroundFields from "@/components/background-fields";
 import AppWidgetFields from "@/components/widgets/app-widget-fields";
 import type { BackgroundConfig } from "@/types/background";
@@ -263,11 +262,7 @@ export default function EditorPanel({
                 </>
               }
             >
-              <Editor
-                value={bg}
-                onChange={onBgChange}
-                renderFields={(val, set) => <BackgroundFields value={val} onChange={set} />}
-              />
+              <BackgroundFields value={bg} onChange={onBgChange} />
             </Panel>
           )}
 
@@ -290,10 +285,9 @@ export default function EditorPanel({
                 </button>
               }
             >
-              <Editor
+              <AppWidgetFields
                 value={editingWidget.config}
                 onChange={(config) => onUpdateWidget(editingWidget.id, { config })}
-                renderFields={(val, set) => <AppWidgetFields value={val} onChange={set} />}
               />
             </Panel>
           )}

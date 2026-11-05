@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import type {
   AuroraConfig,
   BackgroundConfig,
@@ -15,8 +16,11 @@ import type {
 } from "@/types/background";
 import { BACKGROUND_PRESETS, DEFAULT_BY_TYPE } from "@/lib/background-presets";
 import {
-  Label, Field, Select, SliderRow, Swatch, ColorList, Toggle, Divider,
+  Field, Select, SliderRow, Swatch, ColorList, Toggle, TabBar,
 } from "@/components/ui";
+import { parse, stringify } from "@/lib/yaml-parser";
+
+type Tab = "style" | "overlays" | "yaml";
 
 interface Props {
   value: BackgroundConfig;
@@ -38,75 +42,118 @@ const TYPE_OPTIONS = ALL_TYPES.map((t) => ({
   value: t,
 }));
 
+const TABS: { id: Tab; label: string }[] = [
+  { id: "style", label: "Style" },
+  { id: "overlays", label: "Overlays" },
+  { id: "yaml", label: "YAML" },
+];
+
 export default function BackgroundFields({ value, onChange }: Props) {
+  const [tab, setTab] = useState<Tab>("style");
+  const [yamlText, setYamlText] = useState(() => stringify(value));
+  const [yamlError, setYamlError] = useState<string | null>(null);
+
+  function handleTabChange(next: Tab) {
+    if (next === "yaml") {
+      setYamlText(stringify(value));
+      setYamlError(null);
+    }
+    setTab(next);
+  }
+
+  function handleYamlChange(text: string) {
+    setYamlText(text);
+    try {
+      onChange(parse<BackgroundConfig>(text));
+      setYamlError(null);
+    } catch (e) {
+      setYamlError(e instanceof Error ? e.message : "Invalid YAML");
+    }
+  }
+
   return (
     <div className="flex flex-col gap-5">
+      <TabBar tabs={TABS} active={tab} onChange={handleTabChange} />
 
-      {/* Preset */}
-      <Select
-        label="Preset"
-        value=""
-        options={PRESET_OPTIONS}
-        placeholder="— choose a preset —"
-        onChange={(name) => {
-          const preset = BACKGROUND_PRESETS[name];
-          if (preset) onChange(preset);
-        }}
-      />
+      {tab === "style" && (
+        <div className="flex flex-col gap-5">
+          <Select
+            label="Preset"
+            value=""
+            options={PRESET_OPTIONS}
+            placeholder="— choose a preset —"
+            onChange={(name) => {
+              const preset = BACKGROUND_PRESETS[name];
+              if (preset) onChange(preset);
+            }}
+          />
+          <Select
+            label="Type"
+            value={value.type}
+            options={TYPE_OPTIONS}
+            onChange={(type) => {
+              const t = type as typeof ALL_TYPES[number];
+              if (value.type !== t) onChange(DEFAULT_BY_TYPE[t]);
+            }}
+          />
+          <div className="flex flex-col gap-5">
+            {value.type === "solid"     && <SolidFields     value={value} onChange={onChange} />}
+            {value.type === "gradient"  && <GradientFields  value={value} onChange={onChange} />}
+            {value.type === "wavy"      && <WavyFields      value={value} onChange={onChange} />}
+            {value.type === "aurora"    && <AuroraFields    value={value} onChange={onChange} />}
+            {value.type === "particles" && <ParticlesFields value={value} onChange={onChange} />}
+            {value.type === "mesh"      && <MeshFields      value={value} onChange={onChange} />}
+            {value.type === "conic"     && <ConicFields     value={value} onChange={onChange} />}
+            {value.type === "plasma"    && <PlasmaFields    value={value} onChange={onChange} />}
+            {value.type === "bokeh"     && <BokehFields     value={value} onChange={onChange} />}
+            {value.type === "geometric" && <GeometricFields value={value} onChange={onChange} />}
+          </div>
+        </div>
+      )}
 
-      {/* Type */}
-      <Select
-        label="Type"
-        value={value.type}
-        options={TYPE_OPTIONS}
-        onChange={(type) => {
-          const t = type as typeof ALL_TYPES[number];
-          if (value.type !== t) onChange(DEFAULT_BY_TYPE[t]);
-        }}
-      />
+      {tab === "overlays" && (
+        <div className="flex flex-col gap-5">
+          <SliderRow
+            label="Grain"
+            value={value.grain ?? 0}
+            min={0} max={0.5} step={0.01}
+            display={
+              (value.grain ?? 0) > 0
+                ? `${Math.round((value.grain ?? 0) * 100)}%`
+                : "off"
+            }
+            onChange={(g) => onChange({ ...value, grain: g } as BackgroundConfig)}
+          />
+          <SliderRow
+            label="Vignette"
+            value={value.vignette ?? 0}
+            min={0} max={1} step={0.01}
+            display={
+              (value.vignette ?? 0) > 0
+                ? `${Math.round((value.vignette ?? 0) * 100)}%`
+                : "off"
+            }
+            onChange={(v) => onChange({ ...value, vignette: v } as BackgroundConfig)}
+          />
+        </div>
+      )}
 
-      {/* Type-specific fields */}
-      <div className="flex flex-col gap-5">
-        {value.type === "solid"     && <SolidFields     value={value} onChange={onChange} />}
-        {value.type === "gradient"  && <GradientFields  value={value} onChange={onChange} />}
-        {value.type === "wavy"      && <WavyFields      value={value} onChange={onChange} />}
-        {value.type === "aurora"    && <AuroraFields    value={value} onChange={onChange} />}
-        {value.type === "particles" && <ParticlesFields value={value} onChange={onChange} />}
-        {value.type === "mesh"      && <MeshFields      value={value} onChange={onChange} />}
-        {value.type === "conic"     && <ConicFields     value={value} onChange={onChange} />}
-        {value.type === "plasma"    && <PlasmaFields    value={value} onChange={onChange} />}
-        {value.type === "bokeh"     && <BokehFields     value={value} onChange={onChange} />}
-        {value.type === "geometric" && <GeometricFields value={value} onChange={onChange} />}
-      </div>
-
-      {/* Overlays */}
-      <Divider />
-      <div className="flex flex-col gap-5">
-        <Label>Overlays</Label>
-        <SliderRow
-          label="Grain"
-          value={value.grain ?? 0}
-          min={0} max={0.5} step={0.01}
-          display={
-            (value.grain ?? 0) > 0
-              ? `${Math.round((value.grain ?? 0) * 100)}%`
-              : "off"
-          }
-          onChange={(g) => onChange({ ...value, grain: g } as BackgroundConfig)}
-        />
-        <SliderRow
-          label="Vignette"
-          value={value.vignette ?? 0}
-          min={0} max={1} step={0.01}
-          display={
-            (value.vignette ?? 0) > 0
-              ? `${Math.round((value.vignette ?? 0) * 100)}%`
-              : "off"
-          }
-          onChange={(v) => onChange({ ...value, vignette: v } as BackgroundConfig)}
-        />
-      </div>
-
+      {tab === "yaml" && (
+        <div className="flex flex-col gap-2">
+          <textarea
+            value={yamlText}
+            onChange={(e) => handleYamlChange(e.target.value)}
+            spellCheck={false}
+            className="w-full h-56 font-mono text-[11px] leading-relaxed bg-zinc-950 text-zinc-200 rounded-xl p-3 border border-zinc-800 resize-none focus:outline-none focus:ring-1 focus:ring-zinc-700"
+          />
+          {yamlError && (
+            <div className="flex gap-2 px-3 py-2 bg-red-500/[0.1] border border-red-500/30 rounded-lg">
+              <span className="text-red-400 text-xs shrink-0 mt-px">⚠</span>
+              <p className="text-xs text-red-400 font-mono leading-snug break-all">{yamlError}</p>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }
