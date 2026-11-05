@@ -5,8 +5,6 @@ import * as yaml from "js-yaml";
 import type { BackgroundConfig } from "@/types/background";
 import type { WidgetInstance } from "@/types/widget";
 
-export const dynamic = "force-dynamic";
-
 const DATA_DIR = join(process.cwd(), "data");
 
 interface IndexConfig {
