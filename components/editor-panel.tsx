@@ -60,6 +60,19 @@ function XIcon({ size = 14 }: { size?: number }) {
   );
 }
 
+function GripIcon() {
+  return (
+    <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
+      <circle cx="9"  cy="6"  r="1.5" />
+      <circle cx="15" cy="6"  r="1.5" />
+      <circle cx="9"  cy="12" r="1.5" />
+      <circle cx="15" cy="12" r="1.5" />
+      <circle cx="9"  cy="18" r="1.5" />
+      <circle cx="15" cy="18" r="1.5" />
+    </svg>
+  );
+}
+
 // ─── Speed-dial sub-button ────────────────────────────────────────────────────
 
 function DialButton({
@@ -115,32 +128,41 @@ function Panel({
   title,
   subtitle,
   onClose,
+  onDragStart,
   footer,
   children,
 }: {
   title: string;
   subtitle?: string;
   onClose: () => void;
+  onDragStart: (e: React.MouseEvent) => void;
   footer?: React.ReactNode;
   children: React.ReactNode;
 }) {
   return (
-    <div className="bg-white rounded-2xl shadow-2xl shadow-black/[0.12] w-80 max-h-[80vh] flex flex-col overflow-hidden border border-black/[0.06]">
-      <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100 shrink-0">
-        <div className="min-w-0">
-          <h2 className="text-sm font-semibold text-gray-900 tracking-tight leading-tight">{title}</h2>
-          {subtitle && <p className="text-[11px] text-gray-400 mt-0.5 truncate">{subtitle}</p>}
+    <div className="bg-zinc-900 rounded-2xl shadow-2xl shadow-black/50 w-[340px] max-h-[80vh] flex flex-col overflow-hidden border border-white/[0.06]">
+      <div className="flex items-center justify-between border-b border-zinc-800 shrink-0" style={{ padding: "14px 24px" }}>
+        <div
+          className="min-w-0 flex-1 flex items-center gap-2 cursor-grab active:cursor-grabbing select-none"
+          onMouseDown={onDragStart}
+        >
+          <span className="text-zinc-600 shrink-0"><GripIcon /></span>
+          <div className="min-w-0">
+            <h2 className="text-sm font-semibold text-zinc-100 tracking-tight leading-tight">{title}</h2>
+            {subtitle && <p className="text-[11px] text-zinc-500 mt-0.5 truncate">{subtitle}</p>}
+          </div>
         </div>
         <button
           onClick={onClose}
-          className="ml-3 shrink-0 w-6 h-6 flex items-center justify-center rounded-md text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors"
+          onMouseDown={(e) => e.stopPropagation()}
+          className="ml-3 shrink-0 w-6 h-6 flex items-center justify-center rounded-md text-zinc-500 hover:text-zinc-200 hover:bg-zinc-800 transition-colors"
         >
           <XIcon />
         </button>
       </div>
-      <div className="overflow-y-auto flex-1 p-4">{children}</div>
+      <div className="overflow-y-auto flex-1" style={{ padding: "20px 24px" }}>{children}</div>
       {footer && (
-        <div className="flex gap-2 px-4 py-3 border-t border-gray-100 shrink-0">{footer}</div>
+        <div className="flex gap-2 border-t border-zinc-800 shrink-0" style={{ padding: "12px 24px" }}>{footer}</div>
       )}
     </div>
   );
@@ -161,8 +183,32 @@ export default function EditorPanel({
   onImport,
 }: Props) {
   const [dialOpen, setDialOpen] = useState(false);
+  const [pos, setPos] = useState({ left: 16, bottom: 16 });
 
   const panelOpen = bgEditorOpen || editingWidget !== null;
+
+  function handleDragStart(e: React.MouseEvent) {
+    e.preventDefault();
+    const startMouseX = e.clientX;
+    const startMouseY = e.clientY;
+    const startLeft = pos.left;
+    const startBottom = pos.bottom;
+
+    function onMove(me: MouseEvent) {
+      setPos({
+        left: Math.max(0, startLeft + me.clientX - startMouseX),
+        bottom: Math.max(0, startBottom - (me.clientY - startMouseY)),
+      });
+    }
+
+    function onUp() {
+      window.removeEventListener("mousemove", onMove);
+      window.removeEventListener("mouseup", onUp);
+    }
+
+    window.addEventListener("mousemove", onMove);
+    window.addEventListener("mouseup", onUp);
+  }
 
   function openBackground() {
     setDialOpen(false);
@@ -176,21 +222,25 @@ export default function EditorPanel({
   }
 
   return (
-    <div className="absolute bottom-4 left-4 z-10 flex flex-col items-start gap-3">
+    <div
+      className="absolute z-10 flex flex-col items-start gap-3"
+      style={{ left: pos.left, bottom: pos.bottom }}
+    >
       {/* Active panel — above FAB cluster */}
       {bgEditorOpen && (
         <Panel
           title="Background"
           onClose={() => onBgEditorOpenChange(false)}
+          onDragStart={handleDragStart}
           footer={
             <>
               <button
                 onClick={onExport}
-                className="flex-1 py-2 text-xs font-semibold text-gray-600 border border-gray-200 rounded-lg hover:bg-gray-50 hover:border-gray-300 transition-colors"
+                className="flex-1 py-2 text-xs font-semibold text-zinc-400 border border-zinc-700 rounded-lg hover:bg-zinc-800 hover:text-zinc-200 hover:border-zinc-600 transition-colors"
               >
                 Export YAML
               </button>
-              <label className="flex-1 py-2 text-xs font-semibold text-gray-600 border border-gray-200 rounded-lg hover:bg-gray-50 hover:border-gray-300 transition-colors text-center cursor-pointer">
+              <label className="flex-1 py-2 text-xs font-semibold text-zinc-400 border border-zinc-700 rounded-lg hover:bg-zinc-800 hover:text-zinc-200 hover:border-zinc-600 transition-colors text-center cursor-pointer">
                 Import YAML
                 <input type="file" accept=".yaml,.yml" className="hidden" onChange={onImport} />
               </label>
@@ -210,6 +260,7 @@ export default function EditorPanel({
           title={editingWidget.config.title || "Untitled App"}
           subtitle={editingWidget.config.url || undefined}
           onClose={onEditingWidgetClose}
+          onDragStart={handleDragStart}
         >
           <Editor
             value={editingWidget.config}

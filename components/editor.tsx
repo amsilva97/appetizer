@@ -36,15 +36,15 @@ export default function Editor<T>({ value, onChange, renderFields }: EditorProps
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="inline-flex bg-gray-100 rounded-lg p-0.5 self-start">
+      <div className="inline-flex bg-zinc-800 border border-zinc-700 rounded-lg p-0.5 self-start">
         {(["ui", "yaml"] as const).map((m) => (
           <button
             key={m}
             onClick={() => handleModeSwitch(m)}
             className={`px-3 py-1 text-xs font-semibold rounded-md transition-all duration-150 ${
               mode === m
-                ? "bg-white shadow text-gray-900"
-                : "text-gray-500 hover:text-gray-700"
+                ? "bg-zinc-100 text-zinc-900 shadow-sm"
+                : "text-zinc-500 hover:text-zinc-300"
             }`}
           >
             {m === "ui" ? "Visual" : "YAML"}
@@ -60,12 +60,12 @@ export default function Editor<T>({ value, onChange, renderFields }: EditorProps
             value={yamlText}
             onChange={(e) => handleYamlChange(e.target.value)}
             spellCheck={false}
-            className="w-full h-56 font-mono text-[11px] leading-relaxed bg-gray-950 text-gray-200 rounded-xl p-3 border border-gray-800 resize-none focus:outline-none focus:ring-1 focus:ring-gray-600"
+            className="w-full h-56 font-mono text-[11px] leading-relaxed bg-zinc-950 text-zinc-200 rounded-xl p-3 border border-zinc-800 resize-none focus:outline-none focus:ring-1 focus:ring-zinc-700"
           />
           {yamlError && (
-            <div className="flex gap-2 px-3 py-2 bg-red-50 border border-red-200 rounded-lg">
+            <div className="flex gap-2 px-3 py-2 bg-red-500/[0.1] border border-red-500/30 rounded-lg">
               <span className="text-red-400 text-xs shrink-0 mt-px">⚠</span>
-              <p className="text-xs text-red-600 font-mono leading-snug break-all">{yamlError}</p>
+              <p className="text-xs text-red-400 font-mono leading-snug break-all">{yamlError}</p>
             </div>
           )}
         </div>

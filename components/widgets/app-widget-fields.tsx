@@ -1,97 +1,49 @@
 "use client";
 
 import type { AppWidgetConfig } from "@/types/app-widget";
+import { TextInput, TextArea, Toggle, SliderRow, Divider } from "@/components/ui";
 
 interface Props {
   value: AppWidgetConfig;
   onChange: (v: AppWidgetConfig) => void;
 }
 
-function Label({ children }: { children: React.ReactNode }) {
-  return (
-    <p className="text-xs font-semibold uppercase tracking-wide text-gray-500 mb-1">{children}</p>
-  );
-}
-
-function TextRow({
-  label,
-  value,
-  placeholder,
-  onChange,
-}: {
-  label: string;
-  value: string;
-  placeholder?: string;
-  onChange: (v: string) => void;
-}) {
-  return (
-    <div>
-      <Label>{label}</Label>
-      <input
-        type="text"
-        value={value ?? ""}
-        placeholder={placeholder}
-        onChange={(e) => onChange(e.target.value)}
-        className="w-full px-2 py-1.5 text-sm border rounded bg-white"
-      />
-    </div>
-  );
-}
-
-function TextArea({
-  label,
-  value,
-  placeholder,
-  onChange,
-}: {
-  label: string;
-  value: string;
-  placeholder?: string;
-  onChange: (v: string) => void;
-}) {
-  return (
-    <div>
-      <Label>{label}</Label>
-      <textarea
-        value={value ?? ""}
-        placeholder={placeholder}
-        onChange={(e) => onChange(e.target.value)}
-        rows={2}
-        className="w-full px-2 py-1.5 text-sm border rounded bg-white resize-none"
-      />
-    </div>
-  );
-}
-
 export default function AppWidgetFields({ value, onChange }: Props) {
   return (
-    <div className="flex flex-col gap-3">
+    <div className="flex flex-col gap-4">
+
       {/* Logo preview */}
       {value.logoUrl && (
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-3 px-3 py-2.5 rounded-xl bg-zinc-800 border border-zinc-700">
           <img
             src={value.logoUrl}
             alt=""
-            className="w-8 h-8 rounded-lg object-contain border"
+            className="w-9 h-9 rounded-xl object-contain shrink-0"
             onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
           />
-          <span className="text-xs text-gray-400">logo preview</span>
+          <div className="min-w-0">
+            <p className="text-sm font-semibold text-zinc-100 truncate leading-tight">
+              {value.title || "Untitled"}
+            </p>
+            <p className="text-[11px] text-zinc-500 mt-0.5">Logo preview</p>
+          </div>
         </div>
       )}
 
-      <TextRow
+      {/* Identity */}
+      <TextInput
         label="Logo URL"
         value={value.logoUrl ?? ""}
         placeholder="https://example.com/icon.png"
         onChange={(logoUrl) => onChange({ ...value, logoUrl })}
       />
-      <TextRow
+      <TextInput
         label="Title"
         value={value.title}
         placeholder="My App"
         onChange={(title) => onChange({ ...value, title })}
       />
-      <TextRow
+      <TextInput
         label="Subtitle"
         value={value.subtitle ?? ""}
         placeholder="v2.0 · optional"
@@ -101,59 +53,53 @@ export default function AppWidgetFields({ value, onChange }: Props) {
         label="Description"
         value={value.description ?? ""}
         placeholder="Short description…"
+        rows={2}
         onChange={(description) => onChange({ ...value, description })}
       />
-      <TextRow
+
+      <Divider />
+
+      {/* Link */}
+      <TextInput
         label="URL"
         value={value.url}
         placeholder="https://example.com"
         onChange={(url) => onChange({ ...value, url })}
       />
-      <TextRow
+      <TextInput
         label="Tooltip"
         value={value.tooltip ?? ""}
         placeholder="Shown on hover · optional"
         onChange={(tooltip) => onChange({ ...value, tooltip })}
       />
 
-      {/* Ping */}
-      <div>
-        <Label>Online check</Label>
-        <label className="flex items-center gap-2 cursor-pointer">
-          <input
-            type="checkbox"
-            checked={value.ping}
-            onChange={(e) => onChange({ ...value, ping: e.target.checked })}
-          />
-          <span className="text-sm">Ping to show online status</span>
-        </label>
+      <Divider />
 
-        {value.ping && (
-          <div className="mt-2 flex flex-col gap-2 pl-5">
-            <TextRow
-              label="Ping URL"
-              value={value.pingUrl ?? ""}
-              placeholder="Defaults to URL above"
-              onChange={(pingUrl) => onChange({ ...value, pingUrl })}
-            />
-            <div>
-              <Label>Check every</Label>
-              <div className="flex items-center gap-2">
-                <input
-                  type="range"
-                  min={10}
-                  max={300}
-                  step={10}
-                  value={value.pingInterval}
-                  onChange={(e) => onChange({ ...value, pingInterval: Number(e.target.value) })}
-                  className="flex-1"
-                />
-                <span className="text-sm font-mono w-12 text-right">{value.pingInterval}s</span>
-              </div>
-            </div>
-          </div>
-        )}
-      </div>
+      {/* Online check */}
+      <Toggle
+        checked={value.ping}
+        label="Show online status"
+        onChange={(ping) => onChange({ ...value, ping })}
+      />
+
+      {value.ping && (
+        <div className="flex flex-col gap-4 pl-3 border-l-2 border-gray-100">
+          <TextInput
+            label="Ping URL"
+            value={value.pingUrl ?? ""}
+            placeholder="Defaults to URL above"
+            onChange={(pingUrl) => onChange({ ...value, pingUrl })}
+          />
+          <SliderRow
+            label="Check every"
+            value={value.pingInterval}
+            min={10} max={300} step={10}
+            display={`${value.pingInterval}s`}
+            onChange={(pingInterval) => onChange({ ...value, pingInterval })}
+          />
+        </div>
+      )}
+
     </div>
   );
 }
