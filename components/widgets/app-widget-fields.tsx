@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import type { AppWidgetConfig } from "@/types/app-widget";
-import { TextInput, TextArea, Toggle, SliderRow, TabBar } from "@/components/ui";
+import { TextInput, TextArea, Toggle, SliderRow, Select, TabBar } from "@/components/ui";
 import { parse, stringify } from "@/lib/yaml-parser";
 
 type Tab = "general" | "connection" | "yaml";
@@ -18,10 +18,20 @@ const TABS: { id: Tab; label: string }[] = [
   { id: "yaml", label: "YAML" },
 ];
 
+const LOGO_VIEW_OPTIONS = [
+  { value: "icon", label: "Icon" },
+  { value: "none", label: "No Icon" },
+  { value: "full", label: "Full Cover" },
+];
+
 export default function AppWidgetFields({ value, onChange }: Props) {
   const [tab, setTab] = useState<Tab>("general");
   const [yamlText, setYamlText] = useState(() => stringify(value));
   const [yamlError, setYamlError] = useState<string | null>(null);
+
+  const logoView = value.logoView ?? "icon";
+  const clickable = value.clickable ?? true;
+  const showLastPing = value.showLastPing ?? false;
 
   function handleTabChange(next: Tab) {
     if (next === "yaml") {
@@ -47,12 +57,30 @@ export default function AppWidgetFields({ value, onChange }: Props) {
 
       {tab === "general" && (
         <div className="flex flex-col gap-4">
-          {value.logoUrl && (
+          <Select
+            label="Logo view"
+            value={logoView}
+            options={LOGO_VIEW_OPTIONS}
+            onChange={(v) => onChange({ ...value, logoView: v as AppWidgetConfig["logoView"] })}
+          />
+
+          {/* Logo URL — hidden for "none" view */}
+          {logoView !== "none" && (
+            <TextInput
+              label="Logo URL"
+              value={value.logoUrl ?? ""}
+              placeholder="https://example.com/icon.png"
+              onChange={(logoUrl) => onChange({ ...value, logoUrl })}
+            />
+          )}
+
+          {/* Logo preview — only for icon view */}
+          {logoView === "icon" && value.logoUrl && (
             <div className="flex items-center gap-3 px-3 py-2.5 rounded-xl bg-zinc-800 border border-zinc-700">
               <img
                 src={value.logoUrl}
                 alt=""
-                className="w-9 h-9 rounded-xl object-contain shrink-0"
+                className="w-9 h-9 rounded-[8px] object-contain shrink-0"
                 onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
               />
               <div className="min-w-0">
@@ -63,6 +91,7 @@ export default function AppWidgetFields({ value, onChange }: Props) {
               </div>
             </div>
           )}
+
           <TextInput
             label="Title"
             value={value.title}
@@ -82,12 +111,6 @@ export default function AppWidgetFields({ value, onChange }: Props) {
             rows={2}
             onChange={(description) => onChange({ ...value, description })}
           />
-          <TextInput
-            label="Logo URL"
-            value={value.logoUrl ?? ""}
-            placeholder="https://example.com/icon.png"
-            onChange={(logoUrl) => onChange({ ...value, logoUrl })}
-          />
         </div>
       )}
 
@@ -106,10 +129,17 @@ export default function AppWidgetFields({ value, onChange }: Props) {
             onChange={(tooltip) => onChange({ ...value, tooltip })}
           />
           <Toggle
+            checked={clickable}
+            label="Click to open URL"
+            onChange={(v) => onChange({ ...value, clickable: v })}
+          />
+
+          <Toggle
             checked={value.ping}
             label="Show online status"
             onChange={(ping) => onChange({ ...value, ping })}
           />
+
           {value.ping && (
             <div className="flex flex-col gap-4 pl-3 border-l-2 border-zinc-700">
               <TextInput
@@ -124,6 +154,11 @@ export default function AppWidgetFields({ value, onChange }: Props) {
                 min={10} max={300} step={10}
                 display={`${value.pingInterval}s`}
                 onChange={(pingInterval) => onChange({ ...value, pingInterval })}
+              />
+              <Toggle
+                checked={showLastPing}
+                label="Show last checked time"
+                onChange={(v) => onChange({ ...value, showLastPing: v })}
               />
             </div>
           )}
