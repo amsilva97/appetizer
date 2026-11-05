@@ -123,7 +123,7 @@ interface ViewProps {
 function IconView({ config, status, timeAgo }: ViewProps) {
   const showLastPing = (config.showLastPing ?? false) && timeAgo !== null;
   return (
-    <div className="flex items-center gap-3.5">
+    <div className="flex items-center gap-3.5 h-full">
       <AppIcon url={config.logoUrl} title={config.title} />
       <div className="flex-1 min-w-0 pr-6">
         <div className="flex items-center gap-1.5">
@@ -136,7 +136,7 @@ function IconView({ config, status, timeAgo }: ViewProps) {
           <p className="text-[11px] text-white/50 mt-0.5 truncate">{config.subtitle}</p>
         )}
         {config.description && (
-          <p className="text-xs text-white/55 mt-1.5 line-clamp-2 leading-snug">{config.description}</p>
+          <p className="text-xs text-white/55 mt-1.5 line-clamp-1 leading-snug">{config.description}</p>
         )}
         {showLastPing && (
           <p className="text-[10px] text-white/35 mt-1 tabular-nums">Checked {timeAgo}</p>
@@ -149,7 +149,7 @@ function IconView({ config, status, timeAgo }: ViewProps) {
 function NoIconView({ config, status, timeAgo }: ViewProps) {
   const showLastPing = (config.showLastPing ?? false) && timeAgo !== null;
   return (
-    <div className="min-w-0 pr-6">
+    <div className="min-w-0 pr-6 h-full flex flex-col justify-center">
       <div className="flex items-center gap-1.5">
         <span className="text-sm font-semibold text-white leading-tight truncate">
           {config.title || "Untitled"}
@@ -160,7 +160,7 @@ function NoIconView({ config, status, timeAgo }: ViewProps) {
         <p className="text-[11px] text-white/50 mt-0.5 truncate">{config.subtitle}</p>
       )}
       {config.description && (
-        <p className="text-xs text-white/55 mt-1.5 line-clamp-2 leading-snug">{config.description}</p>
+        <p className="text-xs text-white/55 mt-1.5 line-clamp-1 leading-snug">{config.description}</p>
       )}
       {showLastPing && (
         <p className="text-[10px] text-white/35 mt-1 tabular-nums">Checked {timeAgo}</p>
@@ -265,7 +265,7 @@ export default function AppWidget({ config, onEdit, onClick }: AppWidgetProps) {
       <div
         onClick={clickable ? onClick : undefined}
         title={clickable ? (config.tooltip || undefined) : undefined}
-        className={`bg-white/[0.08] backdrop-blur-2xl border border-white/[0.12] rounded-3xl p-4 shadow-2xl shadow-black/30 transition-all duration-200 ${
+        className={`bg-white/[0.08] backdrop-blur-2xl border border-white/[0.12] rounded-3xl p-4 h-24 overflow-hidden shadow-2xl shadow-black/30 transition-all duration-200 ${
           clickable
             ? "cursor-pointer hover:bg-white/[0.13] hover:border-white/20"
             : "cursor-default"
