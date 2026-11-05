@@ -5,7 +5,7 @@ import type { AppWidgetConfig } from "@/types/app-widget";
 import { TextInput, TextArea, Toggle, SliderRow, Select, TabBar } from "@/components/ui";
 import { parse, stringify } from "@/lib/yaml-parser";
 
-type Tab = "general" | "connection" | "yaml";
+type Tab = "general" | "connection" | "dimensions" | "yaml";
 
 interface Props {
   value: AppWidgetConfig;
@@ -15,6 +15,7 @@ interface Props {
 const TABS: { id: Tab; label: string }[] = [
   { id: "general", label: "General" },
   { id: "connection", label: "Connection" },
+  { id: "dimensions", label: "Dimensions" },
   { id: "yaml", label: "YAML" },
 ];
 
@@ -162,6 +163,25 @@ export default function AppWidgetFields({ value, onChange }: Props) {
               />
             </div>
           )}
+        </div>
+      )}
+
+      {tab === "dimensions" && (
+        <div className="flex flex-col gap-4">
+          <SliderRow
+            label="Width"
+            value={value.cardWidth ?? 256}
+            min={160} max={480} step={8}
+            display={`${value.cardWidth ?? 256}px`}
+            onChange={(cardWidth) => onChange({ ...value, cardWidth })}
+          />
+          <SliderRow
+            label="Height"
+            value={value.cardHeight ?? 64}
+            min={48} max={300} step={4}
+            display={`${value.cardHeight ?? 64}px`}
+            onChange={(cardHeight) => onChange({ ...value, cardHeight })}
+          />
         </div>
       )}
 

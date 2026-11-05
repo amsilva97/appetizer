@@ -76,7 +76,7 @@ function AppIcon({ url, title }: { url?: string; title: string }) {
 
   if (!url || error) {
     return (
-      <div className={`w-12 h-12 rounded-[8px] ${colorFor(title)} flex items-center justify-center text-white font-bold text-sm shrink-0 shadow-md select-none`}>
+      <div className={`w-9 h-9 rounded-[8px] ${colorFor(title)} flex items-center justify-center text-white font-bold text-xs shrink-0 shadow-md select-none`}>
         {initials}
       </div>
     );
@@ -86,7 +86,7 @@ function AppIcon({ url, title }: { url?: string; title: string }) {
     <img
       src={url}
       alt=""
-      className="w-12 h-12 rounded-[8px] object-contain shrink-0"
+      className="w-9 h-9 rounded-[8px] object-contain shrink-0"
       onError={() => setError(true)}
     />
   );
@@ -174,7 +174,7 @@ function FullCoverView({ config, status, timeAgo }: ViewProps) {
   const showLastPing = (config.showLastPing ?? false) && timeAgo !== null;
 
   return (
-    <div className="relative h-40 w-full">
+    <div className="relative h-full w-full">
       {/* Background: logo or color fallback */}
       {config.logoUrl && !imgError ? (
         <img
@@ -187,22 +187,22 @@ function FullCoverView({ config, status, timeAgo }: ViewProps) {
         <div className={`absolute inset-0 ${colorFor(config.title)}`} />
       )}
 
-      {/* Gradient scrim */}
-      <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/15 to-transparent" />
+      {/* Gradient scrim — dark at top for text legibility */}
+      <div className="absolute inset-0 bg-gradient-to-b from-black/70 via-black/20 to-transparent" />
 
-      {/* Text overlay */}
-      <div className="absolute bottom-0 left-0 right-0 p-4 pr-10">
+      {/* Text overlay at top */}
+      <div className="absolute top-0 left-0 right-0 p-4 pr-10">
         <div className="flex items-center gap-1.5">
-          <span className="text-sm font-semibold text-white leading-tight truncate">
+          <span className="text-sm font-semibold text-white leading-tight truncate drop-shadow">
             {config.title || "Untitled"}
           </span>
           {status !== null && <StatusPip status={status} />}
         </div>
         {config.subtitle && (
-          <p className="text-[11px] text-white/60 mt-0.5 truncate">{config.subtitle}</p>
+          <p className="text-[11px] text-white/70 mt-0.5 truncate drop-shadow">{config.subtitle}</p>
         )}
         {showLastPing && (
-          <p className="text-[10px] text-white/40 mt-0.5 tabular-nums">Checked {timeAgo}</p>
+          <p className="text-[10px] text-white/50 mt-0.5 tabular-nums">Checked {timeAgo}</p>
         )}
       </div>
     </div>
@@ -226,6 +226,8 @@ export default function AppWidget({ config, onEdit, onClick }: AppWidgetProps) {
 
   const logoView = config.logoView ?? "icon";
   const clickable = config.clickable ?? true;
+  const cardWidth = config.cardWidth ?? 256;
+  const cardHeight = config.cardHeight ?? 64;
 
   const editBtn = (
     <button
@@ -242,11 +244,12 @@ export default function AppWidget({ config, onEdit, onClick }: AppWidgetProps) {
 
   if (logoView === "full") {
     return (
-      <div className="relative group select-none w-64">
+      <div className="relative group select-none" style={{ width: cardWidth }}>
         {editBtn}
         <div
           onClick={clickable ? onClick : undefined}
           title={clickable ? (config.tooltip || undefined) : undefined}
+          style={{ height: cardHeight }}
           className={`overflow-hidden rounded-3xl border border-white/[0.12] shadow-2xl shadow-black/30 transition-all duration-200 ${
             clickable
               ? "cursor-pointer hover:border-white/20 hover:shadow-black/40"
@@ -260,12 +263,13 @@ export default function AppWidget({ config, onEdit, onClick }: AppWidgetProps) {
   }
 
   return (
-    <div className="relative group select-none w-64">
+    <div className="relative group select-none" style={{ width: cardWidth }}>
       {editBtn}
       <div
         onClick={clickable ? onClick : undefined}
         title={clickable ? (config.tooltip || undefined) : undefined}
-        className={`bg-white/[0.08] backdrop-blur-2xl border border-white/[0.12] rounded-3xl p-4 h-24 overflow-hidden shadow-2xl shadow-black/30 transition-all duration-200 ${
+        style={{ height: cardHeight }}
+        className={`bg-white/[0.08] backdrop-blur-2xl border border-white/[0.12] rounded-3xl px-4 py-3 overflow-hidden shadow-2xl shadow-black/30 transition-all duration-200 ${
           clickable
             ? "cursor-pointer hover:bg-white/[0.13] hover:border-white/20"
             : "cursor-default"
