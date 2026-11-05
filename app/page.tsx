@@ -169,6 +169,7 @@ export default function Home() {
         editingWidget={editingWidget}
         onEditingWidgetClose={() => setEditingId(null)}
         onUpdateWidget={updateWidget}
+        onDeleteWidget={deleteWidget}
         onAddWidget={addWidget}
         onExport={handleExport}
         onImport={handleImport}

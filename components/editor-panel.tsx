@@ -15,6 +15,7 @@ interface Props {
   editingWidget: WidgetInstance | null;
   onEditingWidgetClose: () => void;
   onUpdateWidget: (id: string, partial: Partial<WidgetInstance>) => void;
+  onDeleteWidget: (id: string) => void;
   onAddWidget: () => void;
   onExport: () => void;
   onImport: (e: React.ChangeEvent<HTMLInputElement>) => void;
@@ -69,6 +70,18 @@ function GripIcon() {
       <circle cx="15" cy="12" r="1.5" />
       <circle cx="9"  cy="18" r="1.5" />
       <circle cx="15" cy="18" r="1.5" />
+    </svg>
+  );
+}
+
+function TrashIcon({ size = 14 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <polyline points="3 6 5 6 21 6" />
+      <path d="M19 6l-1 14H6L5 6" />
+      <path d="M10 11v6" />
+      <path d="M14 11v6" />
+      <path d="M9 6V4h6v2" />
     </svg>
   );
 }
@@ -178,24 +191,25 @@ export default function EditorPanel({
   editingWidget,
   onEditingWidgetClose,
   onUpdateWidget,
+  onDeleteWidget,
   onAddWidget,
   onExport,
   onImport,
 }: Props) {
   const [dialOpen, setDialOpen] = useState(false);
-  const [pos, setPos] = useState({ left: 16, bottom: 16 });
+  const [panelPos, setPanelPos] = useState({ left: 16, bottom: 80 });
 
   const panelOpen = bgEditorOpen || editingWidget !== null;
 
-  function handleDragStart(e: React.MouseEvent) {
+  function handlePanelDragStart(e: React.MouseEvent) {
     e.preventDefault();
     const startMouseX = e.clientX;
     const startMouseY = e.clientY;
-    const startLeft = pos.left;
-    const startBottom = pos.bottom;
+    const startLeft = panelPos.left;
+    const startBottom = panelPos.bottom;
 
     function onMove(me: MouseEvent) {
-      setPos({
+      setPanelPos({
         left: Math.max(0, startLeft + me.clientX - startMouseX),
         bottom: Math.max(0, startBottom - (me.clientY - startMouseY)),
       });
@@ -222,57 +236,75 @@ export default function EditorPanel({
   }
 
   return (
-    <div
-      className="absolute z-10 flex flex-col items-start gap-3"
-      style={{ left: pos.left, bottom: pos.bottom }}
-    >
-      {/* Active panel — above FAB cluster */}
-      {bgEditorOpen && (
-        <Panel
-          title="Background"
-          onClose={() => onBgEditorOpenChange(false)}
-          onDragStart={handleDragStart}
-          footer={
-            <>
-              <button
-                onClick={onExport}
-                className="flex-1 py-2 text-xs font-semibold text-zinc-400 border border-zinc-700 rounded-lg hover:bg-zinc-800 hover:text-zinc-200 hover:border-zinc-600 transition-colors"
-              >
-                Export YAML
-              </button>
-              <label className="flex-1 py-2 text-xs font-semibold text-zinc-400 border border-zinc-700 rounded-lg hover:bg-zinc-800 hover:text-zinc-200 hover:border-zinc-600 transition-colors text-center cursor-pointer">
-                Import YAML
-                <input type="file" accept=".yaml,.yml" className="hidden" onChange={onImport} />
-              </label>
-            </>
-          }
+    <>
+      {/* Panel — independently draggable, decoupled from FAB */}
+      {panelOpen && (
+        <div
+          className="absolute z-10"
+          style={{ left: panelPos.left, bottom: panelPos.bottom }}
         >
-          <Editor
-            value={bg}
-            onChange={onBgChange}
-            renderFields={(val, set) => <BackgroundFields value={val} onChange={set} />}
-          />
-        </Panel>
+          {bgEditorOpen && (
+            <Panel
+              title="Background"
+              onClose={() => onBgEditorOpenChange(false)}
+              onDragStart={handlePanelDragStart}
+              footer={
+                <>
+                  <button
+                    onClick={onExport}
+                    className="flex-1 py-2 text-xs font-semibold text-zinc-400 border border-zinc-700 rounded-lg hover:bg-zinc-800 hover:text-zinc-200 hover:border-zinc-600 transition-colors"
+                  >
+                    Export YAML
+                  </button>
+                  <label className="flex-1 py-2 text-xs font-semibold text-zinc-400 border border-zinc-700 rounded-lg hover:bg-zinc-800 hover:text-zinc-200 hover:border-zinc-600 transition-colors text-center cursor-pointer">
+                    Import YAML
+                    <input type="file" accept=".yaml,.yml" className="hidden" onChange={onImport} />
+                  </label>
+                </>
+              }
+            >
+              <Editor
+                value={bg}
+                onChange={onBgChange}
+                renderFields={(val, set) => <BackgroundFields value={val} onChange={set} />}
+              />
+            </Panel>
+          )}
+
+          {editingWidget?.type === "app" && (
+            <Panel
+              title={editingWidget.config.title || "Untitled App"}
+              subtitle={editingWidget.config.url || undefined}
+              onClose={onEditingWidgetClose}
+              onDragStart={handlePanelDragStart}
+              footer={
+                <button
+                  onClick={() => {
+                    onDeleteWidget(editingWidget.id);
+                    onEditingWidgetClose();
+                  }}
+                  className="flex items-center justify-center gap-1.5 flex-1 py-2 text-xs font-semibold text-red-400 border border-red-900/60 rounded-lg hover:bg-red-900/25 hover:text-red-300 hover:border-red-700 transition-colors"
+                >
+                  <TrashIcon size={13} />
+                  Delete App
+                </button>
+              }
+            >
+              <Editor
+                value={editingWidget.config}
+                onChange={(config) => onUpdateWidget(editingWidget.id, { config })}
+                renderFields={(val, set) => <AppWidgetFields value={val} onChange={set} />}
+              />
+            </Panel>
+          )}
+        </div>
       )}
 
-      {editingWidget?.type === "app" && (
-        <Panel
-          title={editingWidget.config.title || "Untitled App"}
-          subtitle={editingWidget.config.url || undefined}
-          onClose={onEditingWidgetClose}
-          onDragStart={handleDragStart}
-        >
-          <Editor
-            value={editingWidget.config}
-            onChange={(config) => onUpdateWidget(editingWidget.id, { config })}
-            renderFields={(val, set) => <AppWidgetFields value={val} onChange={set} />}
-          />
-        </Panel>
-      )}
-
-      {/* Speed-dial cluster */}
-      <div className="flex flex-col items-start gap-2">
-        {/* Sub-buttons — stagger up from the main FAB */}
+      {/* Speed-dial cluster — fixed position, independent of panel */}
+      <div
+        className="absolute z-10 flex flex-col items-start gap-2"
+        style={{ left: 16, bottom: 16 }}
+      >
         <DialButton
           icon={<ImageIcon />}
           label="Background"
@@ -307,6 +339,6 @@ export default function EditorPanel({
           <PlusIcon size={18} />
         </button>
       </div>
-    </div>
+    </>
   );
 }
