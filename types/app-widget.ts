@@ -3,33 +3,27 @@ export type LogoView = "icon" | "none" | "full";
 export interface AppWidgetConfig {
   title: string;
   subtitle?: string;
-  description?: string;
   logoUrl?: string;
-  logoView?: LogoView;    // default "icon"
+  logoView: LogoView;
   url: string;
-  tooltip?: string;
-  clickable?: boolean;    // default true
+  openUrl: boolean;
   ping: boolean;
-  pingUrl?: string;       // defaults to url when empty
-  pingInterval: number;   // seconds, 10–300
-  showLastPing?: boolean; // default false
-  cardWidth?: number;     // px, default 256
-  cardHeight?: number;    // px, default 64
+  pingUrl?: string;
+  pingInterval: number; // seconds
+  width: number;
+  height: number;
 }
 
 export const DEFAULT_APP_WIDGET: AppWidgetConfig = {
   title: "My App",
   subtitle: "",
-  description: "",
   logoUrl: "",
   logoView: "icon",
   url: "",
-  tooltip: "",
-  clickable: true,
+  openUrl: true,
   ping: false,
   pingUrl: "",
   pingInterval: 30,
-  showLastPing: false,
-  cardWidth: 256,
-  cardHeight: 64,
+  width: 240,
+  height: 72,
 };
