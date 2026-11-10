@@ -68,11 +68,11 @@ Each widget type has its own set of fields, organized into tabs.
 
 The canvas background. Accessed via right-click → Edit Background.
 
-The editor has three sections:
+The editor has three tabs:
 
-**Type selector** — choose from ten background types: Solid, Gradient, Wavy, Aurora, Particles, Mesh, Conic, Plasma, Bokeh, Geometric.
+**Style tab** — contains a **Preset** dropdown, a **Type** selector, and the type-specific fields.
 
-**Presets** — one-click starting points for each type:
+Presets are one-click starting points:
 - Solid: Midnight, Snow
 - Gradient: Ocean Dusk, Sunrise, Cotton Candy
 - Wavy: Deep Sea, Lava
@@ -84,9 +84,13 @@ The editor has three sections:
 - Bokeh: City Lights, Candlelight
 - Geometric: Topography, Autumn
 
-**Overlays** — applied on top of any background type:
+Types: Solid, Gradient, Wavy, Aurora, Particles, Mesh, Conic, Plasma, Bokeh, Geometric.
+
+**Overlays tab** — applied on top of any background type:
 - **Grain** — film grain texture, 0–50 intensity
 - **Vignette** — darkened edge fade, 0–100 intensity
+
+**YAML tab** — directly edit the background config as YAML. Applied live; errors are shown inline.
 
 ---
 
@@ -101,12 +105,12 @@ A layout can contain other layouts or menus, one per cell.
 - **Layout type** — always Grid (the only current type).
 - **Columns** — number of grid columns, 1–12.
 - **Rows** — number of grid rows, 1–12.
-- **Padding** — space between the outer edge and the grid cells, in pixels.
-- **Gap** — space between grid cells, in pixels.
 
 **Visuals tab** (edit mode only — these styles are invisible in view mode):
-- **Margin** — shrinks the layout inward from its container edges, in pixels.
 - **Corner radius** — rounds the outer corners of the layout container, in pixels.
+- **Padding** — space between the outer edge and the grid cells, in pixels.
+- **Gap** — space between grid cells, in pixels.
+- **Margin** — shrinks the layout inward from its container edges, in pixels.
 - **Background color** — hex color for the cell fill.
 - **Background opacity** — 0–100%.
 - **Border color** — hex color for the cell borders.
@@ -248,9 +252,9 @@ config:
 | `layout.type` | `grid` | `grid` | — | Always `grid`. |
 | `layout.columns` | number | `3` | 1–12 | Number of columns. |
 | `layout.rows` | number | `2` | 1–12 | Number of rows. |
-| `padding` | number | `0` | 0–200 | Inner padding around the grid. |
-| `gap` | number | `0` | 0–200 | Gap between grid cells. |
-| `margin` | number | `0` | 0–200 | Inset from container edges. |
+| `padding` | number | `0` | 0–64 | Inner padding around the grid. |
+| `gap` | number | `0` | 0–64 | Gap between grid cells. |
+| `margin` | number | `0` | 0–128 | Inset from container edges. |
 | `borderRadius` | number | `0` | 0–200 | Corner radius of the outer container. |
 | `bgColor` | hex string | `"#ffffff"` | — | Cell background color (edit mode only). |
 | `bgOpacity` | number | `3` | 0–100 | Cell background opacity as a percentage. |
@@ -485,7 +489,7 @@ background:
 
 | Field | Type | Range | Description |
 |---|---|---|---|
-| `colors` | hex string[] | 2–6 stops | Conic gradient color stops, distributed evenly. |
+| `colors` | hex string[] | 2–8 stops | Conic gradient color stops, distributed evenly. |
 | `speed` | number | 1–10 | Rotation speed. |
 | `reverse` | boolean | — | Reverse the rotation direction. |
 
@@ -505,9 +509,9 @@ background:
 |---|---|---|---|
 | `hueStart` | number | 0–360 | Base hue angle in degrees. |
 | `hueRange` | number | 30–360 | How many degrees of the hue wheel the animation spans. |
-| `saturation` | number | 0.5–1 | Color saturation. |
+| `saturation` | number | 0.3–1 | Color saturation. |
 | `speed` | number | 1–10 | Animation speed. |
-| `scale` | number | 5–30 | Noise scale — lower values produce larger blobs. |
+| `scale` | number | 5–40 | Noise scale — lower values produce larger blobs. |
 
 #### bokeh
 
@@ -552,7 +556,7 @@ background:
 | `baseColor` | hex string | — | Background fill color. |
 | `colors` | hex string[] | 2–5 | Triangle palette colors. |
 | `speed` | number | 1–10 | Animation speed. |
-| `cellSize` | number | 50–200 | Size of the triangulation cells in pixels. Smaller values produce finer detail. |
+| `cellSize` | number | 40–200 | Size of the triangulation cells in pixels. Smaller values produce finer detail. |
 
 ---
 
