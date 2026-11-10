@@ -223,6 +223,16 @@ export default function Home() {
     setEditingId(id);
   }
 
+  function addAppToGroup(groupId: string) {
+    const id = nextId();
+    setWidgets((prev) => [
+      ...prev,
+      { id, type: "app", parentId: groupId, config: { ...DEFAULT_APP_WIDGET }, x: 0, y: 0 },
+    ]);
+    setBgEditorOpen(false);
+    setEditingId(id);
+  }
+
   function deleteWidget(id: string) {
     setWidgets((prev) => {
       const idsToRemove = new Set<string>();
@@ -362,6 +372,12 @@ export default function Home() {
               onClick: () => addSubGroup(t.widgetId, t.cellIndex, nextGroupLabel()),
             },
           ];
+        });
+        stackGroups.forEach((w) => {
+          addGroup.push({
+            label: `Add App to ${(w.config as GroupWidgetConfig).label}`,
+            onClick: () => addAppToGroup(w.id),
+          });
         });
         addGroup.push({
           label: "Add Layout to Background",
