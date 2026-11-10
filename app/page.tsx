@@ -42,7 +42,7 @@ export default function Home() {
   const [menuPos, setMenuPos] = useState<{
     x: number;
     y: number;
-    cellTarget: { widgetId: string; cellIndex: number } | null;
+    cellTargets: { widgetId: string; cellIndex: number }[];
   } | null>(null);
 
   const [loaded, setLoaded] = useState(false);
@@ -103,40 +103,67 @@ export default function Home() {
     dragRef.current = null;
   }, []);
 
-  function detectCellTarget(cx: number, cy: number): { widgetId: string; cellIndex: number } | null {
-    const TOOLBAR_H = 48;
-    for (const w of widgets) {
-      if (w.type !== "layout" || w.parentId) continue;
+  function detectCellTargets(cx: number, cy: number): { widgetId: string; cellIndex: number }[] {
+    const results: { widgetId: string; cellIndex: number }[] = [];
+
+    function traverse(
+      widgetId: string,
+      containerLeft: number,
+      containerTop: number,
+      containerRight: number,
+      containerBottom: number
+    ) {
+      const w = widgets.find((w) => w.id === widgetId);
+      if (!w) return;
       const cfg = w.config as LayoutWidgetConfig;
       const { columns, rows } = cfg.layout;
-      const { margin, padding, gap } = cfg;
+      const margin = cfg.margin ?? 0;
+      const padding = cfg.padding ?? 0;
+      const gap = cfg.gap ?? 0;
 
-      const gridLeft   = margin + padding;
-      const gridTop    = TOOLBAR_H + margin + padding;
-      const gridRight  = window.innerWidth  - margin - padding;
-      const gridBottom = window.innerHeight - margin - padding;
+      const gridLeft   = containerLeft  + margin + padding;
+      const gridTop    = containerTop   + margin + padding;
+      const gridRight  = containerRight  - margin - padding;
+      const gridBottom = containerBottom - margin - padding;
 
-      if (cx < gridLeft || cx > gridRight || cy < gridTop || cy > gridBottom) continue;
+      if (cx < gridLeft || cx > gridRight || cy < gridTop || cy > gridBottom) return;
 
-      const gridW = gridRight  - gridLeft;
+      const gridW = gridRight - gridLeft;
       const gridH = gridBottom - gridTop;
       const cellW = (gridW - (columns - 1) * gap) / columns;
       const cellH = (gridH - (rows    - 1) * gap) / rows;
 
       const col = Math.min(columns - 1, Math.floor((cx - gridLeft) / (cellW + gap)));
       const row = Math.min(rows    - 1, Math.floor((cy - gridTop)  / (cellH + gap)));
+      const cellIndex = row * columns + col;
 
-      return { widgetId: w.id, cellIndex: row * columns + col };
+      results.push({ widgetId, cellIndex });
+
+      const child = widgets.find(
+        (c) => c.type === "layout" && c.parentId === widgetId && c.cellIndex === cellIndex
+      );
+      if (child) {
+        const cellLeft = gridLeft + col * (cellW + gap);
+        const cellTop  = gridTop  + row * (cellH + gap);
+        traverse(child.id, cellLeft, cellTop, cellLeft + cellW, cellTop + cellH);
+      }
     }
-    return null;
+
+    const TOOLBAR_H = 48;
+    for (const w of widgets) {
+      if (w.type !== "layout" || w.parentId) continue;
+      traverse(w.id, 0, TOOLBAR_H, window.innerWidth, window.innerHeight);
+    }
+
+    return results;
   }
 
   function handleCanvasContextMenu(e: React.MouseEvent) {
     e.preventDefault();
     if (!editMode) return;
     if ((e.target as HTMLElement).closest("[data-no-menu]")) return;
-    const cellTarget = detectCellTarget(e.clientX, e.clientY);
-    setMenuPos({ x: e.clientX, y: e.clientY, cellTarget });
+    const cellTargets = detectCellTargets(e.clientX, e.clientY);
+    setMenuPos({ x: e.clientX, y: e.clientY, cellTargets });
   }
 
   function addWidget() {
@@ -295,27 +322,28 @@ export default function Home() {
       ))}
 
       {editMode && menuPos && (() => {
-        const layouts = widgets.filter((w) => w.type === "layout");
+        const { cellTargets } = menuPos;
+        const stackIds = new Set(cellTargets.map((t) => t.widgetId));
+        const stackLayouts = widgets.filter((w) => stackIds.has(w.id));
 
         const editGroup: ContextItem[] = [
           { label: "Edit Background", onClick: () => { setBgEditorOpen(true); setEditingId(null); } },
-          ...layouts.map((w) => ({
+          ...stackLayouts.map((w) => ({
             label: `Edit ${(w.config as LayoutWidgetConfig).label}`,
             onClick: () => { setBgEditorOpen(false); setEditingId(w.id); },
           })),
         ];
 
-        const addGroup: ContextItem[] = [];
-        const { cellTarget } = menuPos;
-        if (cellTarget) {
-          const parent = layouts.find((w) => w.id === cellTarget.widgetId);
-          if (parent) {
-            addGroup.push({
+        const addGroup: ContextItem[] = cellTargets
+          .map((t) => {
+            const parent = stackLayouts.find((w) => w.id === t.widgetId);
+            if (!parent) return null;
+            return {
               label: `Add Layout to ${(parent.config as LayoutWidgetConfig).label}`,
-              onClick: () => addSubLayout(cellTarget.widgetId, cellTarget.cellIndex, nextLayoutLabel()),
-            });
-          }
-        }
+              onClick: () => addSubLayout(t.widgetId, t.cellIndex, nextLayoutLabel()),
+            };
+          })
+          .filter((item): item is ContextItem => item !== null);
         addGroup.push({
           label: "Add Layout to Background",
           onClick: () => addLayoutWidget(nextLayoutLabel()),
