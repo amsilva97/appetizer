@@ -6,10 +6,16 @@ A browser-based homepage dashboard builder. Arrange app shortcuts, group them in
 
 ## Quick Start
 
+Always run a tagged release, not the `main` branch directly. Pick a release from the [Releases page](../../releases), then:
+
 ```bash
+git clone --branch v1.0.0 https://github.com/amsilva97/appetizer.git
+cd appetizer
 npm install
 npm run dev
 ```
+
+Replace `v1.0.0` with the version you want. Or download the ZIP from the releases page and extract it.
 
 Open `http://localhost:3000`. The page starts in **view mode**. Click the pencil icon in the toolbar to enter **edit mode**.
 
