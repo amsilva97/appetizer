@@ -73,6 +73,12 @@ export default function AppWidgetFields({ value, onChange }: Props) {
             placeholder="optional"
             onChange={(subtitle) => onChange({ ...value, subtitle })}
           />
+          <TextInput
+            label="Tooltip"
+            value={value.tooltip ?? ""}
+            placeholder="Shown on hover"
+            onChange={(tooltip) => onChange({ ...value, tooltip })}
+          />
         </div>
       )}
 

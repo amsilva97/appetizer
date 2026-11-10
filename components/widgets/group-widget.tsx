@@ -1,13 +1,16 @@
 "use client";
 
 import type { GroupWidgetConfig } from "@/types/group-widget";
+import type { AppWidgetConfig } from "@/types/app-widget";
 import type { WidgetInstance } from "@/types/widget";
+import AppWidget from "@/components/widgets/app-widget";
 
 interface Props {
   config: GroupWidgetConfig;
   widgetId: string;
   allWidgets: WidgetInstance[];
   editMode?: boolean;
+  onEditWidget?: (id: string) => void;
 }
 
 function toRgba(hex: string, opacity: number): string {
@@ -17,9 +20,12 @@ function toRgba(hex: string, opacity: number): string {
   return `rgba(${r}, ${g}, ${b}, ${opacity / 100})`;
 }
 
-export default function GroupWidget({ config, editMode }: Props) {
+export default function GroupWidget({ config, widgetId, allWidgets, editMode, onEditWidget }: Props) {
   const bg = toRgba(config.bgColor ?? "#ffffff", config.bgOpacity ?? 5);
   const border = toRgba(config.borderColor ?? "#ffffff", config.borderOpacity ?? 10);
+
+  const appChildren = allWidgets.filter((w) => w.type === "app" && w.parentId === widgetId);
+  const fillAxis = config.direction === "vertical" ? "width" : "height";
 
   return (
     <div
@@ -42,7 +48,20 @@ export default function GroupWidget({ config, editMode }: Props) {
           padding: config.padding ?? 8,
           gap: config.gap ?? 8,
         }}
-      />
+      >
+        {appChildren.map((child) => {
+          const cfg = child.config as AppWidgetConfig;
+          return (
+            <AppWidget
+              key={child.id}
+              config={cfg}
+              fillAxis={fillAxis}
+              onEdit={() => onEditWidget?.(child.id)}
+              onClick={() => { if (cfg.url) window.open(cfg.url, "_blank"); }}
+            />
+          );
+        })}
+      </div>
     </div>
   );
 }

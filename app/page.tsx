@@ -301,12 +301,13 @@ export default function Home() {
             widgetId={w.id}
             allWidgets={widgets}
             editMode={editMode}
+            onEditWidget={(id) => { setBgEditorOpen(false); setEditingId(id); }}
           />
         </div>
       ))}
 
-      {/* App widgets — freely positioned, draggable */}
-      {widgets.filter((w) => w.type === "app").map((w) => (
+      {/* App widgets — freely positioned, draggable (only those not inside a group) */}
+      {widgets.filter((w) => w.type === "app" && !w.parentId).map((w) => (
         <div
           key={w.id}
           data-no-menu

@@ -10,6 +10,7 @@ interface Props {
   widgetId: string;
   allWidgets: WidgetInstance[];
   editMode?: boolean;
+  onEditWidget?: (id: string) => void;
 }
 
 function toRgba(hex: string, opacity: number): string {
@@ -19,7 +20,7 @@ function toRgba(hex: string, opacity: number): string {
   return `rgba(${r}, ${g}, ${b}, ${opacity / 100})`;
 }
 
-export default function LayoutWidget({ config, widgetId, allWidgets, editMode }: Props) {
+export default function LayoutWidget({ config, widgetId, allWidgets, editMode, onEditWidget }: Props) {
   const { columns, rows } = config.layout;
   const totalCells = columns * rows;
 
@@ -66,6 +67,7 @@ export default function LayoutWidget({ config, widgetId, allWidgets, editMode }:
                   widgetId={child.id}
                   allWidgets={allWidgets}
                   editMode={editMode}
+                  onEditWidget={onEditWidget}
                 />
               )}
               {child?.type === "group" && (
@@ -74,6 +76,7 @@ export default function LayoutWidget({ config, widgetId, allWidgets, editMode }:
                   widgetId={child.id}
                   allWidgets={allWidgets}
                   editMode={editMode}
+                  onEditWidget={onEditWidget}
                 />
               )}
             </div>

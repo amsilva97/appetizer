@@ -93,17 +93,22 @@ interface Props {
   config: AppWidgetConfig;
   onEdit: () => void;
   onClick: () => void;
+  fillAxis?: "width" | "height";
 }
 
-export default function AppWidget({ config, onEdit, onClick }: Props) {
+export default function AppWidget({ config, onEdit, onClick, fillAxis }: Props) {
   const pingUrl = config.ping ? (config.pingUrl || config.url) || undefined : undefined;
   const ping = usePing(pingUrl, config.pingInterval);
 
-  const { width, height, logoView, openUrl } = config;
+  const { logoView, openUrl } = config;
   const [coverErr, setCoverErr] = useState(false);
+
+  const cardW = fillAxis === "width"  ? "100%" : config.width;
+  const cardH = fillAxis === "height" ? "100%" : config.height;
 
   const handleClick = openUrl ? onClick : undefined;
   const cursor = openUrl ? "cursor-pointer" : "cursor-default";
+  const tooltip = config.tooltip || undefined;
 
   const editBtn = (
     <button
@@ -119,13 +124,13 @@ export default function AppWidget({ config, onEdit, onClick }: Props) {
   if (logoView === "full") {
     return (
       <div
+        title={tooltip}
         className={`relative group select-none overflow-hidden rounded-2xl border border-white/10 shadow-xl shadow-black/40 ${cursor} transition-all duration-150 hover:border-white/20`}
-        style={{ width, height }}
+        style={{ width: cardW, height: cardH }}
         onClick={handleClick}
       >
         {editBtn}
 
-        {/* Background */}
         {config.logoUrl && !coverErr ? (
           <img
             src={config.logoUrl}
@@ -137,10 +142,8 @@ export default function AppWidget({ config, onEdit, onClick }: Props) {
           <div className="absolute inset-0" style={{ backgroundColor: seedColor(config.title) }} />
         )}
 
-        {/* Scrim */}
         <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-black/10 to-transparent" />
 
-        {/* Text */}
         <div className="absolute top-0 left-0 right-0 px-3 pt-3">
           <div className="flex items-center gap-1.5 min-w-0">
             <span className="text-[13px] font-semibold text-white leading-tight truncate drop-shadow">
@@ -159,8 +162,9 @@ export default function AppWidget({ config, onEdit, onClick }: Props) {
   // ── Icon / None ─────────────────────────────────────────────────────────────
   return (
     <div
+      title={tooltip}
       className={`relative group select-none overflow-hidden rounded-2xl border border-white/10 bg-white/[0.07] backdrop-blur-xl shadow-xl shadow-black/30 ${cursor} transition-all duration-150 hover:bg-white/[0.11] hover:border-white/18`}
-      style={{ width, height }}
+      style={{ width: cardW, height: cardH }}
       onClick={handleClick}
     >
       {editBtn}

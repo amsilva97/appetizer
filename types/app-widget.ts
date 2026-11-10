@@ -3,6 +3,7 @@ export type LogoView = "icon" | "none" | "full";
 export interface AppWidgetConfig {
   title: string;
   subtitle?: string;
+  tooltip?: string;
   logoUrl?: string;
   logoView: LogoView;
   url: string;
@@ -17,6 +18,7 @@ export interface AppWidgetConfig {
 export const DEFAULT_APP_WIDGET: AppWidgetConfig = {
   title: "My App",
   subtitle: "",
+  tooltip: "",
   logoUrl: "",
   logoView: "icon",
   url: "",
