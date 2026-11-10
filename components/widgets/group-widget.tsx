@@ -29,8 +29,9 @@ export default function GroupWidget({ config, widgetId, allWidgets, editMode, on
 
   return (
     <div
-      className="absolute inset-0 flex flex-col overflow-hidden"
+      className="absolute flex flex-col overflow-hidden"
       style={{
+        inset: config.margin ?? 0,
         backgroundColor: bg,
         border: `1px solid ${border}`,
         borderRadius: config.borderRadius ?? 8,

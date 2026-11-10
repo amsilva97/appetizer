@@ -77,6 +77,13 @@ export default function GroupWidgetFields({ value, onChange }: Props) {
       {tab === "visuals" && (
         <div className="flex flex-col gap-4">
           <SliderRow
+            label="Margin"
+            value={value.margin ?? 0}
+            min={0} max={128} step={2}
+            display={`${value.margin ?? 0}px`}
+            onChange={(margin) => onChange({ ...value, margin })}
+          />
+          <SliderRow
             label="Corner radius"
             value={value.borderRadius}
             min={0} max={48} step={1}

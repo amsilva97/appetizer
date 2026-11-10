@@ -3,6 +3,7 @@ export type GroupDirection = "vertical" | "horizontal";
 export interface GroupWidgetConfig {
   label: string;
   direction: GroupDirection;
+  margin: number;
   borderRadius: number;
   padding: number;
   gap: number;
@@ -15,6 +16,7 @@ export interface GroupWidgetConfig {
 export const DEFAULT_GROUP_WIDGET: GroupWidgetConfig = {
   label: "Group",
   direction: "vertical",
+  margin: 0,
   borderRadius: 8,
   padding: 12,
   gap: 8,

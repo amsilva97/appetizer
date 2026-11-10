@@ -2,20 +2,15 @@
 
 import { useState } from "react";
 import type { AppWidgetConfig } from "@/types/app-widget";
-import { TextInput, Toggle, SliderRow, Select, TabBar } from "@/components/ui";
+import { Divider, Select, SliderRow, TabBar, TextInput, Toggle } from "@/components/ui";
 import { parse, stringify } from "@/lib/yaml-parser";
 
-type Tab = "general" | "connection" | "dimensions" | "yaml";
-
-interface Props {
-  value: AppWidgetConfig;
-  onChange: (v: AppWidgetConfig) => void;
-}
+type Tab = "display" | "visuals" | "connection" | "yaml";
 
 const TABS: { id: Tab; label: string }[] = [
-  { id: "general",    label: "General"    },
+  { id: "display",    label: "Display"    },
+  { id: "visuals",    label: "Visuals"    },
   { id: "connection", label: "Connection" },
-  { id: "dimensions", label: "Dimensions" },
   { id: "yaml",       label: "YAML"       },
 ];
 
@@ -25,8 +20,13 @@ const LOGO_VIEW_OPTIONS = [
   { value: "full", label: "Full cover" },
 ];
 
+interface Props {
+  value: AppWidgetConfig;
+  onChange: (v: AppWidgetConfig) => void;
+}
+
 export default function AppWidgetFields({ value, onChange }: Props) {
-  const [tab, setTab] = useState<Tab>("general");
+  const [tab, setTab] = useState<Tab>("display");
   const [yaml, setYaml] = useState(() => stringify(value));
   const [yamlErr, setYamlErr] = useState<string | null>(null);
 
@@ -45,22 +45,8 @@ export default function AppWidgetFields({ value, onChange }: Props) {
     <div className="flex flex-col gap-5">
       <TabBar tabs={TABS} active={tab} onChange={switchTab} />
 
-      {tab === "general" && (
+      {tab === "display" && (
         <div className="flex flex-col gap-4">
-          <Select
-            label="Logo view"
-            value={value.logoView}
-            options={LOGO_VIEW_OPTIONS}
-            onChange={(v) => onChange({ ...value, logoView: v as AppWidgetConfig["logoView"] })}
-          />
-          {value.logoView !== "none" && (
-            <TextInput
-              label="Logo URL"
-              value={value.logoUrl ?? ""}
-              placeholder="https://example.com/icon.png"
-              onChange={(logoUrl) => onChange({ ...value, logoUrl })}
-            />
-          )}
           <TextInput
             label="Title"
             value={value.title}
@@ -79,6 +65,42 @@ export default function AppWidgetFields({ value, onChange }: Props) {
             placeholder="Shown on hover"
             onChange={(tooltip) => onChange({ ...value, tooltip })}
           />
+
+          <Divider />
+
+          <Select
+            label="Logo view"
+            value={value.logoView}
+            options={LOGO_VIEW_OPTIONS}
+            onChange={(v) => onChange({ ...value, logoView: v as AppWidgetConfig["logoView"] })}
+          />
+          {value.logoView !== "none" && (
+            <TextInput
+              label="Logo URL"
+              value={value.logoUrl ?? ""}
+              placeholder="https://example.com/icon.png"
+              onChange={(logoUrl) => onChange({ ...value, logoUrl })}
+            />
+          )}
+        </div>
+      )}
+
+      {tab === "visuals" && (
+        <div className="flex flex-col gap-4">
+          <SliderRow
+            label="Width"
+            value={value.width}
+            min={160} max={480} step={8}
+            display={`${value.width}px`}
+            onChange={(width) => onChange({ ...value, width })}
+          />
+          <SliderRow
+            label="Height"
+            value={value.height}
+            min={48} max={300} step={4}
+            display={`${value.height}px`}
+            onChange={(height) => onChange({ ...value, height })}
+          />
         </div>
       )}
 
@@ -95,6 +117,9 @@ export default function AppWidgetFields({ value, onChange }: Props) {
             label="Click to open URL"
             onChange={(openUrl) => onChange({ ...value, openUrl })}
           />
+
+          <Divider />
+
           <Toggle
             checked={value.ping}
             label="Show online status"
@@ -117,25 +142,6 @@ export default function AppWidgetFields({ value, onChange }: Props) {
               />
             </div>
           )}
-        </div>
-      )}
-
-      {tab === "dimensions" && (
-        <div className="flex flex-col gap-4">
-          <SliderRow
-            label="Width"
-            value={value.width}
-            min={160} max={480} step={8}
-            display={`${value.width}px`}
-            onChange={(width) => onChange({ ...value, width })}
-          />
-          <SliderRow
-            label="Height"
-            value={value.height}
-            min={48} max={300} step={4}
-            display={`${value.height}px`}
-            onChange={(height) => onChange({ ...value, height })}
-          />
         </div>
       )}
 
