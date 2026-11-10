@@ -54,14 +54,6 @@ function Dot({ status }: { status: PingStatus }) {
   return <span className={`inline-block w-1.5 h-1.5 rounded-full shrink-0 ${cls}`} />;
 }
 
-function EditIcon() {
-  return (
-    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M17 3a2.83 2.83 0 014 4L7.5 20.5 2 22l1.5-5.5L17 3z" />
-    </svg>
-  );
-}
-
 // ─── Icon atom ────────────────────────────────────────────────────────────────
 
 function AppIcon({ url, title, size = 36 }: { url?: string; title: string; size?: number }) {
@@ -91,46 +83,43 @@ function AppIcon({ url, title, size = 36 }: { url?: string; title: string; size?
 
 interface Props {
   config: AppWidgetConfig;
-  onEdit: () => void;
   onClick: () => void;
   fillAxis?: "width" | "height";
 }
 
-export default function AppWidget({ config, onEdit, onClick, fillAxis }: Props) {
+export default function AppWidget({ config, onClick, fillAxis }: Props) {
   const pingUrl = config.ping ? (config.pingUrl || config.url) || undefined : undefined;
   const ping = usePing(pingUrl, config.pingInterval);
 
   const { logoView, openUrl } = config;
   const [coverErr, setCoverErr] = useState(false);
 
-  const cardW = fillAxis === "width"  ? "100%" : config.width;
-  const cardH = fillAxis === "height" ? "100%" : config.height;
+  const margin = config.margin ?? 0;
+  const padding = config.padding ?? 16;
+  const borderRadius = config.borderRadius ?? 16;
+
+  const cardW = fillAxis === "width"
+    ? `calc(100% - ${margin * 2}px)`
+    : config.width;
+  const cardH = fillAxis === "height"
+    ? `calc(100% - ${margin * 2}px)`
+    : config.height;
 
   const handleClick = openUrl ? onClick : undefined;
   const cursor = openUrl ? "cursor-pointer" : "cursor-default";
   const tooltip = config.tooltip || undefined;
 
-  const editBtn = (
-    <button
-      onMouseDown={(e) => e.stopPropagation()}
-      onClick={(e) => { e.stopPropagation(); onEdit(); }}
-      className="absolute top-2 right-2 z-10 w-6 h-6 flex items-center justify-center rounded-md bg-black/30 text-white/70 opacity-0 group-hover:opacity-100 hover:bg-black/50 hover:text-white transition-all"
-    >
-      <EditIcon />
-    </button>
-  );
+  const cardStyle = { width: cardW, height: cardH, margin, borderRadius };
 
   // ── Full cover ──────────────────────────────────────────────────────────────
   if (logoView === "full") {
     return (
       <div
         title={tooltip}
-        className={`relative group select-none overflow-hidden rounded-2xl border border-white/10 shadow-xl shadow-black/40 ${cursor} transition-all duration-150 hover:border-white/20`}
-        style={{ width: cardW, height: cardH }}
+        className={`relative select-none overflow-hidden border border-white/10 shadow-xl shadow-black/40 ${cursor} transition-all duration-150 hover:border-white/20`}
+        style={cardStyle}
         onClick={handleClick}
       >
-        {editBtn}
-
         {config.logoUrl && !coverErr ? (
           <img
             src={config.logoUrl}
@@ -144,7 +133,7 @@ export default function AppWidget({ config, onEdit, onClick, fillAxis }: Props) 
 
         <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-black/10 to-transparent" />
 
-        <div className="absolute top-0 left-0 right-0 px-3 pt-3">
+        <div className="absolute top-0 left-0 right-0" style={{ padding, paddingBottom: 0 }}>
           <div className="flex items-center gap-1.5 min-w-0">
             <span className="text-[13px] font-semibold text-white leading-tight truncate drop-shadow">
               {config.title || "Untitled"}
@@ -163,13 +152,11 @@ export default function AppWidget({ config, onEdit, onClick, fillAxis }: Props) 
   return (
     <div
       title={tooltip}
-      className={`relative group select-none overflow-hidden rounded-2xl border border-white/10 bg-white/[0.07] backdrop-blur-xl shadow-xl shadow-black/30 ${cursor} transition-all duration-150 hover:bg-white/[0.11] hover:border-white/18`}
-      style={{ width: cardW, height: cardH }}
+      className={`relative select-none overflow-hidden border border-white/10 bg-white/[0.07] backdrop-blur-xl shadow-xl shadow-black/30 ${cursor} transition-all duration-150 hover:bg-white/[0.11] hover:border-white/18`}
+      style={cardStyle}
       onClick={handleClick}
     >
-      {editBtn}
-
-      <div className="flex items-center gap-3 h-full px-4">
+      <div className="flex items-center gap-3 h-full" style={{ paddingLeft: padding, paddingRight: padding }}>
         {logoView === "icon" && (
           <AppIcon url={config.logoUrl} title={config.title} />
         )}

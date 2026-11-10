@@ -13,6 +13,9 @@ export interface AppWidgetConfig {
   pingInterval: number; // seconds
   width: number;
   height: number;
+  padding: number;
+  margin: number;
+  borderRadius: number;
 }
 
 export const DEFAULT_APP_WIDGET: AppWidgetConfig = {
@@ -28,4 +31,7 @@ export const DEFAULT_APP_WIDGET: AppWidgetConfig = {
   pingInterval: 30,
   width: 240,
   height: 72,
+  padding: 16,
+  margin: 0,
+  borderRadius: 16,
 };

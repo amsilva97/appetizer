@@ -101,6 +101,27 @@ export default function AppWidgetFields({ value, onChange }: Props) {
             display={`${value.height}px`}
             onChange={(height) => onChange({ ...value, height })}
           />
+          <SliderRow
+            label="Padding"
+            value={value.padding ?? 16}
+            min={0} max={48} step={2}
+            display={`${value.padding ?? 16}px`}
+            onChange={(padding) => onChange({ ...value, padding })}
+          />
+          <SliderRow
+            label="Margin"
+            value={value.margin ?? 0}
+            min={0} max={64} step={2}
+            display={`${value.margin ?? 0}px`}
+            onChange={(margin) => onChange({ ...value, margin })}
+          />
+          <SliderRow
+            label="Corner radius"
+            value={value.borderRadius ?? 16}
+            min={0} max={48} step={1}
+            display={`${value.borderRadius ?? 16}px`}
+            onChange={(borderRadius) => onChange({ ...value, borderRadius })}
+          />
         </div>
       )}
 

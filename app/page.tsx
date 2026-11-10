@@ -311,7 +311,6 @@ export default function Home() {
             widgetId={w.id}
             allWidgets={widgets}
             editMode={editMode}
-            onEditWidget={(id) => { setBgEditorOpen(false); setEditingId(id); }}
           />
         </div>
       ))}
@@ -330,7 +329,7 @@ export default function Home() {
             return (
               <AppWidget
                 config={cfg}
-                onEdit={() => { setBgEditorOpen(false); setEditingId(w.id); }}
+
                 onClick={() => { if (cfg.url) window.open(cfg.url, "_blank"); }}
               />
             );

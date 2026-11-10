@@ -10,7 +10,6 @@ interface Props {
   widgetId: string;
   allWidgets: WidgetInstance[];
   editMode?: boolean;
-  onEditWidget?: (id: string) => void;
 }
 
 function toRgba(hex: string, opacity: number): string {
@@ -20,7 +19,7 @@ function toRgba(hex: string, opacity: number): string {
   return `rgba(${r}, ${g}, ${b}, ${opacity / 100})`;
 }
 
-export default function GroupWidget({ config, widgetId, allWidgets, editMode, onEditWidget }: Props) {
+export default function GroupWidget({ config, widgetId, allWidgets, editMode }: Props) {
   const bg = toRgba(config.bgColor ?? "#ffffff", config.bgOpacity ?? 5);
   const border = toRgba(config.borderColor ?? "#ffffff", config.borderOpacity ?? 10);
 
@@ -57,7 +56,6 @@ export default function GroupWidget({ config, widgetId, allWidgets, editMode, on
               key={child.id}
               config={cfg}
               fillAxis={fillAxis}
-              onEdit={() => onEditWidget?.(child.id)}
               onClick={() => { if (cfg.url) window.open(cfg.url, "_blank"); }}
             />
           );
