@@ -97,6 +97,7 @@ export default function AppWidget({ config, onClick, fillAxis }: Props) {
   const margin = config.margin ?? 0;
   const padding = config.padding ?? 16;
   const borderRadius = config.borderRadius ?? 16;
+  const iconTransform = `scale(${config.iconZoom ?? 1}) translate(${config.iconOffsetX ?? 0}%, ${config.iconOffsetY ?? 0}%)`;
 
   const cardW = fillAxis === "width"
     ? `calc(100% - ${margin * 2}px)`
@@ -125,10 +126,14 @@ export default function AppWidget({ config, onClick, fillAxis }: Props) {
             src={config.logoUrl}
             alt=""
             className="absolute inset-0 w-full h-full object-cover"
+            style={{ transform: iconTransform, transformOrigin: "center" }}
             onError={() => setCoverErr(true)}
           />
         ) : (
-          <div className="absolute inset-0" style={{ backgroundColor: seedColor(config.title) }} />
+          <div
+            className="absolute inset-0"
+            style={{ backgroundColor: seedColor(config.title), transform: iconTransform, transformOrigin: "center" }}
+          />
         )}
 
         <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-black/10 to-transparent" />

@@ -82,6 +82,31 @@ export default function AppWidgetFields({ value, onChange }: Props) {
               onChange={(logoUrl) => onChange({ ...value, logoUrl })}
             />
           )}
+          {value.logoView === "full" && (
+            <>
+              <SliderRow
+                label="Icon zoom"
+                value={value.iconZoom ?? 1}
+                min={1} max={3} step={0.05}
+                display={`${Math.round((value.iconZoom ?? 1) * 100)}%`}
+                onChange={(iconZoom) => onChange({ ...value, iconZoom })}
+              />
+              <SliderRow
+                label="Offset X"
+                value={value.iconOffsetX ?? 0}
+                min={-100} max={100} step={1}
+                display={`${value.iconOffsetX ?? 0}%`}
+                onChange={(iconOffsetX) => onChange({ ...value, iconOffsetX })}
+              />
+              <SliderRow
+                label="Offset Y"
+                value={value.iconOffsetY ?? 0}
+                min={-100} max={100} step={1}
+                display={`${value.iconOffsetY ?? 0}%`}
+                onChange={(iconOffsetY) => onChange({ ...value, iconOffsetY })}
+              />
+            </>
+          )}
         </div>
       )}
 

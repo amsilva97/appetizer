@@ -16,6 +16,9 @@ export interface AppWidgetConfig {
   padding: number;
   margin: number;
   borderRadius: number;
+  iconZoom: number;
+  iconOffsetX: number;
+  iconOffsetY: number;
 }
 
 export const DEFAULT_APP_WIDGET: AppWidgetConfig = {
@@ -34,4 +37,7 @@ export const DEFAULT_APP_WIDGET: AppWidgetConfig = {
   padding: 16,
   margin: 0,
   borderRadius: 16,
+  iconZoom: 1,
+  iconOffsetX: 0,
+  iconOffsetY: 0,
 };
