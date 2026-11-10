@@ -319,10 +319,8 @@ export default function Home() {
       {widgets.filter((w) => w.type === "app" && !w.parentId).map((w) => (
         <div
           key={w.id}
-          data-no-menu
-          style={{ position: "absolute", left: w.x, top: w.y, cursor: "grab", userSelect: "none" }}
+          style={{ position: "absolute", left: w.x, top: w.y, cursor: editMode ? "grab" : "default", userSelect: "none" }}
           onMouseDown={(e) => handleWidgetMouseDown(e, w)}
-          onContextMenu={(e) => e.preventDefault()}
         >
           {(() => {
             const cfg = w.config as AppWidgetConfig;
@@ -345,6 +343,19 @@ export default function Home() {
           .map((t) => widgets.find((w) => w.type === "group" && w.parentId === t.widgetId && w.cellIndex === t.cellIndex))
           .filter((w): w is WidgetInstance => w !== undefined);
 
+        const floatingApps = widgets.filter((w) => {
+          if (w.type !== "app" || w.parentId) return false;
+          const cfg = w.config as AppWidgetConfig;
+          const margin = cfg.margin ?? 0;
+          const left = w.x + margin;
+          const top  = w.y + margin;
+          return menuPos.x >= left && menuPos.x <= left + cfg.width
+              && menuPos.y >= top  && menuPos.y <= top  + cfg.height;
+        });
+        const groupedApps = stackGroups.flatMap((g) =>
+          widgets.filter((w) => w.type === "app" && w.parentId === g.id)
+        );
+
         const editGroup: ContextItem[] = [
           { label: "Edit Background", onClick: () => { setBgEditorOpen(true); setEditingId(null); } },
           ...stackLayouts.map((w) => ({
@@ -353,6 +364,10 @@ export default function Home() {
           })),
           ...stackGroups.map((w) => ({
             label: `Edit ${(w.config as GroupWidgetConfig).label}`,
+            onClick: () => { setBgEditorOpen(false); setEditingId(w.id); },
+          })),
+          ...[...floatingApps, ...groupedApps].map((w) => ({
+            label: `Edit ${(w.config as AppWidgetConfig).title || "App"}`,
             onClick: () => { setBgEditorOpen(false); setEditingId(w.id); },
           })),
         ];
