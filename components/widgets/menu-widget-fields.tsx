@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import type { GroupWidgetConfig, GroupDirection } from "@/types/group-widget";
+import type { MenuWidgetConfig, MenuDirection } from "@/types/menu-widget";
 import { Divider, Field, Select, SliderRow, Swatch, TabBar, TextInput } from "@/components/ui";
 import { parse, stringify } from "@/lib/yaml-parser";
 
@@ -19,11 +19,11 @@ const DIRECTION_OPTIONS = [
 ];
 
 interface Props {
-  value: GroupWidgetConfig;
-  onChange: (v: GroupWidgetConfig) => void;
+  value: MenuWidgetConfig;
+  onChange: (v: MenuWidgetConfig) => void;
 }
 
-export default function GroupWidgetFields({ value, onChange }: Props) {
+export default function MenuWidgetFields({ value, onChange }: Props) {
   const [tab, setTab] = useState<Tab>("display");
   const [yaml, setYaml] = useState(() => stringify(value));
   const [yamlErr, setYamlErr] = useState<string | null>(null);
@@ -35,7 +35,7 @@ export default function GroupWidgetFields({ value, onChange }: Props) {
 
   function handleYaml(text: string) {
     setYaml(text);
-    try { onChange(parse<GroupWidgetConfig>(text)); setYamlErr(null); }
+    try { onChange(parse<MenuWidgetConfig>(text)); setYamlErr(null); }
     catch (e) { setYamlErr(e instanceof Error ? e.message : "Invalid YAML"); }
   }
 
@@ -48,14 +48,20 @@ export default function GroupWidgetFields({ value, onChange }: Props) {
           <TextInput
             label="Label"
             value={value.label}
-            placeholder="Group 1"
+            placeholder="Menu 1"
             onChange={(label) => onChange({ ...value, label })}
           />
+
+          <Divider />
+
+          <Field label="Type">
+            <span className="text-xs text-zinc-400 font-medium">List</span>
+          </Field>
           <Select
             label="Direction"
             value={value.direction}
             options={DIRECTION_OPTIONS}
-            onChange={(direction) => onChange({ ...value, direction: direction as GroupDirection })}
+            onChange={(direction) => onChange({ ...value, direction: direction as MenuDirection })}
           />
           <SliderRow
             label="Padding"

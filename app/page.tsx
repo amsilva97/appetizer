@@ -15,8 +15,8 @@ import { DEFAULT_APP_WIDGET } from "@/types/app-widget";
 import type { AppWidgetConfig } from "@/types/app-widget";
 import { DEFAULT_LAYOUT_WIDGET } from "@/types/layout-widget";
 import type { LayoutWidgetConfig } from "@/types/layout-widget";
-import { DEFAULT_GROUP_WIDGET } from "@/types/group-widget";
-import type { GroupWidgetConfig } from "@/types/group-widget";
+import { DEFAULT_MENU_WIDGET } from "@/types/menu-widget";
+import type { MenuWidgetConfig } from "@/types/menu-widget";
 
 interface SceneConfig {
   background: BackgroundConfig;
@@ -205,29 +205,29 @@ export default function Home() {
     ]);
   }
 
-  function nextGroupLabel(): string {
+  function nextMenuLabel(): string {
     const taken = new Set(
-      widgets.filter((w) => w.type === "group").map((w) => (w.config as GroupWidgetConfig).label)
+      widgets.filter((w) => w.type === "menu").map((w) => (w.config as MenuWidgetConfig).label)
     );
     let n = 1;
-    while (taken.has(`Group ${n}`)) n++;
-    return `Group ${n}`;
+    while (taken.has(`Menu ${n}`)) n++;
+    return `Menu ${n}`;
   }
 
-  function addSubGroup(parentWidgetId: string, cellIndex: number, label: string) {
+  function addSubMenu(parentWidgetId: string, cellIndex: number, label: string) {
     const id = nextId();
     setWidgets((prev) => [
       ...prev,
-      { id, type: "group", parentId: parentWidgetId, cellIndex, config: { ...DEFAULT_GROUP_WIDGET, label }, x: 0, y: 0 },
+      { id, type: "menu", parentId: parentWidgetId, cellIndex, config: { ...DEFAULT_MENU_WIDGET, label }, x: 0, y: 0 },
     ]);
     setEditingId(id);
   }
 
-  function addAppToGroup(groupId: string) {
+  function addAppToMenu(menuId: string) {
     const id = nextId();
     setWidgets((prev) => [
       ...prev,
-      { id, type: "app", parentId: groupId, config: { ...DEFAULT_APP_WIDGET }, x: 0, y: 0 },
+      { id, type: "app", parentId: menuId, config: { ...DEFAULT_APP_WIDGET }, x: 0, y: 0 },
     ]);
     setBgEditorOpen(false);
     setEditingId(id);
@@ -315,7 +315,7 @@ export default function Home() {
         </div>
       ))}
 
-      {/* App widgets — freely positioned, draggable (only those not inside a group) */}
+      {/* App widgets — freely positioned, draggable (only those not inside a menu) */}
       {widgets.filter((w) => w.type === "app" && !w.parentId).map((w) => (
         <div
           key={w.id}
@@ -339,8 +339,8 @@ export default function Home() {
         const { cellTargets } = menuPos;
         const stackIds = new Set(cellTargets.map((t) => t.widgetId));
         const stackLayouts = widgets.filter((w) => stackIds.has(w.id));
-        const stackGroups = cellTargets
-          .map((t) => widgets.find((w) => w.type === "group" && w.parentId === t.widgetId && w.cellIndex === t.cellIndex))
+        const stackMenus = cellTargets
+          .map((t) => widgets.find((w) => w.type === "menu" && w.parentId === t.widgetId && w.cellIndex === t.cellIndex))
           .filter((w): w is WidgetInstance => w !== undefined);
 
         const floatingApps = widgets.filter((w) => {
@@ -352,7 +352,7 @@ export default function Home() {
           return menuPos.x >= left && menuPos.x <= left + cfg.width
               && menuPos.y >= top  && menuPos.y <= top  + cfg.height;
         });
-        const groupedApps = stackGroups.flatMap((g) =>
+        const groupedApps = stackMenus.flatMap((g) =>
           widgets.filter((w) => w.type === "app" && w.parentId === g.id)
         );
 
@@ -362,8 +362,8 @@ export default function Home() {
             label: `Edit ${(w.config as LayoutWidgetConfig).label}`,
             onClick: () => { setBgEditorOpen(false); setEditingId(w.id); },
           })),
-          ...stackGroups.map((w) => ({
-            label: `Edit ${(w.config as GroupWidgetConfig).label}`,
+          ...stackMenus.map((w) => ({
+            label: `Edit ${(w.config as MenuWidgetConfig).label}`,
             onClick: () => { setBgEditorOpen(false); setEditingId(w.id); },
           })),
           ...[...floatingApps, ...groupedApps].map((w) => ({
@@ -382,15 +382,15 @@ export default function Home() {
               onClick: () => addSubLayout(t.widgetId, t.cellIndex, nextLayoutLabel()),
             },
             {
-              label: `Add Group to ${parentLabel}`,
-              onClick: () => addSubGroup(t.widgetId, t.cellIndex, nextGroupLabel()),
+              label: `Add Menu to ${parentLabel}`,
+              onClick: () => addSubMenu(t.widgetId, t.cellIndex, nextMenuLabel()),
             },
           ];
         });
-        stackGroups.forEach((w) => {
+        stackMenus.forEach((w) => {
           addGroup.push({
-            label: `Add App to ${(w.config as GroupWidgetConfig).label}`,
-            onClick: () => addAppToGroup(w.id),
+            label: `Add App to ${(w.config as MenuWidgetConfig).label}`,
+            onClick: () => addAppToMenu(w.id),
           });
         });
         addGroup.push({

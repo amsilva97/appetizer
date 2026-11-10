@@ -1,11 +1,11 @@
 import type { AppWidgetConfig } from "./app-widget";
-import type { GroupWidgetConfig } from "./group-widget";
+import type { MenuWidgetConfig } from "./menu-widget";
 import type { LayoutWidgetConfig } from "./layout-widget";
 
 export interface WidgetInstance {
   id: string;
-  type: "app" | "layout" | "group";
-  config: AppWidgetConfig | LayoutWidgetConfig | GroupWidgetConfig;
+  type: "app" | "layout" | "menu";
+  config: AppWidgetConfig | LayoutWidgetConfig | MenuWidgetConfig;
   x: number;
   y: number;
   parentId?: string;

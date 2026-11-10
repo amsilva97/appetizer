@@ -1,8 +1,10 @@
-export type GroupDirection = "vertical" | "horizontal";
+export type MenuType = "list";
+export type MenuDirection = "vertical" | "horizontal";
 
-export interface GroupWidgetConfig {
+export interface MenuWidgetConfig {
   label: string;
-  direction: GroupDirection;
+  type: MenuType;
+  direction: MenuDirection;
   margin: number;
   borderRadius: number;
   padding: number;
@@ -13,8 +15,9 @@ export interface GroupWidgetConfig {
   borderOpacity: number;
 }
 
-export const DEFAULT_GROUP_WIDGET: GroupWidgetConfig = {
-  label: "Group",
+export const DEFAULT_MENU_WIDGET: MenuWidgetConfig = {
+  label: "Menu",
+  type: "list",
   direction: "vertical",
   margin: 0,
   borderRadius: 8,

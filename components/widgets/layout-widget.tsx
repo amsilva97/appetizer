@@ -1,9 +1,9 @@
 "use client";
 
 import type { LayoutWidgetConfig } from "@/types/layout-widget";
-import type { GroupWidgetConfig } from "@/types/group-widget";
+import type { MenuWidgetConfig } from "@/types/menu-widget";
 import type { WidgetInstance } from "@/types/widget";
-import GroupWidget from "@/components/widgets/group-widget";
+import MenuWidget from "@/components/widgets/menu-widget";
 
 interface Props {
   config: LayoutWidgetConfig;
@@ -46,7 +46,7 @@ export default function LayoutWidget({ config, widgetId, allWidgets, editMode }:
       >
         {Array.from({ length: totalCells }).map((_, i) => {
           const child = allWidgets.find(
-            (w) => (w.type === "layout" || w.type === "group") && w.parentId === widgetId && w.cellIndex === i
+            (w) => (w.type === "layout" || w.type === "menu") && w.parentId === widgetId && w.cellIndex === i
           );
           return (
             <div
@@ -68,9 +68,9 @@ export default function LayoutWidget({ config, widgetId, allWidgets, editMode }:
                   editMode={editMode}
                 />
               )}
-              {child?.type === "group" && (
-                <GroupWidget
-                  config={child.config as GroupWidgetConfig}
+              {child?.type === "menu" && (
+                <MenuWidget
+                  config={child.config as MenuWidgetConfig}
                   widgetId={child.id}
                   allWidgets={allWidgets}
                   editMode={editMode}

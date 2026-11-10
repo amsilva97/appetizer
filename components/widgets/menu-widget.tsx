@@ -1,12 +1,12 @@
 "use client";
 
-import type { GroupWidgetConfig } from "@/types/group-widget";
+import type { MenuWidgetConfig } from "@/types/menu-widget";
 import type { AppWidgetConfig } from "@/types/app-widget";
 import type { WidgetInstance } from "@/types/widget";
 import AppWidget from "@/components/widgets/app-widget";
 
 interface Props {
-  config: GroupWidgetConfig;
+  config: MenuWidgetConfig;
   widgetId: string;
   allWidgets: WidgetInstance[];
   editMode?: boolean;
@@ -19,7 +19,7 @@ function toRgba(hex: string, opacity: number): string {
   return `rgba(${r}, ${g}, ${b}, ${opacity / 100})`;
 }
 
-export default function GroupWidget({ config, widgetId, allWidgets, editMode }: Props) {
+export default function MenuWidget({ config, widgetId, allWidgets, editMode }: Props) {
   const bg = toRgba(config.bgColor ?? "#ffffff", config.bgOpacity ?? 5);
   const border = toRgba(config.borderColor ?? "#ffffff", config.borderOpacity ?? 10);
 
