@@ -3,10 +3,12 @@
 import { useState } from "react";
 import BackgroundFields from "@/components/background-fields";
 import AppWidgetFields from "@/components/widgets/app-widget-fields";
+import GroupWidgetFields from "@/components/widgets/group-widget-fields";
 import LayoutWidgetFields from "@/components/widgets/layout-widget-fields";
 import type { BackgroundConfig } from "@/types/background";
 import type { WidgetInstance } from "@/types/widget";
 import type { AppWidgetConfig } from "@/types/app-widget";
+import type { GroupWidgetConfig } from "@/types/group-widget";
 import type { LayoutWidgetConfig } from "@/types/layout-widget";
 
 interface Props {
@@ -189,6 +191,31 @@ export default function EditorPanel({
           }
         >
           <LayoutWidgetFields
+            value={cfg}
+            onChange={(config) => onUpdateWidget(editingWidget.id, { config })}
+          />
+        </Panel>
+        );
+      })()}
+
+      {editingWidget?.type === "group" && (() => {
+        const cfg = editingWidget.config as GroupWidgetConfig;
+        return (
+        <Panel
+          title={cfg.label || "Group"}
+          onClose={onEditingWidgetClose}
+          onDragStart={handlePanelDragStart}
+          footer={
+            <button
+              onClick={() => { onDeleteWidget(editingWidget.id); onEditingWidgetClose(); }}
+              className="flex items-center justify-center gap-1.5 flex-1 py-2 text-xs font-semibold text-red-400 border border-red-900/60 rounded-lg hover:bg-red-900/25 hover:text-red-300 hover:border-red-700 transition-colors"
+            >
+              <TrashIcon size={13} />
+              Delete Group
+            </button>
+          }
+        >
+          <GroupWidgetFields
             value={cfg}
             onChange={(config) => onUpdateWidget(editingWidget.id, { config })}
           />

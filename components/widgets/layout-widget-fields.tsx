@@ -78,6 +78,16 @@ export default function LayoutWidgetFields({ value, onChange }: Props) {
       {tab === "visuals" && (
         <div className="flex flex-col gap-4">
           <SliderRow
+            label="Corner radius"
+            value={value.borderRadius ?? 0}
+            min={0} max={48} step={1}
+            display={`${value.borderRadius ?? 0}px`}
+            onChange={(borderRadius) => onChange({ ...value, borderRadius })}
+          />
+
+          <Divider />
+
+          <SliderRow
             label="Padding"
             value={value.padding}
             min={0} max={64} step={2}

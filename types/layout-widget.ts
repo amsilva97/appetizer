@@ -12,6 +12,7 @@ export interface LayoutWidgetConfig {
   padding: number;
   gap: number;
   margin: number;
+  borderRadius: number;
   bgColor: string;
   bgOpacity: number;
   borderColor: string;
@@ -28,6 +29,7 @@ export const DEFAULT_LAYOUT_WIDGET: LayoutWidgetConfig = {
   padding: 0,
   gap: 0,
   margin: 0,
+  borderRadius: 0,
   bgColor: "#ffffff",
   bgOpacity: 3,
   borderColor: "#ffffff",

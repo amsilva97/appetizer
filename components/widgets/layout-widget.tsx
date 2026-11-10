@@ -1,7 +1,9 @@
 "use client";
 
 import type { LayoutWidgetConfig } from "@/types/layout-widget";
+import type { GroupWidgetConfig } from "@/types/group-widget";
 import type { WidgetInstance } from "@/types/widget";
+import GroupWidget from "@/components/widgets/group-widget";
 
 interface Props {
   config: LayoutWidgetConfig;
@@ -25,7 +27,13 @@ export default function LayoutWidget({ config, widgetId, allWidgets, editMode }:
   const cellBorder = toRgba(config.borderColor ?? "#ffffff", config.borderOpacity ?? 6);
 
   return (
-    <div className="absolute" style={{ inset: config.margin }}>
+    <div
+      className="absolute overflow-hidden"
+      style={{
+        inset: config.margin,
+        borderRadius: editMode ? (config.borderRadius ?? 0) : 0,
+      }}
+    >
       <div
         className="w-full h-full"
         style={{
@@ -38,23 +46,31 @@ export default function LayoutWidget({ config, widgetId, allWidgets, editMode }:
       >
         {Array.from({ length: totalCells }).map((_, i) => {
           const child = allWidgets.find(
-            (w) => w.type === "layout" && w.parentId === widgetId && w.cellIndex === i
+            (w) => (w.type === "layout" || w.type === "group") && w.parentId === widgetId && w.cellIndex === i
           );
           return (
             <div
               key={i}
               className="relative group"
-              style={{
+              style={editMode ? {
                 backgroundColor: cellBg,
                 border: `1px solid ${cellBorder}`,
-              }}
+              } : undefined}
             >
               {editMode && (
                 <div className="absolute inset-0 opacity-0 group-hover:opacity-100 bg-white/[0.06] transition-opacity pointer-events-none z-10" />
               )}
-              {child && (
+              {child?.type === "layout" && (
                 <LayoutWidget
                   config={child.config as LayoutWidgetConfig}
+                  widgetId={child.id}
+                  allWidgets={allWidgets}
+                  editMode={editMode}
+                />
+              )}
+              {child?.type === "group" && (
+                <GroupWidget
+                  config={child.config as GroupWidgetConfig}
                   widgetId={child.id}
                   allWidgets={allWidgets}
                   editMode={editMode}

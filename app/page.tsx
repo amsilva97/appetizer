@@ -15,6 +15,8 @@ import { DEFAULT_APP_WIDGET } from "@/types/app-widget";
 import type { AppWidgetConfig } from "@/types/app-widget";
 import { DEFAULT_LAYOUT_WIDGET } from "@/types/layout-widget";
 import type { LayoutWidgetConfig } from "@/types/layout-widget";
+import { DEFAULT_GROUP_WIDGET } from "@/types/group-widget";
+import type { GroupWidgetConfig } from "@/types/group-widget";
 
 interface SceneConfig {
   background: BackgroundConfig;
@@ -189,7 +191,7 @@ export default function Home() {
     const id = nextId();
     setWidgets((prev) => [
       ...prev,
-      { id, type: "layout", config: { label, layout: { type: "grid", columns: DEFAULT_LAYOUT_WIDGET.layout.columns, rows: DEFAULT_LAYOUT_WIDGET.layout.rows }, padding: 0, gap: 0, margin: 0 }, x: 0, y: 0 },
+      { id, type: "layout", config: { ...DEFAULT_LAYOUT_WIDGET, label }, x: 0, y: 0 },
     ]);
     setBgEditorOpen(false);
     setEditingId(id);
@@ -199,22 +201,26 @@ export default function Home() {
     const id = nextId();
     setWidgets((prev) => [
       ...prev,
-      {
-        id,
-        type: "layout",
-        parentId: parentWidgetId,
-        cellIndex,
-        config: {
-          label,
-          layout: { type: "grid", columns: DEFAULT_LAYOUT_WIDGET.layout.columns, rows: DEFAULT_LAYOUT_WIDGET.layout.rows },
-          padding: 0,
-          gap: 0,
-          margin: 0,
-        } as LayoutWidgetConfig,
-        x: 0,
-        y: 0,
-      },
+      { id, type: "layout", parentId: parentWidgetId, cellIndex, config: { ...DEFAULT_LAYOUT_WIDGET, label }, x: 0, y: 0 },
     ]);
+  }
+
+  function nextGroupLabel(): string {
+    const taken = new Set(
+      widgets.filter((w) => w.type === "group").map((w) => (w.config as GroupWidgetConfig).label)
+    );
+    let n = 1;
+    while (taken.has(`Group ${n}`)) n++;
+    return `Group ${n}`;
+  }
+
+  function addSubGroup(parentWidgetId: string, cellIndex: number, label: string) {
+    const id = nextId();
+    setWidgets((prev) => [
+      ...prev,
+      { id, type: "group", parentId: parentWidgetId, cellIndex, config: { ...DEFAULT_GROUP_WIDGET, label }, x: 0, y: 0 },
+    ]);
+    setEditingId(id);
   }
 
   function deleteWidget(id: string) {
@@ -325,6 +331,9 @@ export default function Home() {
         const { cellTargets } = menuPos;
         const stackIds = new Set(cellTargets.map((t) => t.widgetId));
         const stackLayouts = widgets.filter((w) => stackIds.has(w.id));
+        const stackGroups = cellTargets
+          .map((t) => widgets.find((w) => w.type === "group" && w.parentId === t.widgetId && w.cellIndex === t.cellIndex))
+          .filter((w): w is WidgetInstance => w !== undefined);
 
         const editGroup: ContextItem[] = [
           { label: "Edit Background", onClick: () => { setBgEditorOpen(true); setEditingId(null); } },
@@ -332,18 +341,27 @@ export default function Home() {
             label: `Edit ${(w.config as LayoutWidgetConfig).label}`,
             onClick: () => { setBgEditorOpen(false); setEditingId(w.id); },
           })),
+          ...stackGroups.map((w) => ({
+            label: `Edit ${(w.config as GroupWidgetConfig).label}`,
+            onClick: () => { setBgEditorOpen(false); setEditingId(w.id); },
+          })),
         ];
 
-        const addGroup: ContextItem[] = cellTargets
-          .map((t) => {
-            const parent = stackLayouts.find((w) => w.id === t.widgetId);
-            if (!parent) return null;
-            return {
-              label: `Add Layout to ${(parent.config as LayoutWidgetConfig).label}`,
+        const addGroup: ContextItem[] = cellTargets.flatMap((t) => {
+          const parent = stackLayouts.find((w) => w.id === t.widgetId);
+          if (!parent) return [];
+          const parentLabel = (parent.config as LayoutWidgetConfig).label;
+          return [
+            {
+              label: `Add Layout to ${parentLabel}`,
               onClick: () => addSubLayout(t.widgetId, t.cellIndex, nextLayoutLabel()),
-            };
-          })
-          .filter((item): item is ContextItem => item !== null);
+            },
+            {
+              label: `Add Group to ${parentLabel}`,
+              onClick: () => addSubGroup(t.widgetId, t.cellIndex, nextGroupLabel()),
+            },
+          ];
+        });
         addGroup.push({
           label: "Add Layout to Background",
           onClick: () => addLayoutWidget(nextLayoutLabel()),
