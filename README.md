@@ -133,9 +133,9 @@ Clicking an edit entry opens the **editor panel** for that element. Clicking an 
 
 ## Editor Panel
 
-A floating panel that appears in the bottom-left corner when you select something to edit. It can be dragged by its grip handle. It closes with the X button, or by switching edit mode off.
+A floating panel that appears in the bottom-left corner when you select something to edit. It can be dragged by its grip handle and resized by dragging the right edge. It closes with the X button, or by switching edit mode off.
 
-Each widget type has its own set of fields, organized into tabs.
+Changes are **not applied until you click Save**. The **Revert** button discards unsaved changes. The **Delete** button permanently removes the widget and all its children.
 
 ---
 
@@ -261,20 +261,25 @@ Embeds a live scrollable data list directly below the app card header. The feed 
 
 The feed runs as a server-side proxy: the browser posts the config to `/api/feed/run`, the server fetches the upstream URL, applies the transform, and returns the data. Secrets in headers are substituted server-side and never sent to the browser.
 
-- **Method** — `None` (no feed) or `GET` (fetch and display data).
+- **Method** — `None` (no feed) or `GET` (fetch and display data below the header row).
 - **URL** — the endpoint to fetch. Must be `http://` or `https://`.
 - **Headers** — key/value pairs sent with every request. Use `{KEY_NAME}` in a value to inject a secret from the [Keys page](#secret-keys). The substitution happens server-side; the actual value is never exposed in the browser.
-- **Transform** — a JavaScript expression evaluated in a sandboxed `vm` context (2-second timeout, 10MB response cap). The variable `body` holds the parsed JSON response. The expression must return an array.
+- **Transform** — a JavaScript expression evaluated in a sandboxed `vm` context (2-second timeout, 10MB response cap). The variable `body` holds the parsed JSON response. The expression must return **either an array** (renders as a plain list) **or an HTML string** (renders as a sanitized rich panel).
 
   ```js
-  // Examples:
-  body                                                // body is already an array
-  body.items                                          // extract a nested array
-  body.results.map(r => r.name + " — " + r.status)   // shape each row
+  // Array — rendered as a list of rows
+  body.records.map(r => ({ title: r.title, subtitle: r.status }))
+
+  // HTML string — rendered as a rich panel (links and scripts stripped)
+  `<h2>Queue</h2><table>${body.records.map(r =>
+    `<tr><td>${r.title}</td><td>${r.status}</td></tr>`
+  ).join("")}</table>`
   ```
 
+  When returning HTML, all `<a>` tags, `href` and `src` attributes, and event handlers are stripped server-side by DOMPurify. The feed displays data only — it cannot navigate or execute code.
+
 - **Poll every** — how often to re-fetch, in seconds, 10–300. Polling pauses automatically when the tab is hidden.
-- **Feed height** — height of the feed list section in pixels, 80–600.
+- **Feed height** — height of the feed panel in pixels, 80–600.
 
 **YAML tab** — directly edit the config as YAML.
 

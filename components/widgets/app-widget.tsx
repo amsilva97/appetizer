@@ -1,7 +1,28 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import DOMPurify from "dompurify";
 import type { AppWidgetConfig, AppFeedConfig } from "@/types/app-widget";
+
+const FEED_SANITIZE: DOMPurify.Config = {
+  ALLOWED_TAGS: [
+    "h1","h2","h3","h4","h5","h6",
+    "p","span","div","section",
+    "ul","ol","li",
+    "table","thead","tbody","tfoot","tr","th","td",
+    "strong","em","b","i","u","s",
+    "code","pre","blockquote",
+    "br","hr","small","sup","sub",
+    "dl","dt","dd","mark",
+  ],
+  ALLOWED_ATTR: ["class"],
+  FORCE_BODY: true,
+};
+
+function sanitizeFeedHtml(html: string): string {
+  if (typeof window === "undefined") return "";
+  return DOMPurify.sanitize(html, FEED_SANITIZE as Parameters<typeof DOMPurify.sanitize>[1]) as string;
+}
 
 // ─── Ping hook ────────────────────────────────────────────────────────────────
 
@@ -41,7 +62,7 @@ function usePing(url: string | undefined, intervalSec: number): PingStatus | nul
 type FeedStatus = "idle" | "loading" | "ok" | "error";
 
 function useFeed(feed: AppFeedConfig | undefined) {
-  const [data, setData] = useState<unknown[]>([]);
+  const [data, setData] = useState<unknown[] | string>([]);
   const [status, setStatus] = useState<FeedStatus>("idle");
   const abortRef = useRef<AbortController | null>(null);
 
@@ -272,10 +293,27 @@ export default function AppWidget({ config, onClick, fillAxis }: Props) {
           {feedStatus === "error" && (
             <p className="p-3 text-xs text-red-400">Failed to load feed.</p>
           )}
-          {feedStatus === "ok" && feedData.length === 0 && (
+          {feedStatus === "ok" && typeof feedData === "string" && (
+            <div
+              className="p-3 text-xs text-zinc-200 leading-relaxed
+                [&_h1]:text-sm [&_h1]:font-bold [&_h1]:text-zinc-100 [&_h1]:mb-1
+                [&_h2]:text-xs [&_h2]:font-semibold [&_h2]:text-zinc-200 [&_h2]:mb-1
+                [&_h3]:text-xs [&_h3]:font-semibold [&_h3]:text-zinc-300
+                [&_p]:mb-1 [&_ul]:list-disc [&_ul]:pl-4 [&_ol]:list-decimal [&_ol]:pl-4
+                [&_li]:mb-0.5 [&_table]:w-full [&_table]:text-left
+                [&_th]:text-zinc-400 [&_th]:font-medium [&_th]:pb-1
+                [&_td]:py-0.5 [&_td]:pr-3
+                [&_hr]:border-white/10 [&_hr]:my-2
+                [&_code]:bg-white/[0.06] [&_code]:px-1 [&_code]:rounded
+                [&_pre]:bg-white/[0.06] [&_pre]:p-2 [&_pre]:rounded [&_pre]:overflow-x-auto
+                [&_strong]:text-zinc-100 [&_mark]:bg-yellow-400/20 [&_mark]:text-yellow-200"
+              dangerouslySetInnerHTML={{ __html: sanitizeFeedHtml(feedData) }}
+            />
+          )}
+          {feedStatus === "ok" && Array.isArray(feedData) && feedData.length === 0 && (
             <p className="p-3 text-xs text-zinc-600">No items.</p>
           )}
-          {feedStatus === "ok" && feedData.length > 0 && (
+          {feedStatus === "ok" && Array.isArray(feedData) && feedData.length > 0 && (
             <ul className="divide-y divide-white/[0.04]">
               {feedData.map((item, i) => {
                 const obj = item && typeof item === "object" ? (item as Record<string, unknown>) : null;

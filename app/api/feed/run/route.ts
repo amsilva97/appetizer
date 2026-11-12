@@ -64,9 +64,9 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: `Transform failed: ${msg}` }, { status: 422 });
   }
 
-  if (!Array.isArray(result)) {
+  if (!Array.isArray(result) && typeof result !== "string") {
     return NextResponse.json(
-      { error: "Transform must return an array" },
+      { error: "Transform must return an array or an HTML string" },
       { status: 422 }
     );
   }
