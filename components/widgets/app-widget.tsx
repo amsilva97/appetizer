@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import type { AppWidgetConfig } from "@/types/app-widget";
+import { useEffect, useRef, useState } from "react";
+import type { AppWidgetConfig, AppFeedConfig } from "@/types/app-widget";
 
 // ─── Ping hook ────────────────────────────────────────────────────────────────
 
@@ -36,6 +36,62 @@ function usePing(url: string | undefined, intervalSec: number): PingStatus | nul
   return url ? status : null;
 }
 
+// ─── Feed hook ─────────────────────────────────────────────────────────────────
+
+type FeedStatus = "idle" | "loading" | "ok" | "error";
+
+function useFeed(feed: AppFeedConfig | undefined) {
+  const [data, setData] = useState<unknown[]>([]);
+  const [status, setStatus] = useState<FeedStatus>("idle");
+  const abortRef = useRef<AbortController | null>(null);
+
+  useEffect(() => {
+    if (!feed || feed.method === "none") return;
+
+    async function poll() {
+      if (document.visibilityState === "hidden") return;
+      abortRef.current?.abort();
+      const ctrl = new AbortController();
+      abortRef.current = ctrl;
+      setStatus("loading");
+      try {
+        const res = await fetch("/api/feed/run", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            url: feed!.url,
+            headers: Object.fromEntries(
+              feed!.headers.filter((h) => h.key.trim()).map((h) => [h.key, h.value])
+            ),
+            transform: feed!.transform || undefined,
+          }),
+          signal: ctrl.signal,
+        });
+        const json = (await res.json()) as { data?: unknown[]; error?: string };
+        if (!res.ok || json.error) {
+          setStatus("error");
+        } else {
+          setData(json.data ?? []);
+          setStatus("ok");
+        }
+      } catch (err) {
+        if ((err as Error).name !== "AbortError") setStatus("error");
+      }
+    }
+
+    poll();
+    const id = setInterval(poll, Math.max(feed.pollInterval, 10) * 1000);
+    document.addEventListener("visibilitychange", poll);
+    return () => {
+      clearInterval(id);
+      document.removeEventListener("visibilitychange", poll);
+      abortRef.current?.abort();
+    };
+  }, [feed]);
+
+  return { data, status };
+}
+
 // ─── Shared atoms ─────────────────────────────────────────────────────────────
 
 const PALETTE = [
@@ -52,6 +108,21 @@ function Dot({ status }: { status: PingStatus }) {
     status === "checking" ? "bg-white/40 animate-pulse" :
     status === "online"   ? "bg-emerald-400" : "bg-red-400";
   return <span className={`inline-block w-1.5 h-1.5 rounded-full shrink-0 ${cls}`} />;
+}
+
+function SpinnerIcon() {
+  return (
+    <svg className="animate-spin" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+      <path d="M21 12a9 9 0 1 1-6.219-8.56" />
+    </svg>
+  );
+}
+
+function renderValue(v: unknown): string {
+  if (v === null || v === undefined) return "";
+  if (typeof v === "string") return v;
+  if (typeof v === "number" || typeof v === "boolean") return String(v);
+  return JSON.stringify(v);
 }
 
 // ─── Icon atom ────────────────────────────────────────────────────────────────
@@ -90,6 +161,7 @@ interface Props {
 export default function AppWidget({ config, onClick, fillAxis }: Props) {
   const pingUrl = config.ping ? (config.pingUrl || config.url) || undefined : undefined;
   const ping = usePing(pingUrl, config.pingInterval);
+  const { data: feedData, status: feedStatus } = useFeed(config.feed);
 
   const { logoView, openUrl } = config;
   const [coverErr, setCoverErr] = useState(false);
@@ -99,12 +171,16 @@ export default function AppWidget({ config, onClick, fillAxis }: Props) {
   const borderRadius = config.borderRadius ?? 16;
   const iconTransform = `scale(${config.iconZoom ?? 1}) translate(${config.iconOffsetX ?? 0}%, ${config.iconOffsetY ?? 0}%)`;
 
+  const hasActiveFeed = config.feed && config.feed.method !== "none";
+  const feedHeight = config.feed?.height ?? 200;
+
   const cardW = fillAxis === "width"
     ? `calc(100% - ${margin * 2}px)`
     : config.width;
+
   const cardH = fillAxis === "height"
     ? `calc(100% - ${margin * 2}px)`
-    : config.height;
+    : hasActiveFeed ? undefined : config.height;
 
   const handleClick = openUrl ? onClick : undefined;
   const cursor = openUrl ? "cursor-pointer" : "cursor-default";
@@ -118,7 +194,7 @@ export default function AppWidget({ config, onClick, fillAxis }: Props) {
       <div
         title={tooltip}
         className={`relative select-none overflow-hidden border border-white/10 shadow-xl shadow-black/40 ${cursor} transition-all duration-150 hover:border-white/20`}
-        style={cardStyle}
+        style={{ ...cardStyle, height: config.height }}
         onClick={handleClick}
       >
         {config.logoUrl && !coverErr ? (
@@ -157,11 +233,15 @@ export default function AppWidget({ config, onClick, fillAxis }: Props) {
   return (
     <div
       title={tooltip}
-      className={`relative select-none overflow-hidden border border-white/10 bg-white/[0.07] backdrop-blur-xl shadow-xl shadow-black/30 ${cursor} transition-all duration-150 hover:bg-white/[0.11] hover:border-white/18`}
+      className={`relative select-none overflow-hidden border border-white/10 bg-white/[0.07] backdrop-blur-xl shadow-xl shadow-black/30 flex flex-col ${cursor} transition-all duration-150 hover:bg-white/[0.11] hover:border-white/18`}
       style={cardStyle}
       onClick={handleClick}
     >
-      <div className="flex items-center gap-3 h-full" style={{ paddingLeft: padding, paddingRight: padding }}>
+      {/* App header row */}
+      <div
+        className="flex items-center gap-3 shrink-0"
+        style={{ height: config.height, paddingLeft: padding, paddingRight: padding }}
+      >
         {logoView === "icon" && (
           <AppIcon url={config.logoUrl} title={config.title} />
         )}
@@ -177,7 +257,41 @@ export default function AppWidget({ config, onClick, fillAxis }: Props) {
             <p className="text-[11px] text-white/50 truncate mt-0.5">{config.subtitle}</p>
           )}
         </div>
+
+        {hasActiveFeed && feedStatus === "loading" && (
+          <span className="text-zinc-600 shrink-0"><SpinnerIcon /></span>
+        )}
       </div>
+
+      {/* Feed section */}
+      {hasActiveFeed && (
+        <div
+          className="border-t border-white/[0.08] overflow-y-auto"
+          style={{ height: feedHeight }}
+        >
+          {feedStatus === "error" && (
+            <p className="p-3 text-xs text-red-400">Failed to load feed.</p>
+          )}
+          {feedStatus === "ok" && feedData.length === 0 && (
+            <p className="p-3 text-xs text-zinc-600">No items.</p>
+          )}
+          {feedStatus === "ok" && feedData.length > 0 && (
+            <ul className="divide-y divide-white/[0.04]">
+              {feedData.map((item, i) => {
+                const obj = item && typeof item === "object" ? (item as Record<string, unknown>) : null;
+                const title = obj ? renderValue(obj.title ?? obj.name ?? obj.label) : renderValue(item);
+                const subtitle = obj ? renderValue(obj.subtitle ?? obj.status ?? obj.description ?? "") : "";
+                return (
+                  <li key={i} className="px-3 py-2">
+                    <p className="text-xs text-zinc-200 truncate">{title || JSON.stringify(item)}</p>
+                    {subtitle && <p className="text-[10px] text-zinc-500 truncate mt-0.5">{subtitle}</p>}
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+        </div>
+      )}
     </div>
   );
 }

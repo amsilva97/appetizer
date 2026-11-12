@@ -6,7 +6,6 @@ import CanvasMenu, { type ContextItem } from "@/components/canvas-menu";
 import EditorPanel from "@/components/editor-panel";
 import Toolbar from "@/components/toolbar";
 import AppWidget from "@/components/widgets/app-widget";
-import FeedWidget from "@/components/widgets/feed-widget";
 import LayoutWidget from "@/components/widgets/layout-widget";
 import { BACKGROUND_PRESETS } from "@/lib/background-presets";
 import { download, loadFile, parse } from "@/lib/yaml-parser";
@@ -18,8 +17,6 @@ import { DEFAULT_LAYOUT_WIDGET } from "@/types/layout-widget";
 import type { LayoutWidgetConfig } from "@/types/layout-widget";
 import { DEFAULT_MENU_WIDGET } from "@/types/menu-widget";
 import type { MenuWidgetConfig } from "@/types/menu-widget";
-import { DEFAULT_FEED_WIDGET } from "@/types/feed-widget";
-import type { FeedWidgetConfig } from "@/types/feed-widget";
 import type { UserRole } from "@/lib/auth/users";
 
 interface SceneConfig {
@@ -255,16 +252,6 @@ export default function Home() {
     setEditingId(id);
   }
 
-  function addFeedWidget() {
-    const id = nextId();
-    setWidgets((prev) => [
-      ...prev,
-      { id, type: "feed", config: { ...DEFAULT_FEED_WIDGET }, x: 40, y: 100 },
-    ]);
-    setBgEditorOpen(false);
-    setEditingId(id);
-  }
-
   function deleteWidget(id: string) {
     setWidgets((prev) => {
       const idsToRemove = new Set<string>();
@@ -370,16 +357,6 @@ export default function Home() {
         </div>
       ))}
 
-      {/* Feed widgets — freely positioned, draggable */}
-      {widgets.filter((w) => w.type === "feed").map((w) => (
-        <div
-          key={w.id}
-          style={{ position: "absolute", left: w.x, top: w.y, cursor: editMode ? "grab" : "default", userSelect: "none" }}
-          onMouseDown={(e) => handleWidgetMouseDown(e, w)}
-        >
-          <FeedWidget config={w.config as FeedWidgetConfig} />
-        </div>
-      ))}
 
       {editMode && menuPos && (() => {
         const { cellTargets } = menuPos;
@@ -401,13 +378,6 @@ export default function Home() {
         const groupedApps = stackMenus.flatMap((g) =>
           widgets.filter((w) => w.type === "app" && w.parentId === g.id)
         );
-        const floatingFeeds = widgets.filter((w) => {
-          if (w.type !== "feed") return false;
-          const cfg = w.config as FeedWidgetConfig;
-          return menuPos.x >= w.x && menuPos.x <= w.x + cfg.width
-              && menuPos.y >= w.y && menuPos.y <= w.y + cfg.height;
-        });
-
         const editGroup: ContextItem[] = [
           { label: "Edit Background", onClick: () => { setBgEditorOpen(true); setEditingId(null); } },
           ...stackLayouts.map((w) => ({
@@ -420,10 +390,6 @@ export default function Home() {
           })),
           ...[...floatingApps, ...groupedApps].map((w) => ({
             label: `Edit ${(w.config as AppWidgetConfig).title || "App"}`,
-            onClick: () => { setBgEditorOpen(false); setEditingId(w.id); },
-          })),
-          ...floatingFeeds.map((w) => ({
-            label: `Edit ${(w.config as FeedWidgetConfig).label || "Feed"}`,
             onClick: () => { setBgEditorOpen(false); setEditingId(w.id); },
           })),
         ];
@@ -452,10 +418,6 @@ export default function Home() {
         addGroup.push({
           label: "Add Layout to Background",
           onClick: () => addLayoutWidget(nextLayoutLabel()),
-        });
-        addGroup.push({
-          label: "Add Feed Widget",
-          onClick: () => addFeedWidget(),
         });
 
         return (

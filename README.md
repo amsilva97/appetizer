@@ -1,6 +1,6 @@
 # Appetizer
 
-A browser-based homepage dashboard builder. Arrange app shortcuts, group them into menus, structure the canvas with layouts, and choose a live animated background — all configured visually or through YAML. Requires authentication by default; supports multiple users with role-based access.
+A browser-based homepage dashboard builder. Arrange app shortcuts, group them into menus, structure the canvas with layouts, and choose a live animated background — all configured visually or through YAML. App widgets can optionally embed a live feed that polls an HTTP endpoint and displays results inline. Requires authentication by default; supports multiple users with role-based access.
 
 ---
 
@@ -84,7 +84,7 @@ Admins access `/admin/users` from the Users icon in the toolbar. From this page 
 
 Admins access `/admin/keys` from the Keys icon in the toolbar. Keys are named secrets stored encrypted on disk. They are never exposed to the browser — only their names are returned by the API.
 
-Keys are referenced in feed widget headers using the `{KEY_NAME}` placeholder syntax (see [Feed](#feed)).
+Keys are referenced in app widget feed headers using the `{KEY_NAME}` placeholder syntax (see [Feed tab](#feed-tab)).
 
 ---
 
@@ -120,13 +120,11 @@ Right-click anywhere on the canvas while in edit mode. The menu is built dynamic
 - Edit [Layout name] — for each layout the cursor is inside
 - Edit [Menu name] — if a menu occupies the cell under the cursor
 - Edit [App title] — for floating apps under the cursor, and apps inside any menu under the cursor
-- Edit [Feed label] — for feed widgets under the cursor
 
 **Add section** — one entry per possible insertion point:
 - Add Layout to [parent layout name] — adds a sub-layout into the cell under the cursor
 - Add Menu to [parent layout name] — adds a menu into the cell under the cursor
 - Add App to [menu name] — adds an app widget inside a menu that is under the cursor
-- Add Feed to [parent layout name] — adds a feed widget into the cell under the cursor
 - Add Layout to Background — adds a new root layout that fills the whole canvas
 
 Clicking an edit entry opens the **editor panel** for that element. Clicking an add entry creates the widget immediately and opens its editor.
@@ -257,24 +255,13 @@ An app shortcut card. Apps can be floating (draggable, positioned freely on the 
 - **Ping URL** — the URL to ping for the status check. Defaults to the main URL if left blank.
 - **Check every** — how often to re-check, in seconds, 10–300.
 
-**YAML tab** — directly edit the config as YAML.
+**Feed tab:**
 
-**Delete App** — removes the app widget.
+Embeds a live scrollable data list directly below the app card header. The feed is part of the app widget — no separate widget type is needed.
 
----
+The feed runs as a server-side proxy: the browser posts the config to `/api/feed/run`, the server fetches the upstream URL, applies the transform, and returns the data. Secrets in headers are substituted server-side and never sent to the browser.
 
-### Feed
-
-A live data panel that polls an HTTP endpoint and displays the results as a list. Feed widgets sit inside layout cells. Useful for showing live status from self-hosted services.
-
-The feed runs as a server-side proxy: the browser sends the config to `/api/feed/run`, the server fetches the upstream URL, applies the transform, and returns the data. Secrets in headers are substituted server-side and never sent to the browser.
-
-**Display tab:**
-- **Label** — heading shown at the top of the feed panel.
-- **Poll interval** — how often to re-fetch, in seconds, 10–300.
-
-**Connection tab:**
-- **Method** — `None` (display only) or `GET` (fetch data).
+- **Method** — `None` (no feed) or `GET` (fetch and display data).
 - **URL** — the endpoint to fetch. Must be `http://` or `https://`.
 - **Headers** — key/value pairs sent with every request. Use `{KEY_NAME}` in a value to inject a secret from the [Keys page](#secret-keys). The substitution happens server-side; the actual value is never exposed in the browser.
 - **Transform** — a JavaScript expression evaluated in a sandboxed `vm` context (2-second timeout, 10MB response cap). The variable `body` holds the parsed JSON response. The expression must return an array.
@@ -286,14 +273,12 @@ The feed runs as a server-side proxy: the browser sends the config to `/api/feed
   body.results.map(r => r.name + " — " + r.status)   // shape each row
   ```
 
-**Visuals tab:**
-- **Width** — panel width in pixels, 160–640.
-- **Height** — panel height in pixels, 120–600.
-- **Corner radius** — rounds the panel corners, in pixels.
+- **Poll every** — how often to re-fetch, in seconds, 10–300. Polling pauses automatically when the tab is hidden.
+- **Feed height** — height of the feed list section in pixels, 80–600.
 
 **YAML tab** — directly edit the config as YAML.
 
-**Delete Feed** — removes the feed widget.
+**Delete App** — removes the app widget.
 
 ---
 
@@ -360,12 +345,12 @@ Every widget in the scene is a flat entry in the `widgets` array. Hierarchy is e
 | Field | Type | Required | Description |
 |---|---|---|---|
 | `id` | string | yes | Unique identifier for this widget. Any short alphanumeric string. |
-| `type` | `app` \| `layout` \| `menu` \| `feed` | yes | Widget type. |
+| `type` | `app` \| `layout` \| `menu` | yes | Widget type. |
 | `config` | object | yes | Type-specific configuration (see below). |
 | `x` | number | yes | Horizontal position in pixels. Only meaningful for floating app widgets. Set to `0` for all other widget types. |
 | `y` | number | yes | Vertical position in pixels. Only meaningful for floating app widgets. Set to `0` for all other widget types. |
-| `parentId` | string | no | ID of the parent widget. Required for sub-layouts, menus, and feeds (parent must be a layout). Required for apps inside menus (parent must be a menu). Omit for root layouts and floating apps. |
-| `cellIndex` | number | no | Zero-based cell index within the parent layout. `cellIndex = row * columns + column`. Required when a layout, menu, or feed has a `parentId`. Not used for apps inside menus. |
+| `parentId` | string | no | ID of the parent widget. Required for sub-layouts and menus (parent must be a layout). Required for apps inside menus (parent must be a menu). Omit for root layouts and floating apps. |
+| `cellIndex` | number | no | Zero-based cell index within the parent layout. `cellIndex = row * columns + column`. Required when a layout or menu has a `parentId`. Not used for apps inside menus. |
 
 ---
 
@@ -451,12 +436,12 @@ Used when `type: app`.
 ```yaml
 type: app
 config:
-  title: "Plex"
-  subtitle: "Media server"
-  tooltip: "Open Plex"
-  logoUrl: "https://example.com/plex.png"
+  title: "Sonarr"
+  subtitle: "TV shows"
+  tooltip: ""
+  logoUrl: "https://example.com/sonarr.png"
   logoView: icon
-  url: "https://plex.example.com"
+  url: "https://sonarr.example.com"
   openUrl: true
   ping: true
   pingUrl: ""
@@ -469,6 +454,15 @@ config:
   iconZoom: 1
   iconOffsetX: 0
   iconOffsetY: 0
+  feed:
+    method: GET
+    url: "https://sonarr.example.com/api/v3/queue"
+    headers:
+      - key: X-Api-Key
+        value: "{SONARR_KEY}"
+    transform: "body.records.map(r => ({ title: r.title, subtitle: r.status }))"
+    pollInterval: 30
+    height: 200
 ```
 
 | Field | Type | Default | Range | Description |
@@ -487,53 +481,16 @@ config:
 | `pingUrl` | string | `""` | — | URL to check for the status indicator. Defaults to `url` if empty. |
 | `pingInterval` | number | `30` | 10–300 | Seconds between status checks. |
 | `width` | number | `240` | 160–480 | Card width in pixels. Ignored when the app fills a menu axis. |
-| `height` | number | `72` | 48–300 | Card height in pixels. Ignored when the app fills a menu axis. |
+| `height` | number | `72` | 48–300 | Header row height in pixels. Ignored when the app fills a menu axis. |
 | `padding` | number | `16` | 0–48 | Horizontal inner padding. |
 | `margin` | number | `0` | 0–64 | Space between the card and its container. |
 | `borderRadius` | number | `16` | 0–48 | Corner radius in pixels. |
-
----
-
-### Feed Config
-
-Used when `type: feed`.
-
-```yaml
-type: feed
-config:
-  label: "Services"
-  pollInterval: 30
-  width: 320
-  height: 240
-  borderRadius: 16
-  connection:
-    method: GET
-    url: "https://api.example.com/status"
-    headers:
-      - key: Authorization
-        value: "Bearer {API_TOKEN}"
-    transform: "body.services"
-```
-
-| Field | Type | Default | Range | Description |
-|---|---|---|---|---|
-| `label` | string | `"Feed"` | — | Heading displayed at the top of the feed panel. |
-| `pollInterval` | number | `30` | 10–300 | Seconds between polls. Polling pauses automatically when the tab is hidden. |
-| `width` | number | `320` | 160–640 | Panel width in pixels. |
-| `height` | number | `240` | 120–600 | Panel height in pixels. |
-| `borderRadius` | number | `16` | 0–48 | Corner radius in pixels. |
-| `connection.method` | `none` \| `GET` | `none` | — | `none` renders a static placeholder; `GET` fetches data. |
-| `connection.url` | string | `""` | — | Endpoint URL. Must be `http://` or `https://`. |
-| `connection.headers` | array | `[]` | — | List of `{ key, value }` pairs. Use `{KEY_NAME}` in values to inject secrets server-side. |
-| `connection.transform` | string | `""` | — | JS expression receiving `body` (parsed JSON). Must return an array. Max 4096 characters; 2-second execution timeout. |
-
-**Transform examples:**
-
-```js
-body                                                // body is already an array
-body.items                                          // pluck a nested array
-body.results.map(r => r.name + " — " + r.status)   // shape each row
-```
+| `feed.method` | `none` \| `GET` | `none` | — | `none` shows no feed; `GET` fetches and displays data below the header row. |
+| `feed.url` | string | `""` | — | Endpoint URL. Must be `http://` or `https://`. |
+| `feed.headers` | array | `[]` | — | List of `{ key, value }` pairs. Use `{KEY_NAME}` in values to inject secrets server-side. |
+| `feed.transform` | string | `""` | — | JS expression receiving `body` (parsed JSON). Must return an array. 2-second execution timeout. |
+| `feed.pollInterval` | number | `30` | 10–300 | Seconds between polls. Pauses when the tab is hidden. |
+| `feed.height` | number | `200` | 80–600 | Height of the feed list section in pixels. |
 
 ---
 
@@ -804,19 +761,19 @@ widgets:
       borderColor: "#ffffff"
       borderOpacity: 10
 
-  # App inside the menu
+  # App inside the menu — with an embedded live feed
   - id: "app1"
     type: app
     parentId: "menu1"
     x: 0
     y: 0
     config:
-      title: "Plex"
-      subtitle: "Media server"
-      tooltip: "Open Plex"
-      logoUrl: "https://example.com/plex.png"
+      title: "Sonarr"
+      subtitle: "TV shows"
+      tooltip: ""
+      logoUrl: "https://example.com/sonarr.png"
       logoView: icon
-      url: "https://plex.example.com"
+      url: "https://sonarr.example.com"
       openUrl: true
       ping: true
       pingUrl: ""
@@ -829,27 +786,15 @@ widgets:
       iconZoom: 1
       iconOffsetX: 0
       iconOffsetY: 0
-
-  # Feed widget in cell 1 (right column)
-  - id: "feed1"
-    type: feed
-    parentId: "lay1"
-    cellIndex: 1
-    x: 0
-    y: 0
-    config:
-      label: "Services"
-      pollInterval: 30
-      width: 320
-      height: 240
-      borderRadius: 16
-      connection:
+      feed:
         method: GET
-        url: "https://api.example.com/status"
+        url: "https://sonarr.example.com/api/v3/queue"
         headers:
-          - key: Authorization
-            value: "Bearer {API_TOKEN}"
-        transform: "body.services.map(s => s.name + ' — ' + s.status)"
+          - key: X-Api-Key
+            value: "{SONARR_KEY}"
+        transform: "body.records.map(r => ({ title: r.title, subtitle: r.status }))"
+        pollInterval: 30
+        height: 200
 
   # Floating app — not inside any layout or menu
   - id: "app2"
@@ -883,8 +828,7 @@ widgets:
 
 - A **root layout** has no `parentId`. There can be multiple root layouts; they all fill the full canvas.
 - A **sub-layout** has `parentId` pointing to another layout and a `cellIndex` indicating which cell it occupies.
-- A **menu** has `parentId` pointing to a layout and a `cellIndex`. Each cell can hold at most one direct child (a layout, a menu, or a feed — not more than one).
-- A **feed** has `parentId` pointing to a layout and a `cellIndex`.
-- An **app inside a menu** has `parentId` pointing to a menu. It does not use `cellIndex`.
-- A **floating app** has no `parentId`. Its `x` and `y` position it on the canvas.
+- A **menu** has `parentId` pointing to a layout and a `cellIndex`. Each cell can hold at most one direct child (a sub-layout or a menu).
+- An **app inside a menu** has `parentId` pointing to a menu. It does not use `cellIndex`. It may include an optional `feed` config to display live data inline below its header.
+- A **floating app** has no `parentId`. Its `x` and `y` position it on the canvas. It may also include a `feed` config.
 - `cellIndex` is calculated as `row * columns + column`, zero-based, reading left-to-right, top-to-bottom.

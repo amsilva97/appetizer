@@ -5,13 +5,11 @@ import BackgroundFields from "@/components/background-fields";
 import AppWidgetFields from "@/components/widgets/app-widget-fields";
 import MenuWidgetFields from "@/components/widgets/menu-widget-fields";
 import LayoutWidgetFields from "@/components/widgets/layout-widget-fields";
-import FeedWidgetFields from "@/components/widgets/feed-widget-fields";
 import type { BackgroundConfig } from "@/types/background";
 import type { WidgetInstance } from "@/types/widget";
 import type { AppWidgetConfig } from "@/types/app-widget";
 import type { MenuWidgetConfig } from "@/types/menu-widget";
 import type { LayoutWidgetConfig } from "@/types/layout-widget";
-import type { FeedWidgetConfig } from "@/types/feed-widget";
 
 interface Props {
   bg: BackgroundConfig;
@@ -251,36 +249,12 @@ export default function EditorPanel({
           <AppWidgetFields
             value={cfg}
             onChange={(config) => onUpdateWidget(editingWidget.id, { config })}
-          />
-        </Panel>
-        );
-      })()}
-
-      {editingWidget?.type === "feed" && (() => {
-        const cfg = editingWidget.config as FeedWidgetConfig;
-        return (
-        <Panel
-          title={cfg.label || "Feed"}
-          onClose={onEditingWidgetClose}
-          onDragStart={handlePanelDragStart}
-          footer={
-            <button
-              onClick={() => { onDeleteWidget(editingWidget.id); onEditingWidgetClose(); }}
-              className="flex items-center justify-center gap-1.5 flex-1 py-2 text-xs font-semibold text-red-400 border border-red-900/60 rounded-lg hover:bg-red-900/25 hover:text-red-300 hover:border-red-700 transition-colors"
-            >
-              <TrashIcon size={13} />
-              Delete Feed
-            </button>
-          }
-        >
-          <FeedWidgetFields
-            value={cfg}
-            onChange={(config) => onUpdateWidget(editingWidget.id, { config })}
             keyNames={keyNames}
           />
         </Panel>
         );
       })()}
+
     </div>
   );
 }
