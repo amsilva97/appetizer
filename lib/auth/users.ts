@@ -10,6 +10,8 @@ export interface AppUser {
   role: UserRole;
   isRoot: boolean;
   disabled: boolean;
+  roles?: string[];
+  permissions?: string[];
 }
 
 const DATA_DIR = join(process.cwd(), "data");

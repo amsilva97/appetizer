@@ -18,6 +18,7 @@ import type { LayoutWidgetConfig } from "@/types/layout-widget";
 import { DEFAULT_MENU_WIDGET } from "@/types/menu-widget";
 import type { MenuWidgetConfig } from "@/types/menu-widget";
 import type { UserRole } from "@/lib/auth/users";
+import type { PageMeta, Permission } from "@/types/permissions";
 
 interface SceneConfig {
   background: BackgroundConfig;
@@ -50,17 +51,25 @@ export default function Home() {
   const [keyNames, setKeyNames] = useState<string[]>([]);
   const [role, setRole] = useState<UserRole | null>(null);
   const [loggedIn, setLoggedIn] = useState(false);
+  const [pages, setPages] = useState<PageMeta[]>([]);
+  const [currentPage, setCurrentPage] = useState<string>("");
+  const [availablePermissions, setAvailablePermissions] = useState<Permission[]>([]);
 
   const [loaded, setLoaded] = useState(false);
   const dragRef = useRef<DragState | null>(null);
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const currentPageRef = useRef<string>("");
 
   const isAdmin = role === "admin";
 
   useEffect(() => {
     fetch("/api/state")
       .then((r) => r.json())
-      .then(({ layout }) => {
+      .then(({ pages: pg, activePage, layout }) => {
+        const pageList: PageMeta[] = pg ?? [];
+        setPages(pageList);
+        setCurrentPage(activePage ?? "");
+        currentPageRef.current = activePage ?? "";
         if (layout) {
           if (layout.background) setBg(layout.background);
           if (Array.isArray(layout.widgets)) setWidgets(layout.widgets);
@@ -73,6 +82,12 @@ export default function Home() {
       .then(({ loggedIn: li, role: r }: { loggedIn: boolean; role: UserRole | null }) => {
         setLoggedIn(li);
         setRole(r);
+        if (li && r === "admin") {
+          fetch("/api/admin/permissions")
+            .then((res) => res.ok ? res.json() : { permissions: [] })
+            .then(({ permissions }) => setAvailablePermissions(permissions ?? []))
+            .catch(() => {});
+        }
       })
       .catch(() => {});
 
@@ -86,13 +101,73 @@ export default function Home() {
     if (!loaded) return;
     if (saveTimer.current) clearTimeout(saveTimer.current);
     saveTimer.current = setTimeout(() => {
-      fetch("/api/state", {
+      const page = currentPageRef.current;
+      fetch(`/api/state${page ? `?page=${encodeURIComponent(page)}` : ""}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ background: bg, widgets }),
       });
     }, 1000);
   }, [bg, widgets, loaded]);
+
+  async function switchPage(pageName: string) {
+    if (pageName === currentPageRef.current) return;
+    setLoaded(false);
+    try {
+      const data = await fetch(`/api/state?page=${encodeURIComponent(pageName)}`).then((r) => r.json());
+      const pageList: PageMeta[] = data.pages ?? [];
+      setPages(pageList);
+      setCurrentPage(data.activePage ?? pageName);
+      currentPageRef.current = data.activePage ?? pageName;
+      if (data.layout) {
+        setBg(data.layout.background ?? BACKGROUND_PRESETS["Ocean Dusk"]);
+        setWidgets(data.layout.widgets ?? []);
+      } else {
+        setBg(BACKGROUND_PRESETS["Ocean Dusk"]);
+        setWidgets([]);
+      }
+      setEditingId(null);
+      setMenuPos(null);
+    } finally {
+      setLoaded(true);
+    }
+  }
+
+  async function handleCreatePage() {
+    const label = prompt("New page name:");
+    if (!label?.trim()) return;
+    const res = await fetch("/api/pages", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ label: label.trim() }),
+    });
+    if (!res.ok) return;
+    const { page } = await res.json() as { page: PageMeta };
+    setPages((prev) => [...prev, page]);
+    await switchPage(page.name);
+  }
+
+  async function handleUpdatePage(name: string, patch: { label?: string; permissions?: string[] }) {
+    const res = await fetch(`/api/pages/${encodeURIComponent(name)}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(patch),
+    });
+    if (!res.ok) return;
+    const { page } = await res.json() as { page: PageMeta };
+    setPages((prev) => prev.map((p) => (p.name === name ? page : p)));
+  }
+
+  async function handleDeletePage(name: string) {
+    if (!confirm(`Delete page "${name}"? This cannot be undone.`)) return;
+    const res = await fetch(`/api/pages/${encodeURIComponent(name)}`, { method: "DELETE" });
+    if (!res.ok) return;
+    const remaining = pages.filter((p) => p.name !== name);
+    setPages(remaining);
+    if (currentPage === name && remaining.length > 0) {
+      await switchPage(remaining[0].name);
+    }
+  }
 
   const handleWidgetMouseDown = useCallback(
     (e: React.MouseEvent, widget: WidgetInstance) => {
@@ -319,6 +394,13 @@ export default function Home() {
         }}
         role={role}
         loggedIn={loggedIn}
+        pages={pages}
+        currentPage={currentPage}
+        onPageChange={switchPage}
+        onCreatePage={isAdmin ? handleCreatePage : undefined}
+        onUpdatePage={isAdmin ? handleUpdatePage : undefined}
+        onDeletePage={isAdmin ? handleDeletePage : undefined}
+        availablePermissions={availablePermissions}
       />
 
       {/* Layout widgets — only root layouts, fill canvas below toolbar */}
@@ -349,14 +431,12 @@ export default function Home() {
             return (
               <AppWidget
                 config={cfg}
-
                 onClick={() => { if (cfg.url) window.open(cfg.url, "_blank"); }}
               />
             );
           })()}
         </div>
       ))}
-
 
       {editMode && menuPos && (() => {
         const { cellTargets } = menuPos;
@@ -443,6 +523,7 @@ export default function Home() {
           onExport={handleExport}
           onImport={handleImport}
           keyNames={keyNames}
+          availablePermissions={availablePermissions}
         />
       )}
     </div>

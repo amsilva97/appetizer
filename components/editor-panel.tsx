@@ -10,6 +10,7 @@ import type { WidgetInstance } from "@/types/widget";
 import type { AppWidgetConfig } from "@/types/app-widget";
 import type { MenuWidgetConfig } from "@/types/menu-widget";
 import type { LayoutWidgetConfig } from "@/types/layout-widget";
+import type { Permission } from "@/types/permissions";
 
 const DEFAULT_WIDTH = 680;
 const MIN_WIDTH = 340;
@@ -27,6 +28,7 @@ interface Props {
   onExport: () => void;
   onImport: (e: React.ChangeEvent<HTMLInputElement>) => void;
   keyNames?: string[];
+  availablePermissions?: Permission[];
 }
 
 function XIcon({ size = 14 }: { size?: number }) {
@@ -119,6 +121,7 @@ export default function EditorPanel({
   onExport,
   onImport,
   keyNames = [],
+  availablePermissions = [],
 }: Props) {
   const [panelPos, setPanelPos] = useState({ left: 16, bottom: 32 });
   const [panelWidth, setPanelWidth] = useState(DEFAULT_WIDTH);
@@ -126,6 +129,8 @@ export default function EditorPanel({
   // ── Draft state ───────────────────────────────────────────────────────────
   const [draftConfig, setDraftConfig] = useState<WidgetInstance["config"] | null>(null);
   const [savedConfig, setSavedConfig] = useState<WidgetInstance["config"] | null>(null);
+  const [draftPermissions, setDraftPermissions] = useState<string[]>([]);
+  const [savedPermissions, setSavedPermissions] = useState<string[]>([]);
   const prevIdRef = useRef<string | null>(null);
 
   useEffect(() => {
@@ -133,26 +138,34 @@ export default function EditorPanel({
       prevIdRef.current = null;
       setDraftConfig(null);
       setSavedConfig(null);
+      setDraftPermissions([]);
+      setSavedPermissions([]);
       return;
     }
     if (editingWidget.id !== prevIdRef.current) {
       prevIdRef.current = editingWidget.id;
       setDraftConfig(editingWidget.config);
       setSavedConfig(editingWidget.config);
+      setDraftPermissions(editingWidget.permissions ?? []);
+      setSavedPermissions(editingWidget.permissions ?? []);
     }
   }, [editingWidget]);
 
-  const hasChanges = draftConfig !== null && JSON.stringify(draftConfig) !== JSON.stringify(savedConfig);
+  const hasChanges =
+    (draftConfig !== null && JSON.stringify(draftConfig) !== JSON.stringify(savedConfig)) ||
+    JSON.stringify(draftPermissions) !== JSON.stringify(savedPermissions);
 
   function handleSave() {
     if (editingWidget && draftConfig) {
-      onUpdateWidget(editingWidget.id, { config: draftConfig });
+      onUpdateWidget(editingWidget.id, { config: draftConfig, permissions: draftPermissions });
       setSavedConfig(draftConfig);
+      setSavedPermissions(draftPermissions);
     }
   }
 
   function handleRevert() {
     setDraftConfig(savedConfig);
+    setDraftPermissions(savedPermissions);
   }
 
   // ── Panel position drag ───────────────────────────────────────────────────
@@ -283,6 +296,9 @@ export default function EditorPanel({
             <LayoutWidgetFields
               value={cfg}
               onChange={(config) => setDraftConfig(config)}
+              permissions={draftPermissions}
+              onPermissionsChange={setDraftPermissions}
+              availablePermissions={availablePermissions}
             />
           </Panel>
         );
@@ -300,6 +316,9 @@ export default function EditorPanel({
             <MenuWidgetFields
               value={cfg}
               onChange={(config) => setDraftConfig(config)}
+              permissions={draftPermissions}
+              onPermissionsChange={setDraftPermissions}
+              availablePermissions={availablePermissions}
             />
           </Panel>
         );
@@ -319,6 +338,9 @@ export default function EditorPanel({
               value={cfg}
               onChange={(config) => setDraftConfig(config)}
               keyNames={keyNames}
+              permissions={draftPermissions}
+              onPermissionsChange={setDraftPermissions}
+              availablePermissions={availablePermissions}
             />
           </Panel>
         );

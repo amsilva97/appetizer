@@ -4,13 +4,16 @@ import { useState } from "react";
 import type { MenuWidgetConfig, MenuDirection } from "@/types/menu-widget";
 import { Divider, Field, Select, SliderRow, Swatch, TabBar, TextInput } from "@/components/ui";
 import { parse, stringify } from "@/lib/yaml-parser";
+import WidgetPermissionsFields from "@/components/widgets/widget-permissions-fields";
+import type { Permission } from "@/types/permissions";
 
-type Tab = "display" | "visuals" | "yaml";
+type Tab = "display" | "visuals" | "yaml" | "permissions";
 
 const TABS: { id: Tab; label: string }[] = [
-  { id: "display", label: "Display" },
-  { id: "visuals", label: "Visuals" },
-  { id: "yaml",    label: "YAML"    },
+  { id: "display",     label: "Display"     },
+  { id: "visuals",     label: "Visuals"     },
+  { id: "yaml",        label: "YAML"        },
+  { id: "permissions", label: "Permissions" },
 ];
 
 const DIRECTION_OPTIONS = [
@@ -21,9 +24,12 @@ const DIRECTION_OPTIONS = [
 interface Props {
   value: MenuWidgetConfig;
   onChange: (v: MenuWidgetConfig) => void;
+  permissions?: string[];
+  onPermissionsChange?: (p: string[]) => void;
+  availablePermissions?: Permission[];
 }
 
-export default function MenuWidgetFields({ value, onChange }: Props) {
+export default function MenuWidgetFields({ value, onChange, permissions = [], onPermissionsChange, availablePermissions = [] }: Props) {
   const [tab, setTab] = useState<Tab>("display");
   const [yaml, setYaml] = useState(() => stringify(value));
   const [yamlErr, setYamlErr] = useState<string | null>(null);
@@ -146,6 +152,14 @@ export default function MenuWidgetFields({ value, onChange }: Props) {
             </div>
           )}
         </div>
+      )}
+
+      {tab === "permissions" && (
+        <WidgetPermissionsFields
+          permissions={permissions}
+          onChange={onPermissionsChange ?? (() => {})}
+          available={availablePermissions}
+        />
       )}
     </div>
   );
