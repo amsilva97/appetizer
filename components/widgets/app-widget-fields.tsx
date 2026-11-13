@@ -5,15 +5,18 @@ import type { AppWidgetConfig, AppFeedConfig, FeedHeaderRow, FeedMethod } from "
 import { DEFAULT_FEED_CONFIG } from "@/types/app-widget";
 import { Divider, Select, SliderRow, TabBar, TextInput, Toggle } from "@/components/ui";
 import { parse, stringify } from "@/lib/yaml-parser";
+import WidgetPermissionsFields from "@/components/widgets/widget-permissions-fields";
+import type { Permission } from "@/types/permissions";
 
-type Tab = "display" | "visuals" | "connection" | "feed" | "yaml";
+type Tab = "display" | "visuals" | "connection" | "feed" | "yaml" | "permissions";
 
 const TABS: { id: Tab; label: string }[] = [
-  { id: "display",    label: "Display"    },
-  { id: "visuals",    label: "Visuals"    },
-  { id: "connection", label: "Connection" },
-  { id: "feed",       label: "Feed"       },
-  { id: "yaml",       label: "YAML"       },
+  { id: "display",     label: "Display"     },
+  { id: "visuals",     label: "Visuals"     },
+  { id: "connection",  label: "Connection"  },
+  { id: "feed",        label: "Feed"        },
+  { id: "yaml",        label: "YAML"        },
+  { id: "permissions", label: "Permissions" },
 ];
 
 const METHOD_OPTIONS = [
@@ -31,9 +34,12 @@ interface Props {
   value: AppWidgetConfig;
   onChange: (v: AppWidgetConfig) => void;
   keyNames?: string[];
+  permissions?: string[];
+  onPermissionsChange?: (p: string[]) => void;
+  availablePermissions?: Permission[];
 }
 
-export default function AppWidgetFields({ value, onChange, keyNames = [] }: Props) {
+export default function AppWidgetFields({ value, onChange, keyNames = [], permissions = [], onPermissionsChange, availablePermissions = [] }: Props) {
   const feed = value.feed ?? DEFAULT_FEED_CONFIG;
 
   function setFeed(patch: Partial<AppFeedConfig>) {
@@ -352,6 +358,14 @@ export default function AppWidgetFields({ value, onChange, keyNames = [] }: Prop
             </div>
           )}
         </div>
+      )}
+
+      {tab === "permissions" && (
+        <WidgetPermissionsFields
+          permissions={permissions}
+          onChange={onPermissionsChange ?? (() => {})}
+          available={availablePermissions}
+        />
       )}
     </div>
   );
