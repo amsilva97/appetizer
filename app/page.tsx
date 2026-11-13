@@ -17,6 +17,7 @@ import { DEFAULT_LAYOUT_WIDGET } from "@/types/layout-widget";
 import type { LayoutWidgetConfig } from "@/types/layout-widget";
 import { DEFAULT_MENU_WIDGET } from "@/types/menu-widget";
 import type { MenuWidgetConfig } from "@/types/menu-widget";
+import type { UserRole } from "@/lib/auth/users";
 
 interface SceneConfig {
   background: BackgroundConfig;
@@ -46,10 +47,15 @@ export default function Home() {
     y: number;
     cellTargets: { widgetId: string; cellIndex: number }[];
   } | null>(null);
+  const [keyNames, setKeyNames] = useState<string[]>([]);
+  const [role, setRole] = useState<UserRole | null>(null);
+  const [loggedIn, setLoggedIn] = useState(false);
 
   const [loaded, setLoaded] = useState(false);
   const dragRef = useRef<DragState | null>(null);
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const isAdmin = role === "admin";
 
   useEffect(() => {
     fetch("/api/state")
@@ -61,6 +67,19 @@ export default function Home() {
         }
       })
       .finally(() => setLoaded(true));
+
+    fetch("/api/me")
+      .then((r) => r.ok ? r.json() : { loggedIn: false, role: null })
+      .then(({ loggedIn: li, role: r }: { loggedIn: boolean; role: UserRole | null }) => {
+        setLoggedIn(li);
+        setRole(r);
+      })
+      .catch(() => {});
+
+    fetch("/api/keys")
+      .then((r) => r.ok ? r.json() : { keyNames: [] })
+      .then(({ keyNames }: { keyNames: string[] }) => setKeyNames(keyNames))
+      .catch(() => {});
   }, []);
 
   useEffect(() => {
@@ -288,6 +307,7 @@ export default function Home() {
       <Toolbar
         editMode={editMode}
         onToggleEdit={() => {
+          if (!isAdmin) return;
           setEditMode((m) => {
             if (m) {
               setBgEditorOpen(false);
@@ -297,6 +317,8 @@ export default function Home() {
             return !m;
           });
         }}
+        role={role}
+        loggedIn={loggedIn}
       />
 
       {/* Layout widgets — only root layouts, fill canvas below toolbar */}
@@ -335,6 +357,7 @@ export default function Home() {
         </div>
       ))}
 
+
       {editMode && menuPos && (() => {
         const { cellTargets } = menuPos;
         const stackIds = new Set(cellTargets.map((t) => t.widgetId));
@@ -355,7 +378,6 @@ export default function Home() {
         const groupedApps = stackMenus.flatMap((g) =>
           widgets.filter((w) => w.type === "app" && w.parentId === g.id)
         );
-
         const editGroup: ContextItem[] = [
           { label: "Edit Background", onClick: () => { setBgEditorOpen(true); setEditingId(null); } },
           ...stackLayouts.map((w) => ({
@@ -420,6 +442,7 @@ export default function Home() {
           onDeleteWidget={deleteWidget}
           onExport={handleExport}
           onImport={handleImport}
+          keyNames={keyNames}
         />
       )}
     </div>
