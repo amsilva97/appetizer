@@ -7,8 +7,8 @@ const INITIAL: SetupState = {};
 
 const INPUT =
   "w-full h-9 px-3 text-sm text-zinc-100 bg-zinc-800 border border-zinc-700 rounded-lg " +
-  "placeholder:text-zinc-600 focus:outline-none focus:ring-2 focus:ring-white/[0.08] " +
-  "focus:border-zinc-500 transition-colors";
+  "placeholder:text-zinc-600 focus:outline-none focus:ring-2 focus:ring-brand/25 " +
+  "focus:border-brand/50 transition-colors";
 
 function FieldError({ msg }: { msg?: string }) {
   if (!msg) return null;
@@ -53,7 +53,7 @@ export default function SetupForm() {
       <button
         type="submit"
         disabled={pending}
-        className="h-9 px-4 rounded-lg bg-white text-zinc-900 text-sm font-medium hover:bg-zinc-200 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+        className="h-9 px-4 rounded-lg bg-brand text-zinc-950 text-sm font-semibold hover:bg-brand/80 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
       >
         {pending ? "Creating…" : "Create account"}
       </button>

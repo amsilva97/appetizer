@@ -17,8 +17,8 @@ const INITIAL: PermissionActionState = {};
 
 const INPUT =
   "w-full h-9 px-3 text-sm text-zinc-100 bg-zinc-800 border border-zinc-700 rounded-lg " +
-  "placeholder:text-zinc-600 focus:outline-none focus:ring-2 focus:ring-white/[0.08] " +
-  "focus:border-zinc-500 transition-colors";
+  "placeholder:text-zinc-600 focus:outline-none focus:ring-2 focus:ring-brand/25 " +
+  "focus:border-brand/50 transition-colors";
 
 function TrashIcon() {
   return (
@@ -105,7 +105,7 @@ function PermissionsSection({ permissions }: { permissions: Permission[] }) {
         <button
           type="submit"
           disabled={pending}
-          className="self-start h-9 px-4 rounded-lg bg-white text-zinc-900 text-sm font-medium hover:bg-zinc-200 disabled:opacity-50 transition-colors"
+          className="self-start h-9 px-4 rounded-lg bg-brand text-zinc-950 text-sm font-semibold hover:bg-brand/80 disabled:opacity-50 transition-colors"
         >
           {pending ? "Adding…" : "Add permission"}
         </button>
@@ -161,7 +161,7 @@ function RoleRow({ role, allPermissions }: { role: Role; allPermissions: Permiss
                     name="permissions"
                     value={p.id}
                     defaultChecked={role.permissions.includes(p.id)}
-                    className="accent-white"
+                    className="accent-brand"
                   />
                   <span className="text-sm text-zinc-200">{p.label}</span>
                   <span className="text-[10px] text-zinc-600 font-mono">{p.id}</span>
@@ -172,7 +172,7 @@ function RoleRow({ role, allPermissions }: { role: Role; allPermissions: Permiss
             {updateState.success && <p className="text-xs text-green-400 mt-1">{updateState.success}</p>}
             <button
               type="submit"
-              className="self-start mt-1 h-7 px-3 rounded-lg bg-zinc-700 text-zinc-200 text-xs font-medium hover:bg-zinc-600 transition-colors"
+              className="self-start mt-1 h-7 px-3 rounded-lg bg-brand/15 text-brand border border-brand/30 text-xs font-medium hover:bg-brand/25 transition-colors"
             >
               Save
             </button>
@@ -219,7 +219,7 @@ function RolesSection({ roles, allPermissions }: { roles: Role[]; allPermissions
         <button
           type="submit"
           disabled={pending}
-          className="self-start h-9 px-4 rounded-lg bg-white text-zinc-900 text-sm font-medium hover:bg-zinc-200 disabled:opacity-50 transition-colors"
+          className="self-start h-9 px-4 rounded-lg bg-brand text-zinc-950 text-sm font-semibold hover:bg-brand/80 disabled:opacity-50 transition-colors"
         >
           {pending ? "Adding…" : "Add role"}
         </button>
@@ -267,7 +267,7 @@ function UserRoleRow({ user, allRoles, allPermissions }: { user: AppUser; allRol
                       name="roles"
                       value={r.id}
                       defaultChecked={userRoles.includes(r.id)}
-                      className="accent-white"
+                      className="accent-brand"
                     />
                     <span className="text-sm text-zinc-200">{r.label}</span>
                     <span className="text-[10px] text-zinc-600 font-mono">{r.id}</span>
@@ -286,7 +286,7 @@ function UserRoleRow({ user, allRoles, allPermissions }: { user: AppUser; allRol
                       name="permissions"
                       value={p.id}
                       defaultChecked={userPerms.includes(p.id)}
-                      className="accent-white"
+                      className="accent-brand"
                     />
                     <span className="text-sm text-zinc-200">{p.label}</span>
                     <span className="text-[10px] text-zinc-600 font-mono">{p.id}</span>
@@ -304,7 +304,7 @@ function UserRoleRow({ user, allRoles, allPermissions }: { user: AppUser; allRol
 
             <button
               type="submit"
-              className="self-start h-7 px-3 rounded-lg bg-zinc-700 text-zinc-200 text-xs font-medium hover:bg-zinc-600 transition-colors"
+              className="self-start h-7 px-3 rounded-lg bg-brand/15 text-brand border border-brand/30 text-xs font-medium hover:bg-brand/25 transition-colors"
             >
               Save
             </button>

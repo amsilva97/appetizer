@@ -155,7 +155,7 @@ export default function LayoutWidgetFields({ value, onChange, permissions = [], 
             value={yaml}
             onChange={(e) => handleYaml(e.target.value)}
             spellCheck={false}
-            className="w-full h-56 font-mono text-[11px] leading-relaxed bg-zinc-950 text-zinc-200 rounded-xl p-3 border border-zinc-800 resize-none focus:outline-none focus:ring-1 focus:ring-zinc-700"
+            className="w-full h-56 font-mono text-[11px] leading-relaxed bg-zinc-950 text-zinc-200 rounded-xl p-3 border border-zinc-800 resize-none focus:outline-none focus:ring-1 focus:ring-brand/40"
           />
           {yamlErr && (
             <div className="flex gap-2 px-3 py-2 bg-red-500/10 border border-red-500/30 rounded-lg">

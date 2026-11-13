@@ -16,12 +16,12 @@ const INITIAL: UserActionState = {};
 
 const INPUT =
   "w-full h-9 px-3 text-sm text-zinc-100 bg-zinc-800 border border-zinc-700 rounded-lg " +
-  "placeholder:text-zinc-600 focus:outline-none focus:ring-2 focus:ring-white/[0.08] " +
-  "focus:border-zinc-500 transition-colors";
+  "placeholder:text-zinc-600 focus:outline-none focus:ring-2 focus:ring-brand/25 " +
+  "focus:border-brand/50 transition-colors";
 
 const SELECT =
   "h-9 px-3 text-sm text-zinc-100 bg-zinc-800 border border-zinc-700 rounded-lg " +
-  "focus:outline-none focus:ring-2 focus:ring-white/[0.08] focus:border-zinc-500 transition-colors";
+  "focus:outline-none focus:ring-2 focus:ring-brand/25 focus:border-brand/50 transition-colors";
 
 function TrashIcon() {
   return (
@@ -132,12 +132,12 @@ function SettingsForm({ settings }: { settings: AppSettings }) {
           disabled={pending}
           aria-label={settings.forceLogin ? "Disable force login" : "Enable force login"}
           className={`relative shrink-0 w-11 h-6 rounded-full transition-colors ${
-            settings.forceLogin ? "bg-white" : "bg-zinc-700"
+            settings.forceLogin ? "bg-brand" : "bg-zinc-700"
           } disabled:opacity-50`}
         >
           <span
             className={`absolute top-1 w-4 h-4 rounded-full transition-all ${
-              settings.forceLogin ? "left-6 bg-zinc-900" : "left-1 bg-zinc-400"
+              settings.forceLogin ? "left-6 bg-zinc-950" : "left-1 bg-zinc-400"
             }`}
           />
         </button>
@@ -208,7 +208,7 @@ export default function UsersManager({ users, settings, currentUsername }: Props
         <button
           type="submit"
           disabled={addPending}
-          className="self-start h-9 px-4 rounded-lg bg-white text-zinc-900 text-sm font-medium hover:bg-zinc-200 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          className="self-start h-9 px-4 rounded-lg bg-brand text-zinc-950 text-sm font-semibold hover:bg-brand/80 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
         >
           {addPending ? "Adding…" : "Add user"}
         </button>

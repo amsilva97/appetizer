@@ -127,7 +127,7 @@ function PageSettingsPopover({ page, availablePermissions, onClose, onUpdate, on
           value={label}
           onChange={(e) => setLabel(e.target.value)}
           onKeyDown={(e) => { if (e.key === "Enter") handleSave(); if (e.key === "Escape") onClose(); }}
-          className="h-8 px-3 text-sm text-zinc-100 bg-zinc-800 border border-zinc-700 rounded-lg focus:outline-none focus:ring-1 focus:ring-zinc-500"
+          className="h-8 px-3 text-sm text-zinc-100 bg-zinc-800 border border-zinc-700 rounded-lg focus:outline-none focus:ring-1 focus:ring-brand/50 focus:border-brand/50"
         />
       </div>
 
@@ -154,7 +154,7 @@ function PageSettingsPopover({ page, availablePermissions, onClose, onUpdate, on
       <div className="flex gap-2">
         <button
           onClick={handleSave}
-          className="flex-1 h-7 rounded-lg bg-white text-zinc-900 text-xs font-semibold hover:bg-zinc-200 transition-colors"
+          className="flex-1 h-7 rounded-lg bg-brand text-zinc-950 text-xs font-semibold hover:bg-brand/80 transition-colors"
         >
           Save
         </button>
@@ -213,7 +213,8 @@ export default function Toolbar({
   }
 
   return (
-    <div className="absolute top-0 left-0 right-0 z-20 h-12 bg-zinc-900/80 backdrop-blur-md border-b border-white/[0.06] flex items-center px-6 gap-4">
+    <div className="absolute top-0 left-0 right-0 z-20 h-12 bg-zinc-900/80 backdrop-blur-md border-b border-white/[0.06] flex items-center px-6 gap-4 overflow-visible">
+      <div className="absolute bottom-0 left-0 right-0 h-px bg-gradient-to-r from-brand via-brand-alt to-brand opacity-20 pointer-events-none" />
       <div className="shrink-0">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src="/mark.png" alt="Appetizer" className="h-8 w-auto" />
@@ -226,11 +227,11 @@ export default function Toolbar({
             const isActive = page.name === currentPage;
             return (
               <div key={page.name} className="relative shrink-0">
-                <div className={`flex items-center rounded-lg transition-all ${isActive ? "bg-white/[0.1]" : "hover:bg-white/[0.05]"}`}>
+                <div className={`flex items-center rounded-lg transition-all ${isActive ? "bg-brand/15" : "hover:bg-white/[0.05]"}`}>
                   <button
                     onClick={() => onPageChange?.(page.name)}
                     className={`h-8 px-3 text-xs font-medium transition-colors whitespace-nowrap ${
-                      isActive ? "text-zinc-100" : "text-zinc-500 hover:text-zinc-300"
+                      isActive ? "text-brand" : "text-zinc-500 hover:text-zinc-300"
                     }`}
                   >
                     {page.label}
@@ -292,7 +293,7 @@ export default function Toolbar({
             <button
               onClick={onToggleEdit}
               title={editMode ? "Stop editing" : "Edit"}
-              className={editMode ? "flex items-center justify-center w-9 h-9 rounded-xl border transition-all duration-200 bg-white text-zinc-900 border-white/[0.08]" : ICON_BTN}
+              className={editMode ? "flex items-center justify-center w-9 h-9 rounded-xl border transition-all duration-200 bg-gradient-to-br from-brand to-brand-alt text-zinc-950 border-transparent" : ICON_BTN}
             >
               <PencilIcon size={15} />
             </button>
