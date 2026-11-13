@@ -22,7 +22,7 @@ export default function WidgetPermissionsFields({ permissions, onChange, availab
       <div className="flex flex-col gap-3">
         <p className="text-xs text-zinc-500 leading-relaxed">
           No permissions defined yet.{" "}
-          <a href="/admin/permissions" className="text-zinc-400 underline hover:text-zinc-200 transition-colors">
+          <a href="/admin/permissions" className="text-brand hover:text-brand/80 transition-colors">
             Create some
           </a>{" "}
           to restrict who can see this widget.
@@ -48,12 +48,12 @@ export default function WidgetPermissionsFields({ permissions, onChange, availab
               onClick={() => toggle(p.id)}
               className={`w-4 h-4 rounded border shrink-0 flex items-center justify-center transition-colors cursor-pointer ${
                 permissions.includes(p.id)
-                  ? "bg-white border-white"
-                  : "border-zinc-600 group-hover:border-zinc-400"
+                  ? "bg-brand border-brand"
+                  : "border-zinc-600 group-hover:border-brand/50"
               }`}
             >
               {permissions.includes(p.id) && (
-                <svg width="10" height="10" viewBox="0 0 12 12" fill="none" stroke="#18181b" strokeWidth="2.5" strokeLinecap="round">
+                <svg width="10" height="10" viewBox="0 0 12 12" fill="none" stroke="#09090b" strokeWidth="2.5" strokeLinecap="round">
                   <path d="M2 6l3 3 5-5" />
                 </svg>
               )}

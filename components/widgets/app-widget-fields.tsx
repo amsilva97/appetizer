@@ -284,13 +284,13 @@ export default function AppWidgetFields({ value, onChange, keyNames = [], permis
                       value={h.key}
                       onChange={(e) => updateHeader(i, { key: e.target.value })}
                       placeholder="Header name"
-                      className="flex-1 min-w-0 bg-zinc-900 border border-zinc-800 rounded-lg px-3 py-1.5 text-xs text-zinc-200 placeholder-zinc-700 focus:outline-none focus:ring-1 focus:ring-zinc-700"
+                      className="flex-1 min-w-0 bg-zinc-900 border border-zinc-800 rounded-lg px-3 py-1.5 text-xs text-zinc-200 placeholder-zinc-700 focus:outline-none focus:ring-1 focus:ring-brand/40"
                     />
                     <input
                       value={h.value}
                       onChange={(e) => updateHeader(i, { value: e.target.value })}
                       placeholder="Value or {KEY}"
-                      className="flex-1 min-w-0 bg-zinc-900 border border-zinc-800 rounded-lg px-3 py-1.5 text-xs text-zinc-200 placeholder-zinc-700 focus:outline-none focus:ring-1 focus:ring-zinc-700"
+                      className="flex-1 min-w-0 bg-zinc-900 border border-zinc-800 rounded-lg px-3 py-1.5 text-xs text-zinc-200 placeholder-zinc-700 focus:outline-none focus:ring-1 focus:ring-brand/40"
                     />
                     <button
                       onClick={() => removeHeader(i)}
@@ -318,7 +318,7 @@ export default function AppWidgetFields({ value, onChange, keyNames = [], permis
                   placeholder={"// body is the parsed JSON response\nbody.items"}
                   spellCheck={false}
                   rows={5}
-                  className="w-full font-mono text-[11px] leading-relaxed bg-zinc-950 text-zinc-200 rounded-xl p-3 border border-zinc-800 resize-none focus:outline-none focus:ring-1 focus:ring-zinc-700"
+                  className="w-full font-mono text-[11px] leading-relaxed bg-zinc-950 text-zinc-200 rounded-xl p-3 border border-zinc-800 resize-none focus:outline-none focus:ring-1 focus:ring-brand/40"
                 />
               </div>
 
@@ -349,7 +349,7 @@ export default function AppWidgetFields({ value, onChange, keyNames = [], permis
             value={yaml}
             onChange={(e) => handleYaml(e.target.value)}
             spellCheck={false}
-            className="w-full h-56 font-mono text-[11px] leading-relaxed bg-zinc-950 text-zinc-200 rounded-xl p-3 border border-zinc-800 resize-none focus:outline-none focus:ring-1 focus:ring-zinc-700"
+            className="w-full h-56 font-mono text-[11px] leading-relaxed bg-zinc-950 text-zinc-200 rounded-xl p-3 border border-zinc-800 resize-none focus:outline-none focus:ring-1 focus:ring-brand/40"
           />
           {yamlErr && (
             <div className="flex gap-2 px-3 py-2 bg-red-500/10 border border-red-500/30 rounded-lg">

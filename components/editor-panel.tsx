@@ -229,7 +229,7 @@ export default function EditorPanel({
           onClick={handleSave}
           disabled={!hasChanges}
           className="flex-1 py-2 text-xs font-semibold rounded-lg transition-colors
-            enabled:bg-emerald-600 enabled:text-white enabled:hover:bg-emerald-500
+            enabled:bg-brand enabled:text-zinc-950 enabled:hover:bg-brand/80
             disabled:bg-zinc-800 disabled:text-zinc-600 disabled:cursor-not-allowed"
         >
           Save

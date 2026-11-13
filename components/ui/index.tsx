@@ -29,8 +29,8 @@ export function Field({
 
 const BASE_INPUT =
   "w-full h-9 px-3 text-sm text-zinc-100 bg-zinc-800 border border-zinc-700 rounded-lg " +
-  "placeholder:text-zinc-600 focus:outline-none focus:ring-2 focus:ring-white/[0.08] " +
-  "focus:border-zinc-500 transition-colors";
+  "placeholder:text-zinc-600 focus:outline-none focus:ring-2 focus:ring-brand/25 " +
+  "focus:border-brand/50 transition-colors";
 
 // ─── Text input ───────────────────────────────────────────────────────────────
 
@@ -82,7 +82,7 @@ export function TextArea({
         placeholder={placeholder}
         rows={rows}
         onChange={(e) => onChange(e.target.value)}
-        className="w-full px-3 py-2.5 text-sm text-zinc-100 bg-zinc-800 border border-zinc-700 rounded-lg placeholder:text-zinc-600 focus:outline-none focus:ring-2 focus:ring-white/[0.08] focus:border-zinc-500 transition-colors resize-none leading-relaxed"
+        className="w-full px-3 py-2.5 text-sm text-zinc-100 bg-zinc-800 border border-zinc-700 rounded-lg placeholder:text-zinc-600 focus:outline-none focus:ring-2 focus:ring-brand/25 focus:border-brand/50 transition-colors resize-none leading-relaxed"
       />
     </Field>
   );
@@ -125,7 +125,7 @@ export function Select({
       <select
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="w-full h-9 appearance-none pl-3 pr-9 text-sm text-zinc-200 bg-zinc-800 border border-zinc-700 rounded-lg cursor-pointer focus:outline-none focus:ring-2 focus:ring-white/[0.08] focus:border-zinc-500 transition-colors"
+        className="w-full h-9 appearance-none pl-3 pr-9 text-sm text-zinc-200 bg-zinc-800 border border-zinc-700 rounded-lg cursor-pointer focus:outline-none focus:ring-2 focus:ring-brand/25 focus:border-brand/50 transition-colors"
       >
         {placeholder && <option value="">{placeholder}</option>}
         {options.map((o) => (
@@ -185,7 +185,7 @@ export function SliderRow({
           step={step}
           value={value}
           onChange={(e) => onChange(Number(e.target.value))}
-          className="flex-1 cursor-pointer accent-zinc-300"
+          className="flex-1 cursor-pointer accent-brand"
         />
         {rightLabel && (
           <span className="text-[10px] text-zinc-600 w-7 shrink-0 text-right">{rightLabel}</span>
@@ -291,7 +291,7 @@ export function Toggle({
     <label className="flex items-center gap-3 cursor-pointer">
       <div
         className={`relative w-9 h-5 rounded-full transition-colors duration-200 shrink-0 ${
-          checked ? "bg-zinc-200" : "bg-zinc-700"
+          checked ? "bg-brand" : "bg-zinc-700"
         }`}
       >
         <input
@@ -302,7 +302,7 @@ export function Toggle({
         />
         <div
           className={`absolute top-0.5 left-0.5 w-4 h-4 rounded-full shadow-sm transition-transform duration-200 ${
-            checked ? "translate-x-4 bg-zinc-900" : "translate-x-0 bg-zinc-400"
+            checked ? "translate-x-4 bg-zinc-950" : "translate-x-0 bg-zinc-400"
           }`}
         />
       </div>
@@ -336,7 +336,7 @@ export function TabBar<T extends string>({
           onClick={() => onChange(t.id)}
           className={`flex-1 py-1.5 text-xs font-semibold rounded-md transition-all duration-150 ${
             active === t.id
-              ? "bg-zinc-700 text-zinc-100 shadow-sm"
+              ? "bg-brand/15 text-brand shadow-sm"
               : "text-zinc-500 hover:text-zinc-300"
           }`}
         >
