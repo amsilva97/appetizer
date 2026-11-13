@@ -1,7 +1,28 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import type { AppWidgetConfig } from "@/types/app-widget";
+import { useEffect, useRef, useState } from "react";
+import DOMPurify from "dompurify";
+import type { AppWidgetConfig, AppFeedConfig } from "@/types/app-widget";
+
+const FEED_SANITIZE: DOMPurify.Config = {
+  ALLOWED_TAGS: [
+    "h1","h2","h3","h4","h5","h6",
+    "p","span","div","section",
+    "ul","ol","li",
+    "table","thead","tbody","tfoot","tr","th","td",
+    "strong","em","b","i","u","s",
+    "code","pre","blockquote",
+    "br","hr","small","sup","sub",
+    "dl","dt","dd","mark",
+  ],
+  ALLOWED_ATTR: ["class", "style"],
+  FORCE_BODY: true,
+};
+
+function sanitizeFeedHtml(html: string): string {
+  if (typeof window === "undefined") return "";
+  return DOMPurify.sanitize(html, FEED_SANITIZE as Parameters<typeof DOMPurify.sanitize>[1]) as string;
+}
 
 // ─── Ping hook ────────────────────────────────────────────────────────────────
 
@@ -36,6 +57,64 @@ function usePing(url: string | undefined, intervalSec: number): PingStatus | nul
   return url ? status : null;
 }
 
+// ─── Feed hook ─────────────────────────────────────────────────────────────────
+
+type FeedStatus = "idle" | "loading" | "ok" | "error";
+
+function useFeed(feed: AppFeedConfig | undefined) {
+  const [data, setData] = useState<unknown[] | string>([]);
+  const [status, setStatus] = useState<FeedStatus>("idle");
+  const hasLoadedRef = useRef(false);
+  const abortRef = useRef<AbortController | null>(null);
+
+  useEffect(() => {
+    if (!feed || feed.method === "none") return;
+
+    async function poll() {
+      if (document.visibilityState === "hidden") return;
+      abortRef.current?.abort();
+      const ctrl = new AbortController();
+      abortRef.current = ctrl;
+      setStatus("loading");
+      try {
+        const res = await fetch("/api/feed/run", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            url: feed!.url,
+            headers: Object.fromEntries(
+              feed!.headers.filter((h) => h.key.trim()).map((h) => [h.key, h.value])
+            ),
+            transform: feed!.transform || undefined,
+          }),
+          signal: ctrl.signal,
+        });
+        const json = (await res.json()) as { data?: unknown[]; error?: string };
+        if (!res.ok || json.error) {
+          setStatus("error");
+        } else {
+          hasLoadedRef.current = true;
+          setData(json.data ?? []);
+          setStatus("ok");
+        }
+      } catch (err) {
+        if ((err as Error).name !== "AbortError") setStatus("error");
+      }
+    }
+
+    poll();
+    const id = setInterval(poll, Math.max(feed.pollInterval, 10) * 1000);
+    document.addEventListener("visibilitychange", poll);
+    return () => {
+      clearInterval(id);
+      document.removeEventListener("visibilitychange", poll);
+      abortRef.current?.abort();
+    };
+  }, [feed]);
+
+  return { data, status, hasLoaded: hasLoadedRef.current };
+}
+
 // ─── Shared atoms ─────────────────────────────────────────────────────────────
 
 const PALETTE = [
@@ -52,6 +131,21 @@ function Dot({ status }: { status: PingStatus }) {
     status === "checking" ? "bg-white/40 animate-pulse" :
     status === "online"   ? "bg-emerald-400" : "bg-red-400";
   return <span className={`inline-block w-1.5 h-1.5 rounded-full shrink-0 ${cls}`} />;
+}
+
+function SpinnerIcon() {
+  return (
+    <svg className="animate-spin" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+      <path d="M21 12a9 9 0 1 1-6.219-8.56" />
+    </svg>
+  );
+}
+
+function renderValue(v: unknown): string {
+  if (v === null || v === undefined) return "";
+  if (typeof v === "string") return v;
+  if (typeof v === "number" || typeof v === "boolean") return String(v);
+  return JSON.stringify(v);
 }
 
 // ─── Icon atom ────────────────────────────────────────────────────────────────
@@ -90,6 +184,7 @@ interface Props {
 export default function AppWidget({ config, onClick, fillAxis }: Props) {
   const pingUrl = config.ping ? (config.pingUrl || config.url) || undefined : undefined;
   const ping = usePing(pingUrl, config.pingInterval);
+  const { data: feedData, status: feedStatus, hasLoaded: feedHasLoaded } = useFeed(config.feed);
 
   const { logoView, openUrl } = config;
   const [coverErr, setCoverErr] = useState(false);
@@ -99,12 +194,16 @@ export default function AppWidget({ config, onClick, fillAxis }: Props) {
   const borderRadius = config.borderRadius ?? 16;
   const iconTransform = `scale(${config.iconZoom ?? 1}) translate(${config.iconOffsetX ?? 0}%, ${config.iconOffsetY ?? 0}%)`;
 
+  const hasActiveFeed = config.feed && config.feed.method !== "none";
+  const feedHeight = config.feed?.height ?? 200;
+
   const cardW = fillAxis === "width"
     ? `calc(100% - ${margin * 2}px)`
     : config.width;
+
   const cardH = fillAxis === "height"
     ? `calc(100% - ${margin * 2}px)`
-    : config.height;
+    : hasActiveFeed ? undefined : config.height;
 
   const handleClick = openUrl ? onClick : undefined;
   const cursor = openUrl ? "cursor-pointer" : "cursor-default";
@@ -118,7 +217,7 @@ export default function AppWidget({ config, onClick, fillAxis }: Props) {
       <div
         title={tooltip}
         className={`relative select-none overflow-hidden border border-white/10 shadow-xl shadow-black/40 ${cursor} transition-all duration-150 hover:border-white/20`}
-        style={cardStyle}
+        style={{ ...cardStyle, height: config.height }}
         onClick={handleClick}
       >
         {config.logoUrl && !coverErr ? (
@@ -157,11 +256,15 @@ export default function AppWidget({ config, onClick, fillAxis }: Props) {
   return (
     <div
       title={tooltip}
-      className={`relative select-none overflow-hidden border border-white/10 bg-white/[0.07] backdrop-blur-xl shadow-xl shadow-black/30 ${cursor} transition-all duration-150 hover:bg-white/[0.11] hover:border-white/18`}
+      className={`relative select-none overflow-hidden border border-white/10 bg-white/[0.07] backdrop-blur-xl shadow-xl shadow-black/30 flex flex-col ${cursor} transition-all duration-150 hover:bg-white/[0.11] hover:border-white/18`}
       style={cardStyle}
       onClick={handleClick}
     >
-      <div className="flex items-center gap-3 h-full" style={{ paddingLeft: padding, paddingRight: padding }}>
+      {/* App header row */}
+      <div
+        className="flex items-center gap-3 shrink-0"
+        style={{ height: config.height, paddingLeft: padding, paddingRight: padding }}
+      >
         {logoView === "icon" && (
           <AppIcon url={config.logoUrl} title={config.title} />
         )}
@@ -177,7 +280,60 @@ export default function AppWidget({ config, onClick, fillAxis }: Props) {
             <p className="text-[11px] text-white/50 truncate mt-0.5">{config.subtitle}</p>
           )}
         </div>
+
+        {hasActiveFeed && feedStatus === "loading" && (
+          <span className="text-zinc-600 shrink-0"><SpinnerIcon /></span>
+        )}
       </div>
+
+      {/* Feed section — overflow hidden so % sizing resolves inside */}
+      {hasActiveFeed && (
+        <div
+          className="border-t border-white/[0.08] overflow-hidden relative"
+          style={{ height: feedHeight }}
+        >
+          {feedStatus === "error" && (
+            <p className="p-3 text-xs text-red-400">Failed to load feed.</p>
+          )}
+          {(feedStatus === "ok" || (feedStatus === "loading" && feedHasLoaded)) && typeof feedData === "string" && (
+            <div
+              className="w-full h-full text-xs text-zinc-200 leading-relaxed
+                [&_h1]:text-sm [&_h1]:font-bold [&_h1]:text-zinc-100 [&_h1]:mb-1
+                [&_h2]:text-xs [&_h2]:font-semibold [&_h2]:text-zinc-200 [&_h2]:mb-1
+                [&_h3]:text-xs [&_h3]:font-semibold [&_h3]:text-zinc-300
+                [&_p]:mb-1 [&_ul]:list-disc [&_ul]:pl-4 [&_ol]:list-decimal [&_ol]:pl-4
+                [&_li]:mb-0.5 [&_table]:w-full [&_table]:text-left
+                [&_th]:text-zinc-400 [&_th]:font-medium [&_th]:pb-1
+                [&_td]:py-0.5 [&_td]:pr-3
+                [&_hr]:border-white/10 [&_hr]:my-2
+                [&_code]:bg-white/[0.06] [&_code]:px-1 [&_code]:rounded
+                [&_pre]:bg-white/[0.06] [&_pre]:p-2 [&_pre]:rounded [&_pre]:overflow-x-auto
+                [&_strong]:text-zinc-100 [&_mark]:bg-yellow-400/20 [&_mark]:text-yellow-200"
+              dangerouslySetInnerHTML={{ __html: sanitizeFeedHtml(feedData) }}
+            />
+          )}
+          {(feedStatus === "ok" || (feedStatus === "loading" && feedHasLoaded)) && Array.isArray(feedData) && feedData.length === 0 && (
+            <p className="p-3 text-xs text-zinc-600">No items.</p>
+          )}
+          {(feedStatus === "ok" || (feedStatus === "loading" && feedHasLoaded)) && Array.isArray(feedData) && feedData.length > 0 && (
+            <div className="w-full h-full overflow-y-auto">
+              <ul className="divide-y divide-white/[0.04]">
+                {feedData.map((item, i) => {
+                  const obj = item && typeof item === "object" ? (item as Record<string, unknown>) : null;
+                  const title = obj ? renderValue(obj.title ?? obj.name ?? obj.label) : renderValue(item);
+                  const subtitle = obj ? renderValue(obj.subtitle ?? obj.status ?? obj.description ?? "") : "";
+                  return (
+                    <li key={i} className="px-3 py-2">
+                      <p className="text-xs text-zinc-200 truncate">{title || JSON.stringify(item)}</p>
+                      {subtitle && <p className="text-[10px] text-zinc-500 truncate mt-0.5">{subtitle}</p>}
+                    </li>
+                  );
+                })}
+              </ul>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }
