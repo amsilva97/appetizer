@@ -276,10 +276,23 @@ The feed runs as a server-side proxy: the browser posts the config to `/api/feed
   ).join("")}</table>`
   ```
 
-  When returning HTML, all `<a>` tags, `href` and `src` attributes, and event handlers are stripped server-side by DOMPurify. The feed displays data only — it cannot navigate or execute code.
+  When returning HTML, all `<a>` tags, `href` and `src` attributes, and event handlers are stripped by DOMPurify. The feed displays data only — it cannot navigate or execute code. `style` attributes are allowed so you can apply inline CSS.
+
+  The feed container is `overflow: hidden` — it clips its content rather than scrolling itself. If you want the content to scroll, add an `overflow-y: auto` wrapper in your HTML. Because the container has an explicit pixel height, `height: 100%` and `width: 100%` resolve correctly inside it:
+
+  ```js
+  `<div style="width:100%;height:100%;overflow-y:auto;padding:12px">
+    <table style="width:100%;border-collapse:collapse">
+      ${body.records.map(r =>
+        `<tr><td style="padding:4px 8px">${r.title}</td>
+             <td style="padding:4px 8px;color:#a1a1aa">${r.status}</td></tr>`
+      ).join("")}
+    </table>
+  </div>`
+  ```
 
 - **Poll every** — how often to re-fetch, in seconds, 10–300. Polling pauses automatically when the tab is hidden.
-- **Feed height** — height of the feed panel in pixels, 80–600.
+- **Feed height** — height of the feed panel in pixels, 80–600. The panel clips content at this height; scrolling is opt-in via your HTML.
 
 **YAML tab** — directly edit the config as YAML.
 
@@ -493,9 +506,9 @@ config:
 | `feed.method` | `none` \| `GET` | `none` | — | `none` shows no feed; `GET` fetches and displays data below the header row. |
 | `feed.url` | string | `""` | — | Endpoint URL. Must be `http://` or `https://`. |
 | `feed.headers` | array | `[]` | — | List of `{ key, value }` pairs. Use `{KEY_NAME}` in values to inject secrets server-side. |
-| `feed.transform` | string | `""` | — | JS expression receiving `body` (parsed JSON). Must return an array. 2-second execution timeout. |
+| `feed.transform` | string | `""` | — | JS expression receiving `body` (parsed JSON). Must return an array or an HTML string. 2-second execution timeout. |
 | `feed.pollInterval` | number | `30` | 10–300 | Seconds between polls. Pauses when the tab is hidden. |
-| `feed.height` | number | `200` | 80–600 | Height of the feed list section in pixels. |
+| `feed.height` | number | `200` | 80–600 | Height of the feed panel in pixels. Content is clipped; add `overflow-y:auto` in your HTML to scroll. |
 
 ---
 

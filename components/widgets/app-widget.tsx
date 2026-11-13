@@ -15,7 +15,7 @@ const FEED_SANITIZE: DOMPurify.Config = {
     "br","hr","small","sup","sub",
     "dl","dt","dd","mark",
   ],
-  ALLOWED_ATTR: ["class"],
+  ALLOWED_ATTR: ["class", "style"],
   FORCE_BODY: true,
 };
 
@@ -284,10 +284,10 @@ export default function AppWidget({ config, onClick, fillAxis }: Props) {
         )}
       </div>
 
-      {/* Feed section */}
+      {/* Feed section — overflow hidden so % sizing resolves inside */}
       {hasActiveFeed && (
         <div
-          className="border-t border-white/[0.08] overflow-y-auto"
+          className="border-t border-white/[0.08] overflow-hidden relative"
           style={{ height: feedHeight }}
         >
           {feedStatus === "error" && (
@@ -295,7 +295,7 @@ export default function AppWidget({ config, onClick, fillAxis }: Props) {
           )}
           {feedStatus === "ok" && typeof feedData === "string" && (
             <div
-              className="p-3 text-xs text-zinc-200 leading-relaxed
+              className="w-full h-full text-xs text-zinc-200 leading-relaxed
                 [&_h1]:text-sm [&_h1]:font-bold [&_h1]:text-zinc-100 [&_h1]:mb-1
                 [&_h2]:text-xs [&_h2]:font-semibold [&_h2]:text-zinc-200 [&_h2]:mb-1
                 [&_h3]:text-xs [&_h3]:font-semibold [&_h3]:text-zinc-300
@@ -314,19 +314,21 @@ export default function AppWidget({ config, onClick, fillAxis }: Props) {
             <p className="p-3 text-xs text-zinc-600">No items.</p>
           )}
           {feedStatus === "ok" && Array.isArray(feedData) && feedData.length > 0 && (
-            <ul className="divide-y divide-white/[0.04]">
-              {feedData.map((item, i) => {
-                const obj = item && typeof item === "object" ? (item as Record<string, unknown>) : null;
-                const title = obj ? renderValue(obj.title ?? obj.name ?? obj.label) : renderValue(item);
-                const subtitle = obj ? renderValue(obj.subtitle ?? obj.status ?? obj.description ?? "") : "";
-                return (
-                  <li key={i} className="px-3 py-2">
-                    <p className="text-xs text-zinc-200 truncate">{title || JSON.stringify(item)}</p>
-                    {subtitle && <p className="text-[10px] text-zinc-500 truncate mt-0.5">{subtitle}</p>}
-                  </li>
-                );
-              })}
-            </ul>
+            <div className="w-full h-full overflow-y-auto">
+              <ul className="divide-y divide-white/[0.04]">
+                {feedData.map((item, i) => {
+                  const obj = item && typeof item === "object" ? (item as Record<string, unknown>) : null;
+                  const title = obj ? renderValue(obj.title ?? obj.name ?? obj.label) : renderValue(item);
+                  const subtitle = obj ? renderValue(obj.subtitle ?? obj.status ?? obj.description ?? "") : "";
+                  return (
+                    <li key={i} className="px-3 py-2">
+                      <p className="text-xs text-zinc-200 truncate">{title || JSON.stringify(item)}</p>
+                      {subtitle && <p className="text-[10px] text-zinc-500 truncate mt-0.5">{subtitle}</p>}
+                    </li>
+                  );
+                })}
+              </ul>
+            </div>
           )}
         </div>
       )}
