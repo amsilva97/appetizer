@@ -64,6 +64,7 @@ type FeedStatus = "idle" | "loading" | "ok" | "error";
 function useFeed(feed: AppFeedConfig | undefined) {
   const [data, setData] = useState<unknown[] | string>([]);
   const [status, setStatus] = useState<FeedStatus>("idle");
+  const hasLoadedRef = useRef(false);
   const abortRef = useRef<AbortController | null>(null);
 
   useEffect(() => {
@@ -92,6 +93,7 @@ function useFeed(feed: AppFeedConfig | undefined) {
         if (!res.ok || json.error) {
           setStatus("error");
         } else {
+          hasLoadedRef.current = true;
           setData(json.data ?? []);
           setStatus("ok");
         }
@@ -110,7 +112,7 @@ function useFeed(feed: AppFeedConfig | undefined) {
     };
   }, [feed]);
 
-  return { data, status };
+  return { data, status, hasLoaded: hasLoadedRef.current };
 }
 
 // ─── Shared atoms ─────────────────────────────────────────────────────────────
@@ -182,7 +184,7 @@ interface Props {
 export default function AppWidget({ config, onClick, fillAxis }: Props) {
   const pingUrl = config.ping ? (config.pingUrl || config.url) || undefined : undefined;
   const ping = usePing(pingUrl, config.pingInterval);
-  const { data: feedData, status: feedStatus } = useFeed(config.feed);
+  const { data: feedData, status: feedStatus, hasLoaded: feedHasLoaded } = useFeed(config.feed);
 
   const { logoView, openUrl } = config;
   const [coverErr, setCoverErr] = useState(false);
@@ -293,7 +295,7 @@ export default function AppWidget({ config, onClick, fillAxis }: Props) {
           {feedStatus === "error" && (
             <p className="p-3 text-xs text-red-400">Failed to load feed.</p>
           )}
-          {feedStatus === "ok" && typeof feedData === "string" && (
+          {(feedStatus === "ok" || (feedStatus === "loading" && feedHasLoaded)) && typeof feedData === "string" && (
             <div
               className="w-full h-full text-xs text-zinc-200 leading-relaxed
                 [&_h1]:text-sm [&_h1]:font-bold [&_h1]:text-zinc-100 [&_h1]:mb-1
@@ -310,10 +312,10 @@ export default function AppWidget({ config, onClick, fillAxis }: Props) {
               dangerouslySetInnerHTML={{ __html: sanitizeFeedHtml(feedData) }}
             />
           )}
-          {feedStatus === "ok" && Array.isArray(feedData) && feedData.length === 0 && (
+          {(feedStatus === "ok" || (feedStatus === "loading" && feedHasLoaded)) && Array.isArray(feedData) && feedData.length === 0 && (
             <p className="p-3 text-xs text-zinc-600">No items.</p>
           )}
-          {feedStatus === "ok" && Array.isArray(feedData) && feedData.length > 0 && (
+          {(feedStatus === "ok" || (feedStatus === "loading" && feedHasLoaded)) && Array.isArray(feedData) && feedData.length > 0 && (
             <div className="w-full h-full overflow-y-auto">
               <ul className="divide-y divide-white/[0.04]">
                 {feedData.map((item, i) => {
