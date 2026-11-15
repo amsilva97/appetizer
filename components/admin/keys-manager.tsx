@@ -6,16 +6,46 @@ import { addKeyAction, deleteKeyAction, type KeyActionState } from "@/app/admin/
 const INITIAL: KeyActionState = {};
 
 const INPUT =
-  "w-full h-9 px-3 text-sm text-zinc-100 bg-zinc-800 border border-zinc-700 rounded-lg " +
-  "placeholder:text-zinc-600 focus:outline-none focus:ring-2 focus:ring-brand/25 " +
+  "w-full h-10 px-3 text-sm text-fg bg-surface-2 border border-line rounded-lg " +
+  "placeholder:text-fg-subtle focus:outline-none focus:ring-2 focus:ring-brand/25 " +
   "focus:border-brand/50 transition-colors";
 
 function TrashIcon() {
   return (
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
       <polyline points="3 6 5 6 21 6" />
       <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2" />
     </svg>
+  );
+}
+
+function LockIcon() {
+  return (
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+      <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+    </svg>
+  );
+}
+
+function KeyEmptyIcon() {
+  return (
+    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="7.5" cy="15.5" r="5.5" />
+      <path d="M21 2l-9.6 9.6" />
+      <path d="M15.5 7.5l3 3L22 7l-3-3" />
+    </svg>
+  );
+}
+
+function Panel({ heading, children }: { heading: string; children: React.ReactNode }) {
+  return (
+    <div className="rounded-xl bg-surface/80 backdrop-blur border border-line overflow-hidden">
+      <div className="px-6 py-4 border-b border-line">
+        <p className="text-base font-semibold text-fg">{heading}</p>
+      </div>
+      {children}
+    </div>
   );
 }
 
@@ -32,7 +62,7 @@ function DeleteKeyForm({ name }: { name: string }) {
         type="submit"
         disabled={pending}
         title={`Delete ${name}`}
-        className="flex items-center justify-center w-7 h-7 rounded-lg text-zinc-500 hover:text-red-400 hover:bg-red-500/10 disabled:opacity-40 transition-colors"
+        className="flex items-center justify-center w-8 h-8 rounded-md text-fg-subtle hover:text-danger hover:bg-danger/10 disabled:opacity-40 transition-colors"
       >
         <TrashIcon />
       </button>
@@ -44,51 +74,74 @@ export default function KeysManager({ keyNames }: Props) {
   const [addState, addAction, addPending] = useActionState(addKeyAction, INITIAL);
 
   return (
-    <div className="flex flex-col gap-6 max-w-lg">
-      <div className="flex flex-col gap-2">
-        <h2 className="text-sm font-semibold text-zinc-300">Stored keys</h2>
+    <>
+      <div className="flex gap-3 items-start px-4 py-3.5 rounded-lg bg-brand/5 border border-brand/20 text-sm">
+        <span className="text-brand shrink-0 mt-0.5"><LockIcon /></span>
+        <p className="text-fg-muted">
+          Key values are <strong className="text-fg font-medium">write-only</strong> — they can never be read back once saved. Store your keys safely elsewhere before adding them here.
+        </p>
+      </div>
+
+      <Panel heading="Stored keys">
         {keyNames.length === 0 ? (
-          <p className="text-sm text-zinc-500">No keys yet.</p>
+          <div className="px-6 py-10 text-center">
+            <div className="flex justify-center mb-3 text-fg-subtle">
+              <KeyEmptyIcon />
+            </div>
+            <p className="text-sm font-medium text-fg-muted">No keys stored yet</p>
+            <p className="text-xs text-fg-subtle mt-1">Add an API key to reference it in feed source headers.</p>
+          </div>
         ) : (
-          <ul className="flex flex-col divide-y divide-zinc-800 border border-zinc-800 rounded-xl overflow-hidden">
+          <ul>
             {keyNames.map((name) => (
-              <li key={name} className="flex items-center justify-between px-4 py-2.5 bg-zinc-900">
-                <span className="text-sm font-mono text-zinc-200">{name}</span>
+              <li
+                key={name}
+                className="flex items-center justify-between px-6 py-3.5 border-b border-line last:border-0"
+              >
+                <div>
+                  <span className="text-sm font-mono font-medium text-fg">{name}</span>
+                  <p className="text-xs text-fg-subtle mt-0.5">••••••••</p>
+                </div>
                 <DeleteKeyForm name={name} />
               </li>
             ))}
           </ul>
         )}
-      </div>
+      </Panel>
 
-      <form action={addAction} className="flex flex-col gap-3">
-        <h2 className="text-sm font-semibold text-zinc-300">Add key</h2>
+      <Panel heading="Add key">
+        <form action={addAction} className="px-6 py-5 flex flex-col gap-4 max-w-sm">
+          {addState.error && (
+            <p className="text-sm text-danger bg-danger/10 border border-danger/20 rounded-lg px-4 py-2.5">
+              {addState.error}
+            </p>
+          )}
 
-        {addState.error && (
-          <p className="text-xs text-red-400 bg-red-500/10 border border-red-500/20 rounded-lg px-3 py-2">
-            {addState.error}
-          </p>
-        )}
+          <div className="flex flex-col gap-1.5">
+            <label className="text-sm font-medium text-fg-muted">Name</label>
+            <input name="name" type="text" placeholder="SONARR_KEY" className={INPUT} />
+            <p className="text-xs text-fg-subtle">
+              Uppercase letters, digits, and underscores. Reference with{" "}
+              <code className="font-mono text-fg-muted">{"{KEY_NAME}"}</code> in feed headers.
+            </p>
+          </div>
 
-        <div className="flex flex-col gap-1">
-          <p className="text-[11px] font-semibold uppercase tracking-wider text-zinc-500">Name</p>
-          <input name="name" type="text" placeholder="SONARR_KEY" className={INPUT} />
-          <p className="text-[11px] text-zinc-600">Uppercase letters, digits, and underscores. Reference with {"{NAME}"} in headers.</p>
-        </div>
+          <div className="flex flex-col gap-1.5">
+            <label className="text-sm font-medium text-fg-muted">Value</label>
+            <input name="value" type="password" placeholder="••••••••" className={INPUT} />
+          </div>
 
-        <div className="flex flex-col gap-1">
-          <p className="text-[11px] font-semibold uppercase tracking-wider text-zinc-500">Value</p>
-          <input name="value" type="password" placeholder="••••••••" className={INPUT} />
-        </div>
-
-        <button
-          type="submit"
-          disabled={addPending}
-          className="self-start h-9 px-4 rounded-lg bg-brand text-zinc-950 text-sm font-semibold hover:bg-brand/80 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-        >
-          {addPending ? "Adding…" : "Add key"}
-        </button>
-      </form>
-    </div>
+          <div className="pt-1">
+            <button
+              type="submit"
+              disabled={addPending}
+              className="h-9 px-4 rounded-lg bg-brand text-zinc-950 text-sm font-medium hover:bg-brand/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            >
+              {addPending ? "Adding…" : "Add key"}
+            </button>
+          </div>
+        </form>
+      </Panel>
+    </>
   );
 }
