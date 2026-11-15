@@ -12,13 +12,14 @@ import {
 } from "@/app/admin/permissions/actions";
 import type { PermissionsConfig, Permission, Role } from "@/types/permissions";
 import type { AppUser } from "@/lib/auth/users";
+import { Button } from "@/components/ui/button";
 
 const INITIAL: PermissionActionState = {};
 
 const INPUT =
-  "w-full h-10 px-3 text-sm text-fg bg-surface-2 border border-line rounded-lg " +
-  "placeholder:text-fg-subtle focus:outline-none focus:ring-2 focus:ring-brand/25 " +
-  "focus:border-brand/50 transition-colors";
+  "w-full h-9 px-3 text-sm text-fg bg-surface-2 border border-line rounded-lg " +
+  "placeholder:text-fg-subtle focus:outline-none focus:ring-2 focus:ring-brand/20 " +
+  "focus:border-brand/60 transition-colors";
 
 function TrashIcon() {
   return (
@@ -43,7 +44,7 @@ function ChevronIcon({ open }: { open: boolean }) {
 
 function Panel({ heading, subheading, children }: { heading: string; subheading?: string; children: React.ReactNode }) {
   return (
-    <div className="rounded-xl bg-surface/80 backdrop-blur border border-line overflow-hidden">
+    <div className="rounded-xl bg-surface border border-line overflow-hidden">
       <div className="px-6 py-4 border-b border-line">
         <p className="text-base font-semibold text-fg">{heading}</p>
         {subheading && <p className="text-sm text-fg-muted mt-0.5">{subheading}</p>}
@@ -58,7 +59,7 @@ function Panel({ heading, subheading, children }: { heading: string; subheading?
 function PermissionRow({ perm }: { perm: Permission }) {
   const [state, action, pending] = useActionState(deletePermissionAction, INITIAL);
   return (
-    <li className="flex items-center gap-4 px-6 py-3.5 border-b border-line last:border-0">
+    <li className="flex items-center gap-4 px-6 py-3.5 border-b border-line last:border-0 hover:bg-white/[0.02]">
       <div className="flex-1 min-w-0">
         <p className="text-sm font-medium text-fg">{perm.label}</p>
         <p className="text-xs font-mono text-fg-subtle mt-0.5">{perm.id}</p>
@@ -68,7 +69,7 @@ function PermissionRow({ perm }: { perm: Permission }) {
         <button
           type="submit"
           disabled={pending}
-          className="flex items-center justify-center w-8 h-8 rounded-md text-fg-subtle hover:text-danger hover:bg-danger/10 disabled:opacity-30 transition-colors"
+          className="flex items-center justify-center size-8 rounded-md text-fg-subtle hover:text-danger hover:bg-danger/10 disabled:opacity-30 transition-colors"
         >
           <TrashIcon />
         </button>
@@ -91,7 +92,7 @@ function PermissionsSection({ permissions }: { permissions: Permission[] }) {
           {permissions.map((p) => <PermissionRow key={p.id} perm={p} />)}
         </ul>
       )}
-      <form action={action} className="px-6 py-5 flex flex-col gap-4 max-w-sm">
+      <form action={action} className="p-6 flex flex-col gap-4 max-w-sm">
         {permissions.length === 0 && (
           <p className="text-sm text-fg-subtle">No permissions defined yet.</p>
         )}
@@ -102,23 +103,19 @@ function PermissionsSection({ permissions }: { permissions: Permission[] }) {
           <p className="text-sm text-success bg-success/10 border border-success/20 rounded-lg px-4 py-2.5">{state.success}</p>
         )}
         <div className="flex flex-col gap-1.5">
-          <label className="text-sm font-medium text-fg-muted">Label</label>
+          <label className="text-sm font-medium text-fg">Label</label>
           <input name="label" type="text" placeholder="Media Access" className={INPUT} />
         </div>
         <div className="flex flex-col gap-1.5">
-          <label className="text-sm font-medium text-fg-muted">
+          <label className="text-sm font-medium text-fg">
             ID <span className="text-fg-subtle font-normal">(optional — auto-generated from label)</span>
           </label>
           <input name="id" type="text" placeholder="media-access" className={INPUT} />
         </div>
         <div className="pt-1">
-          <button
-            type="submit"
-            disabled={pending}
-            className="h-9 px-4 rounded-lg bg-brand text-zinc-950 text-sm font-medium hover:bg-brand/90 disabled:opacity-50 transition-colors"
-          >
+          <Button type="submit" disabled={pending}>
             {pending ? "Adding…" : "Add permission"}
-          </button>
+          </Button>
         </div>
       </form>
     </Panel>
@@ -134,7 +131,7 @@ function RoleRow({ role, allPermissions }: { role: Role; allPermissions: Permiss
 
   return (
     <li className="border-b border-line last:border-0">
-      <div className="flex items-center gap-4 px-6 py-3.5">
+      <div className="flex items-center gap-4 px-6 py-3.5 hover:bg-white/[0.02]">
         <button
           onClick={() => setOpen((o) => !o)}
           className="flex items-center gap-3 flex-1 min-w-0 text-left"
@@ -153,7 +150,7 @@ function RoleRow({ role, allPermissions }: { role: Role; allPermissions: Permiss
           <button
             type="submit"
             disabled={deletePending}
-            className="flex items-center justify-center w-8 h-8 rounded-md text-fg-subtle hover:text-danger hover:bg-danger/10 disabled:opacity-30 transition-colors"
+            className="flex items-center justify-center size-8 rounded-md text-fg-subtle hover:text-danger hover:bg-danger/10 disabled:opacity-30 transition-colors"
           >
             <TrashIcon />
           </button>
@@ -186,12 +183,9 @@ function RoleRow({ role, allPermissions }: { role: Role; allPermissions: Permiss
             {updateState.error && <p className="text-sm text-danger mt-1">{updateState.error}</p>}
             {updateState.success && <p className="text-sm text-success mt-1">{updateState.success}</p>}
             <div className="pt-1">
-              <button
-                type="submit"
-                className="h-8 px-4 rounded-lg bg-surface-2 text-fg text-sm font-medium hover:bg-white/10 transition-colors"
-              >
+              <Button type="submit" variant="secondary" size="default">
                 Save
-              </button>
+              </Button>
             </div>
           </form>
         </div>
@@ -213,7 +207,7 @@ function RolesSection({ roles, allPermissions }: { roles: Role[]; allPermissions
           {roles.map((r) => <RoleRow key={r.id} role={r} allPermissions={allPermissions} />)}
         </ul>
       )}
-      <form action={action} className="px-6 py-5 flex flex-col gap-4 max-w-sm">
+      <form action={action} className="p-6 flex flex-col gap-4 max-w-sm">
         {roles.length === 0 && (
           <p className="text-sm text-fg-subtle">No roles defined yet.</p>
         )}
@@ -224,23 +218,19 @@ function RolesSection({ roles, allPermissions }: { roles: Role[]; allPermissions
           <p className="text-sm text-success bg-success/10 border border-success/20 rounded-lg px-4 py-2.5">{state.success}</p>
         )}
         <div className="flex flex-col gap-1.5">
-          <label className="text-sm font-medium text-fg-muted">Label</label>
+          <label className="text-sm font-medium text-fg">Label</label>
           <input name="label" type="text" placeholder="Media User" className={INPUT} />
         </div>
         <div className="flex flex-col gap-1.5">
-          <label className="text-sm font-medium text-fg-muted">
+          <label className="text-sm font-medium text-fg">
             ID <span className="text-fg-subtle font-normal">(optional)</span>
           </label>
           <input name="id" type="text" placeholder="media-user" className={INPUT} />
         </div>
         <div className="pt-1">
-          <button
-            type="submit"
-            disabled={pending}
-            className="h-9 px-4 rounded-lg bg-brand text-zinc-950 text-sm font-medium hover:bg-brand/90 disabled:opacity-50 transition-colors"
-          >
+          <Button type="submit" disabled={pending}>
             {pending ? "Adding…" : "Add role"}
-          </button>
+          </Button>
         </div>
       </form>
     </Panel>
@@ -260,9 +250,9 @@ function UserRoleRow({ user, allRoles, allPermissions }: { user: AppUser; allRol
     <li className="border-b border-line last:border-0">
       <button
         onClick={() => setOpen((o) => !o)}
-        className="flex items-center gap-4 px-6 py-3.5 w-full text-left hover:bg-white/5 transition-colors"
+        className="flex items-center gap-4 px-6 py-3.5 w-full text-left hover:bg-white/[0.02] transition-colors"
       >
-        <div className="flex items-center justify-center w-8 h-8 rounded-full bg-surface-2 border border-line text-sm font-semibold text-fg shrink-0 select-none">
+        <div className="flex items-center justify-center size-8 rounded-full bg-surface-2 border border-line text-sm font-medium text-fg-muted shrink-0 select-none">
           {user.username.charAt(0).toUpperCase()}
         </div>
         <div className="flex-1 min-w-0">
@@ -325,12 +315,9 @@ function UserRoleRow({ user, allRoles, allPermissions }: { user: AppUser; allRol
             {state.success && <p className="text-sm text-success">{state.success}</p>}
 
             <div>
-              <button
-                type="submit"
-                className="h-8 px-4 rounded-lg bg-surface-2 text-fg text-sm font-medium hover:bg-white/10 transition-colors"
-              >
+              <Button type="submit" variant="secondary">
                 Save
-              </button>
+              </Button>
             </div>
           </form>
         </div>

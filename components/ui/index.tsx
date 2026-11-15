@@ -4,7 +4,7 @@
 
 export function Label({ children }: { children: React.ReactNode }) {
   return (
-    <p className="text-[11px] font-semibold uppercase tracking-wider text-zinc-500 leading-none">
+    <p className="text-[11px] font-semibold uppercase tracking-wider text-fg-subtle leading-none">
       {children}
     </p>
   );
@@ -28,9 +28,9 @@ export function Field({
 // ─── Shared input class ───────────────────────────────────────────────────────
 
 const BASE_INPUT =
-  "w-full h-9 px-3 text-sm text-zinc-100 bg-zinc-800 border border-zinc-700 rounded-lg " +
-  "placeholder:text-zinc-600 focus:outline-none focus:ring-2 focus:ring-brand/25 " +
-  "focus:border-brand/50 transition-colors";
+  "w-full h-9 px-3 text-sm text-fg bg-surface-2 border border-line rounded-lg " +
+  "placeholder:text-fg-subtle focus:outline-none focus:ring-2 focus:ring-brand/20 " +
+  "focus:border-brand/60 transition-colors";
 
 // ─── Text input ───────────────────────────────────────────────────────────────
 
@@ -82,7 +82,7 @@ export function TextArea({
         placeholder={placeholder}
         rows={rows}
         onChange={(e) => onChange(e.target.value)}
-        className="w-full px-3 py-2.5 text-sm text-zinc-100 bg-zinc-800 border border-zinc-700 rounded-lg placeholder:text-zinc-600 focus:outline-none focus:ring-2 focus:ring-brand/25 focus:border-brand/50 transition-colors resize-none leading-relaxed"
+        className="w-full px-3 py-2.5 text-sm text-fg bg-surface-2 border border-line rounded-lg placeholder:text-fg-subtle focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand/60 transition-colors resize-none leading-relaxed"
       />
     </Field>
   );
@@ -125,7 +125,7 @@ export function Select({
       <select
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="w-full h-9 appearance-none pl-3 pr-9 text-sm text-zinc-200 bg-zinc-800 border border-zinc-700 rounded-lg cursor-pointer focus:outline-none focus:ring-2 focus:ring-brand/25 focus:border-brand/50 transition-colors"
+        className="w-full h-9 appearance-none pl-3 pr-9 text-sm text-fg bg-surface-2 border border-line rounded-lg cursor-pointer focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand/60 transition-colors"
       >
         {placeholder && <option value="">{placeholder}</option>}
         {options.map((o) => (
@@ -134,7 +134,7 @@ export function Select({
           </option>
         ))}
       </select>
-      <span className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-zinc-500">
+      <span className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-fg-subtle">
         <ChevronDown />
       </span>
     </div>
@@ -171,12 +171,12 @@ export function SliderRow({
       <div className="flex items-center justify-between">
         <Label>{label}</Label>
         {display !== undefined && (
-          <span className="text-[11px] font-mono text-zinc-400 leading-none">{display}</span>
+          <span className="text-[11px] font-mono text-fg-muted leading-none">{display}</span>
         )}
       </div>
       <div className="flex items-center gap-2.5">
         {leftLabel && (
-          <span className="text-[10px] text-zinc-600 w-7 shrink-0">{leftLabel}</span>
+          <span className="text-[10px] text-fg-subtle w-7 shrink-0">{leftLabel}</span>
         )}
         <input
           type="range"
@@ -188,7 +188,7 @@ export function SliderRow({
           className="flex-1 cursor-pointer accent-brand"
         />
         {rightLabel && (
-          <span className="text-[10px] text-zinc-600 w-7 shrink-0 text-right">{rightLabel}</span>
+          <span className="text-[10px] text-fg-subtle w-7 shrink-0 text-right">{rightLabel}</span>
         )}
       </div>
     </div>
@@ -220,11 +220,11 @@ export function Swatch({
         />
       </div>
       {label && (
-        <span className="text-sm text-zinc-300 group-hover:text-zinc-100 transition-colors">
+        <span className="text-sm text-fg-muted group-hover:text-fg transition-colors">
           {label}
         </span>
       )}
-      <span className="text-[11px] font-mono text-zinc-600 ml-auto">{value}</span>
+      <span className="text-[11px] font-mono text-fg-subtle ml-auto">{value}</span>
     </label>
   );
 }
@@ -257,7 +257,7 @@ export function ColorList({
             <button
               onClick={() => onChange(colors.filter((_, idx) => idx !== i))}
               title="Remove"
-              className="ml-1 opacity-0 group-hover:opacity-100 w-5 h-5 flex items-center justify-center rounded text-zinc-600 hover:text-red-400 hover:bg-red-500/[0.12] transition-all text-base leading-none shrink-0"
+              className="ml-1 opacity-0 group-hover:opacity-100 w-5 h-5 flex items-center justify-center rounded text-fg-subtle hover:text-danger hover:bg-danger/10 transition-all text-base leading-none shrink-0"
             >
               ×
             </button>
@@ -267,7 +267,7 @@ export function ColorList({
       {colors.length < max && (
         <button
           onClick={() => onChange([...colors, "#ffffff"])}
-          className="text-xs text-zinc-600 hover:text-zinc-300 text-left transition-colors"
+          className="text-xs text-fg-subtle hover:text-fg-muted text-left transition-colors"
         >
           + Add color
         </button>
@@ -291,7 +291,7 @@ export function Toggle({
     <label className="flex items-center gap-3 cursor-pointer">
       <div
         className={`relative w-9 h-5 rounded-full transition-colors duration-200 shrink-0 ${
-          checked ? "bg-brand" : "bg-zinc-700"
+          checked ? "bg-brand" : "bg-surface-2"
         }`}
       >
         <input
@@ -301,12 +301,12 @@ export function Toggle({
           className="sr-only"
         />
         <div
-          className={`absolute top-0.5 left-0.5 w-4 h-4 rounded-full shadow-sm transition-transform duration-200 ${
-            checked ? "translate-x-4 bg-zinc-950" : "translate-x-0 bg-zinc-400"
+          className={`absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-white shadow-sm transition-transform duration-200 ${
+            checked ? "translate-x-4" : "translate-x-0"
           }`}
         />
       </div>
-      <span className="text-sm text-zinc-300">{label}</span>
+      <span className="text-sm text-fg">{label}</span>
     </label>
   );
 }
@@ -314,7 +314,7 @@ export function Toggle({
 // ─── Divider ──────────────────────────────────────────────────────────────────
 
 export function Divider() {
-  return <div className="border-t border-zinc-800" />;
+  return <div className="border-t border-line" />;
 }
 
 // ─── Tab bar ──────────────────────────────────────────────────────────────────
@@ -329,7 +329,7 @@ export function TabBar<T extends string>({
   onChange: (id: T) => void;
 }) {
   return (
-    <div className="flex gap-0.5 bg-zinc-800/60 rounded-lg p-0.5 border border-zinc-700/50">
+    <div className="flex gap-0.5 bg-surface-2/60 rounded-lg p-0.5 border border-line">
       {tabs.map((t) => (
         <button
           key={t.id}
@@ -337,7 +337,7 @@ export function TabBar<T extends string>({
           className={`flex-1 py-1.5 text-xs font-semibold rounded-md transition-all duration-150 ${
             active === t.id
               ? "bg-brand/15 text-brand shadow-sm"
-              : "text-zinc-500 hover:text-zinc-300"
+              : "text-fg-subtle hover:text-fg-muted"
           }`}
         >
           {t.label}

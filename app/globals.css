@@ -4,15 +4,15 @@
   --color-brand: #00aaff;
   --color-brand-alt: #00ffaa;
 
-  --color-bg: #0b1220;
-  --color-surface: #111a2e;
-  --color-surface-2: #17223a;
+  --color-bg: #0b0b0c;
+  --color-surface: #141416;
+  --color-surface-2: #1c1c1f;
   --color-line: rgb(255 255 255 / 0.08);
-  --color-fg: #e6edf7;
-  --color-fg-muted: #94a3b8;
-  --color-fg-subtle: #64748b;
+  --color-fg: #ededed;
+  --color-fg-muted: #a1a1aa;
+  --color-fg-subtle: #71717a;
 
-  --color-success: #22c55e;
+  --color-success: #00ffaa;
   --color-warning: #f59e0b;
   --color-danger: #ef4444;
 }

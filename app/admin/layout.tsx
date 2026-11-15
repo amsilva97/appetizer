@@ -3,13 +3,10 @@ import AdminNav from "@/components/admin/admin-nav";
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   return (
-    <div className="min-h-screen bg-bg flex flex-col relative overflow-hidden">
-      <div className="absolute inset-0 pointer-events-none">
-        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[900px] h-[400px] rounded-full bg-brand/[0.05] blur-3xl" />
-      </div>
-      <div className="h-0.5 bg-gradient-to-r from-brand to-brand-alt shrink-0 relative z-10" />
+    <div className="min-h-screen bg-bg flex flex-col">
+      <div className="h-0.5 bg-gradient-to-r from-brand to-brand-alt shrink-0" />
 
-      <header className="bg-black/20 backdrop-blur-sm border-b border-white/10 shrink-0 sticky top-0 z-40">
+      <header className="bg-bg/80 backdrop-blur border-b border-line shrink-0 sticky top-0 z-40">
         <div className="max-w-5xl mx-auto px-6 h-14 flex items-center gap-2">
           <Link href="/" className="flex items-center gap-2 shrink-0">
             {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -25,7 +22,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         </div>
       </header>
 
-      <div className="bg-black/10 border-b border-white/10 shrink-0">
+      <div className="border-b border-line shrink-0">
         <AdminNav />
       </div>
 

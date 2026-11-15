@@ -11,17 +11,18 @@ import {
 } from "@/app/admin/users/actions";
 import type { AppUser } from "@/lib/auth/users";
 import type { AppSettings } from "@/lib/auth/settings";
+import { Button } from "@/components/ui/button";
 
 const INITIAL: UserActionState = {};
 
 const INPUT =
-  "w-full h-10 px-3 text-sm text-fg bg-surface-2 border border-line rounded-lg " +
-  "placeholder:text-fg-subtle focus:outline-none focus:ring-2 focus:ring-brand/25 " +
-  "focus:border-brand/50 transition-colors";
+  "w-full h-9 px-3 text-sm text-fg bg-surface-2 border border-line rounded-lg " +
+  "placeholder:text-fg-subtle focus:outline-none focus:ring-2 focus:ring-brand/20 " +
+  "focus:border-brand/60 transition-colors";
 
 const SELECT =
-  "w-full h-10 px-3 text-sm text-fg bg-surface-2 border border-line rounded-lg " +
-  "focus:outline-none focus:ring-2 focus:ring-brand/25 focus:border-brand/50 transition-colors";
+  "w-full h-9 px-3 text-sm text-fg bg-surface-2 border border-line rounded-lg " +
+  "focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand/60 transition-colors";
 
 function TrashIcon() {
   return (
@@ -45,13 +46,13 @@ function UsersEmptyIcon() {
 
 function Badge({ label, variant }: { label: string; variant: "neutral" | "amber" | "red" | "active" }) {
   const cls = {
-    neutral: "text-fg-subtle bg-surface-2 border-line",
-    amber:   "text-warning bg-warning/10 border-warning/20",
-    red:     "text-danger bg-danger/10 border-danger/20",
-    active:  "text-fg-muted bg-surface-2 border-line",
+    neutral: "text-fg-subtle bg-white/5 ring-line",
+    amber:   "text-warning bg-warning/10 ring-warning/20",
+    red:     "text-danger bg-danger/10 ring-danger/20",
+    active:  "text-fg-muted bg-white/5 ring-line",
   }[variant];
   return (
-    <span className={`inline-flex items-center px-2 py-0.5 rounded text-[11px] font-medium border ${cls}`}>
+    <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs ring-1 ${cls}`}>
       {label}
     </span>
   );
@@ -59,7 +60,7 @@ function Badge({ label, variant }: { label: string; variant: "neutral" | "amber"
 
 function Panel({ heading, subheading, children }: { heading: string; subheading?: string; children: React.ReactNode }) {
   return (
-    <div className="rounded-xl bg-surface/80 backdrop-blur border border-line overflow-hidden">
+    <div className="rounded-xl bg-surface border border-line overflow-hidden">
       <div className="px-6 py-4 border-b border-line">
         <p className="text-base font-semibold text-fg">{heading}</p>
         {subheading && <p className="text-sm text-fg-muted mt-0.5">{subheading}</p>}
@@ -78,8 +79,8 @@ function UserRow({ user, currentUsername }: { user: AppUser; currentUsername: st
   const error = toggleState.error || roleState.error || deleteState.error;
 
   return (
-    <li className="flex items-center gap-4 px-6 py-3 border-b border-line last:border-0">
-      <div className="flex items-center justify-center w-9 h-9 rounded-full bg-surface-2 border border-line text-sm font-semibold text-fg shrink-0 select-none">
+    <li className="flex items-center gap-4 px-6 py-3 border-b border-line last:border-0 hover:bg-white/[0.02]">
+      <div className="flex items-center justify-center size-9 rounded-full bg-surface-2 border border-line text-sm font-medium text-fg-muted shrink-0 select-none">
         {user.username.charAt(0).toUpperCase()}
       </div>
 
@@ -112,7 +113,11 @@ function UserRow({ user, currentUsername }: { user: AppUser; currentUsername: st
           <button
             type="submit"
             disabled={togglePending || isSelf}
-            className="h-7 px-3 rounded-md text-xs font-medium text-fg-muted bg-surface-2 hover:bg-white/10 hover:text-fg disabled:opacity-30 transition-colors"
+            className={`h-7 px-3 rounded-md text-xs font-medium transition-colors disabled:opacity-30 ${
+              user.disabled
+                ? "text-fg-muted hover:text-fg hover:bg-white/5"
+                : "text-danger hover:text-danger hover:bg-danger/10"
+            }`}
           >
             {user.disabled ? "Enable" : "Disable"}
           </button>
@@ -138,7 +143,7 @@ function UserRow({ user, currentUsername }: { user: AppUser; currentUsername: st
             <button
               type="submit"
               disabled={deletePending}
-              className="flex items-center justify-center w-7 h-7 rounded-md text-fg-subtle hover:text-danger hover:bg-danger/10 disabled:opacity-30 transition-colors"
+              className="flex items-center justify-center size-7 rounded-md text-fg-subtle hover:text-danger hover:bg-danger/10 disabled:opacity-30 transition-colors"
             >
               <TrashIcon />
             </button>
@@ -153,7 +158,7 @@ function SettingsPanel({ settings }: { settings: AppSettings }) {
   const [state, action, pending] = useActionState(updateSettingsAction, INITIAL);
   return (
     <Panel heading="Access">
-      <form action={action} className="px-6 py-5">
+      <form action={action} className="p-6">
         <div className="flex items-center justify-between gap-6">
           <div>
             <p className="text-sm font-medium text-fg">Force login</p>
@@ -171,8 +176,8 @@ function SettingsPanel({ settings }: { settings: AppSettings }) {
             } disabled:opacity-50`}
           >
             <span
-              className={`absolute top-1 w-4 h-4 rounded-full transition-all ${
-                settings.forceLogin ? "left-6 bg-bg" : "left-1 bg-fg-subtle"
+              className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-all ${
+                settings.forceLogin ? "left-6" : "left-1"
               }`}
             />
           </button>
@@ -215,7 +220,7 @@ export default function UsersManager({ users, settings, currentUsername }: Props
       </Panel>
 
       <Panel heading="Add user">
-        <form action={addAction} className="px-6 py-5 flex flex-col gap-4 max-w-sm">
+        <form action={addAction} className="p-6 flex flex-col gap-4 max-w-sm">
           {addState.error && (
             <p className="text-sm text-danger bg-danger/10 border border-danger/20 rounded-lg px-4 py-2.5">
               {addState.error}
@@ -228,17 +233,17 @@ export default function UsersManager({ users, settings, currentUsername }: Props
           )}
 
           <div className="flex flex-col gap-1.5">
-            <label className="text-sm font-medium text-fg-muted">Username</label>
+            <label className="text-sm font-medium text-fg">Username</label>
             <input name="username" type="text" placeholder="jane" className={INPUT} />
           </div>
 
           <div className="flex flex-col gap-1.5">
-            <label className="text-sm font-medium text-fg-muted">Password</label>
+            <label className="text-sm font-medium text-fg">Password</label>
             <input name="password" type="password" placeholder="••••••••" className={INPUT} />
           </div>
 
           <div className="flex flex-col gap-1.5">
-            <label className="text-sm font-medium text-fg-muted">Role</label>
+            <label className="text-sm font-medium text-fg">Role</label>
             <select name="role" defaultValue="user" className={SELECT}>
               <option value="user">User — can view, cannot edit</option>
               <option value="admin">Admin — full access</option>
@@ -246,13 +251,9 @@ export default function UsersManager({ users, settings, currentUsername }: Props
           </div>
 
           <div className="pt-1">
-            <button
-              type="submit"
-              disabled={addPending}
-              className="h-9 px-4 rounded-lg bg-brand text-zinc-950 text-sm font-medium hover:bg-brand/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-            >
+            <Button type="submit" disabled={addPending}>
               {addPending ? "Adding…" : "Add user"}
-            </button>
+            </Button>
           </div>
         </form>
       </Panel>
