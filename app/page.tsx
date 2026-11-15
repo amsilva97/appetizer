@@ -19,6 +19,7 @@ import { DEFAULT_MENU_WIDGET } from "@/types/menu-widget";
 import type { MenuWidgetConfig } from "@/types/menu-widget";
 import type { UserRole } from "@/lib/auth/users";
 import type { PageMeta, Permission } from "@/types/permissions";
+import type { ToolbarStyle } from "@/types/toolbar";
 
 interface SceneConfig {
   background: BackgroundConfig;
@@ -54,6 +55,7 @@ export default function Home() {
   const [pages, setPages] = useState<PageMeta[]>([]);
   const [currentPage, setCurrentPage] = useState<string>("");
   const [availablePermissions, setAvailablePermissions] = useState<Permission[]>([]);
+  const [toolbarStyle, setToolbarStyle] = useState<ToolbarStyle>({});
 
   const [loaded, setLoaded] = useState(false);
   const dragRef = useRef<DragState | null>(null);
@@ -73,6 +75,7 @@ export default function Home() {
         if (layout) {
           if (layout.background) setBg(layout.background);
           if (Array.isArray(layout.widgets)) setWidgets(layout.widgets);
+          setToolbarStyle(layout.toolbarStyle ?? {});
         }
       })
       .finally(() => setLoaded(true));
@@ -105,10 +108,10 @@ export default function Home() {
       fetch(`/api/state${page ? `?page=${encodeURIComponent(page)}` : ""}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ background: bg, widgets }),
+        body: JSON.stringify({ background: bg, widgets, toolbarStyle }),
       });
     }, 1000);
-  }, [bg, widgets, loaded]);
+  }, [bg, widgets, toolbarStyle, loaded]);
 
   async function switchPage(pageName: string) {
     if (pageName === currentPageRef.current) return;
@@ -122,9 +125,11 @@ export default function Home() {
       if (data.layout) {
         setBg(data.layout.background ?? BACKGROUND_PRESETS["Ocean Dusk"]);
         setWidgets(data.layout.widgets ?? []);
+        setToolbarStyle(data.layout.toolbarStyle ?? {});
       } else {
         setBg(BACKGROUND_PRESETS["Ocean Dusk"]);
         setWidgets([]);
+        setToolbarStyle({});
       }
       setEditingId(null);
       setMenuPos(null);
@@ -401,6 +406,8 @@ export default function Home() {
         onUpdatePage={isAdmin ? handleUpdatePage : undefined}
         onDeletePage={isAdmin ? handleDeletePage : undefined}
         availablePermissions={availablePermissions}
+        toolbarStyle={toolbarStyle}
+        onToolbarStyleChange={isAdmin ? setToolbarStyle : undefined}
       />
 
       {/* Layout widgets — only root layouts, fill canvas below toolbar */}
