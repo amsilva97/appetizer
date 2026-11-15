@@ -5,6 +5,7 @@ import * as yaml from "js-yaml";
 import type { BackgroundConfig } from "@/types/background";
 import type { WidgetInstance } from "@/types/widget";
 import type { PageMeta } from "@/types/permissions";
+import type { ToolbarStyle } from "@/types/toolbar";
 import { getSession } from "@/lib/auth/session";
 import { findUser } from "@/lib/auth/users";
 import { readPermissionsConfig, resolveUserPermissions, userCanAccess } from "@/lib/auth/permissions";
@@ -21,6 +22,7 @@ interface LayoutConfig {
   name: string;
   background: BackgroundConfig;
   widgets: WidgetInstance[];
+  toolbarStyle?: ToolbarStyle;
 }
 
 function ensureDir() {
@@ -147,6 +149,7 @@ export async function POST(request: Request) {
   const body = (await request.json()) as {
     background: BackgroundConfig;
     widgets: WidgetInstance[];
+    toolbarStyle?: ToolbarStyle;
   };
 
   const { searchParams } = new URL(request.url);
@@ -170,6 +173,7 @@ export async function POST(request: Request) {
     name: existing?.name ?? targetName,
     background: body.background,
     widgets: body.widgets,
+    toolbarStyle: body.toolbarStyle,
   };
 
   writeFileSync(
