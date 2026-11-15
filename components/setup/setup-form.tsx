@@ -2,13 +2,14 @@
 
 import { useActionState } from "react";
 import { createAdmin, type SetupState } from "@/app/setup/actions";
+import { Button } from "@/components/ui/button";
 
 const INITIAL: SetupState = {};
 
 const INPUT =
-  "w-full h-10 px-3.5 text-sm text-fg bg-surface-2 border border-line rounded-xl " +
-  "placeholder:text-fg-subtle focus:outline-none focus:ring-2 focus:ring-brand/30 " +
-  "focus:border-brand/60 transition-all";
+  "w-full h-9 px-3 text-sm text-fg bg-surface-2 border border-line rounded-lg " +
+  "placeholder:text-fg-subtle focus:outline-none focus:ring-2 focus:ring-brand/20 " +
+  "focus:border-brand/60 transition-colors";
 
 function FieldError({ msg }: { msg?: string }) {
   if (!msg) return null;
@@ -61,13 +62,9 @@ export default function SetupForm() {
               <FieldError msg={state.errors?.confirm} />
             </div>
 
-            <button
-              type="submit"
-              disabled={pending}
-              className="mt-1 h-10 px-4 rounded-xl bg-gradient-to-r from-brand to-brand-alt text-zinc-950 text-sm font-semibold hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed transition-opacity shadow-lg shadow-brand/20"
-            >
+            <Button type="submit" disabled={pending} className="mt-1 w-full">
               {pending ? "Creating…" : "Create account"}
-            </button>
+            </Button>
           </form>
         </div>
       </div>

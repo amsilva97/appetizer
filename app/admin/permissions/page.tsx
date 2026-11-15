@@ -17,7 +17,8 @@ export default async function PermissionsPage() {
     <div className="space-y-6">
       <div className="mb-8">
         <h1 className="text-2xl font-semibold text-fg">Roles & Permissions</h1>
-        <p className="mt-1 text-sm text-fg-muted">
+        <div className="mt-3 h-0.5 w-8 bg-gradient-to-r from-brand to-brand-alt" />
+        <p className="mt-2 text-sm text-fg-muted">
           Define permissions → group into roles → assign roles to users.
         </p>
       </div>
