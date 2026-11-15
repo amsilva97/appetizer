@@ -6,57 +6,71 @@ import { createAdmin, type SetupState } from "@/app/setup/actions";
 const INITIAL: SetupState = {};
 
 const INPUT =
-  "w-full h-9 px-3 text-sm text-zinc-100 bg-zinc-800 border border-zinc-700 rounded-lg " +
-  "placeholder:text-zinc-600 focus:outline-none focus:ring-2 focus:ring-brand/25 " +
-  "focus:border-brand/50 transition-colors";
+  "w-full h-10 px-3.5 text-sm text-fg bg-surface-2 border border-line rounded-xl " +
+  "placeholder:text-fg-subtle focus:outline-none focus:ring-2 focus:ring-brand/30 " +
+  "focus:border-brand/60 transition-all";
 
 function FieldError({ msg }: { msg?: string }) {
   if (!msg) return null;
-  return <p className="text-xs text-red-400">{msg}</p>;
+  return <p className="text-xs text-danger mt-1">{msg}</p>;
 }
 
 export default function SetupForm() {
   const [state, action, pending] = useActionState(createAdmin, INITIAL);
 
   return (
-    <form action={action} className="flex flex-col gap-4 w-full max-w-sm">
-      <div className="flex flex-col items-center gap-6 mb-2">
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src="/dark-lockup.png" alt="Appetizer" className="h-16 w-auto" />
-        <p className="text-sm text-zinc-400">Set up your homepage for the first time.</p>
+    <div className="relative w-full max-w-sm z-10">
+      <div className="bg-surface border border-line rounded-2xl overflow-hidden shadow-2xl shadow-black/40">
+        <div className="h-0.5 bg-gradient-to-r from-brand to-brand-alt" />
+
+        <div className="px-8 pt-8 pb-9">
+          <div className="flex flex-col items-center gap-5 mb-8">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/dark-lockup.png" alt="Appetizer" className="h-10 w-auto" />
+            <p className="text-sm text-fg-muted">Set up your homepage for the first time.</p>
+          </div>
+
+          <form action={action} className="flex flex-col gap-5">
+            {state.errors?.general && (
+              <div className="flex items-start gap-2.5 px-3.5 py-2.5 bg-danger/10 border border-danger/25 rounded-xl">
+                <p className="text-xs text-danger leading-snug">{state.errors.general}</p>
+              </div>
+            )}
+
+            <div className="flex flex-col gap-1.5">
+              <label className="text-[11px] font-semibold uppercase tracking-wider text-fg-subtle">
+                Username
+              </label>
+              <input name="username" type="text" placeholder="admin" autoComplete="username" className={INPUT} />
+              <FieldError msg={state.errors?.username} />
+            </div>
+
+            <div className="flex flex-col gap-1.5">
+              <label className="text-[11px] font-semibold uppercase tracking-wider text-fg-subtle">
+                Password
+              </label>
+              <input name="password" type="password" placeholder="At least 8 characters" autoComplete="new-password" className={INPUT} />
+              <FieldError msg={state.errors?.password} />
+            </div>
+
+            <div className="flex flex-col gap-1.5">
+              <label className="text-[11px] font-semibold uppercase tracking-wider text-fg-subtle">
+                Confirm password
+              </label>
+              <input name="confirm" type="password" placeholder="Re-enter password" autoComplete="new-password" className={INPUT} />
+              <FieldError msg={state.errors?.confirm} />
+            </div>
+
+            <button
+              type="submit"
+              disabled={pending}
+              className="mt-1 h-10 px-4 rounded-xl bg-gradient-to-r from-brand to-brand-alt text-zinc-950 text-sm font-semibold hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed transition-opacity shadow-lg shadow-brand/20"
+            >
+              {pending ? "Creating…" : "Create account"}
+            </button>
+          </form>
+        </div>
       </div>
-
-      {state.errors?.general && (
-        <p className="text-xs text-red-400 bg-red-500/10 border border-red-500/20 rounded-lg px-3 py-2">
-          {state.errors.general}
-        </p>
-      )}
-
-      <div className="flex flex-col gap-1">
-        <p className="text-[11px] font-semibold uppercase tracking-wider text-zinc-500">Username</p>
-        <input name="username" type="text" placeholder="admin" className={INPUT} />
-        <FieldError msg={state.errors?.username} />
-      </div>
-
-      <div className="flex flex-col gap-1">
-        <p className="text-[11px] font-semibold uppercase tracking-wider text-zinc-500">Password</p>
-        <input name="password" type="password" placeholder="At least 8 characters" className={INPUT} />
-        <FieldError msg={state.errors?.password} />
-      </div>
-
-      <div className="flex flex-col gap-1">
-        <p className="text-[11px] font-semibold uppercase tracking-wider text-zinc-500">Confirm password</p>
-        <input name="confirm" type="password" placeholder="Re-enter password" className={INPUT} />
-        <FieldError msg={state.errors?.confirm} />
-      </div>
-
-      <button
-        type="submit"
-        disabled={pending}
-        className="h-9 px-4 rounded-lg bg-brand text-zinc-950 text-sm font-semibold hover:bg-brand/80 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-      >
-        {pending ? "Creating…" : "Create account"}
-      </button>
-    </form>
+    </div>
   );
 }
