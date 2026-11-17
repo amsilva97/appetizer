@@ -1,5 +1,4 @@
 import { redirect } from "next/navigation";
-import Link from "next/link";
 import { readUsers } from "@/lib/auth/users";
 import { readSettings } from "@/lib/auth/settings";
 import { getSession } from "@/lib/auth/session";
@@ -15,26 +14,19 @@ export default async function UsersPage() {
   const settings = readSettings();
 
   return (
-    <main className="min-h-screen bg-zinc-950 p-8">
-      <div className="max-w-2xl mx-auto flex flex-col gap-6">
-        <div className="flex items-center justify-between">
-          <div className="flex flex-col gap-1">
-            <h1 className="text-lg font-semibold text-zinc-100">Users</h1>
-            <p className="text-sm text-zinc-400">
-              Manage who can access and edit this homepage.
-            </p>
-          </div>
-          <Link href="/" className="text-sm text-zinc-400 hover:text-zinc-200 transition-colors">
-            ← Home
-          </Link>
-        </div>
-
-        <UsersManager
-          users={users}
-          settings={settings}
-          currentUsername={session.username ?? ""}
-        />
+    <div className="space-y-6">
+      <div className="mb-8">
+        <h1 className="text-2xl font-semibold text-fg">Users</h1>
+        <div className="mt-3 h-0.5 w-8 bg-gradient-to-r from-brand to-brand-alt" />
+        <p className="mt-2 text-sm text-fg-muted">
+          Manage who can access and edit this dashboard.
+        </p>
       </div>
-    </main>
+      <UsersManager
+        users={users}
+        settings={settings}
+        currentUsername={session.username ?? ""}
+      />
+    </div>
   );
 }
