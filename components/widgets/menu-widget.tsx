@@ -4,6 +4,7 @@ import type { MenuWidgetConfig } from "@/types/menu-widget";
 import type { AppWidgetConfig } from "@/types/app-widget";
 import type { WidgetInstance } from "@/types/widget";
 import AppWidget from "@/components/widgets/app-widget";
+import { openAppUrl } from "@/lib/mobile";
 
 interface Props {
   config: MenuWidgetConfig;
@@ -57,7 +58,7 @@ export default function MenuWidget({ config, widgetId, allWidgets, editMode }: P
               config={cfg}
               widgetId={child.id}
               fillAxis={fillAxis}
-              onClick={() => { if (cfg.url) window.open(cfg.url, "_blank"); }}
+              onClick={() => openAppUrl(cfg.url)}
             />
           );
         })}
