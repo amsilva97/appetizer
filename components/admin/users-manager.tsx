@@ -11,38 +11,62 @@ import {
 } from "@/app/admin/users/actions";
 import type { AppUser } from "@/lib/auth/users";
 import type { AppSettings } from "@/lib/auth/settings";
+import { Button } from "@/components/ui/button";
 
 const INITIAL: UserActionState = {};
 
 const INPUT =
-  "w-full h-9 px-3 text-sm text-zinc-100 bg-zinc-800 border border-zinc-700 rounded-lg " +
-  "placeholder:text-zinc-600 focus:outline-none focus:ring-2 focus:ring-white/[0.08] " +
-  "focus:border-zinc-500 transition-colors";
+  "w-full h-9 px-3 text-sm text-fg bg-surface-2 border border-line rounded-lg " +
+  "placeholder:text-fg-subtle focus:outline-none focus:ring-2 focus:ring-brand/20 " +
+  "focus:border-brand/60 transition-colors";
 
 const SELECT =
-  "h-9 px-3 text-sm text-zinc-100 bg-zinc-800 border border-zinc-700 rounded-lg " +
-  "focus:outline-none focus:ring-2 focus:ring-white/[0.08] focus:border-zinc-500 transition-colors";
+  "w-full h-9 px-3 text-sm text-fg bg-surface-2 border border-line rounded-lg " +
+  "focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand/60 transition-colors";
 
 function TrashIcon() {
   return (
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
       <polyline points="3 6 5 6 21 6" />
       <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2" />
     </svg>
   );
 }
 
-function Badge({ label, color }: { label: string; color: "zinc" | "amber" | "blue" | "red" }) {
-  const cls = {
-    zinc:  "bg-zinc-800 text-zinc-400 border-zinc-700",
-    amber: "bg-amber-500/10 text-amber-400 border-amber-500/30",
-    blue:  "bg-blue-500/10 text-blue-400 border-blue-500/30",
-    red:   "bg-red-500/10 text-red-400 border-red-500/30",
-  }[color];
+function UsersEmptyIcon() {
   return (
-    <span className={`inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-semibold uppercase tracking-wider border ${cls}`}>
+    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+      <circle cx="9" cy="7" r="4" />
+      <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
+      <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+    </svg>
+  );
+}
+
+function Badge({ label, variant }: { label: string; variant: "neutral" | "amber" | "red" | "active" }) {
+  const cls = {
+    neutral: "text-fg-subtle bg-white/5 ring-line",
+    amber:   "text-warning bg-warning/10 ring-warning/20",
+    red:     "text-danger bg-danger/10 ring-danger/20",
+    active:  "text-fg-muted bg-white/5 ring-line",
+  }[variant];
+  return (
+    <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs ring-1 ${cls}`}>
       {label}
     </span>
+  );
+}
+
+function Panel({ heading, subheading, children }: { heading: string; subheading?: string; children: React.ReactNode }) {
+  return (
+    <div className="rounded-xl bg-surface border border-line overflow-hidden">
+      <div className="px-6 py-4 border-b border-line">
+        <p className="text-base font-semibold text-fg">{heading}</p>
+        {subheading && <p className="text-sm text-fg-muted mt-0.5">{subheading}</p>}
+      </div>
+      {children}
+    </div>
   );
 }
 
@@ -55,95 +79,112 @@ function UserRow({ user, currentUsername }: { user: AppUser; currentUsername: st
   const error = toggleState.error || roleState.error || deleteState.error;
 
   return (
-    <li className="flex flex-col gap-1 px-4 py-3 bg-zinc-900">
-      <div className="flex items-center gap-3 flex-wrap">
-        <span className="text-sm font-medium text-zinc-100 min-w-0 shrink-0">{user.username}</span>
-        <div className="flex items-center gap-1.5 flex-wrap">
-          {user.isRoot && <Badge label="Root" color="amber" />}
-          <Badge label={user.role} color={user.role === "admin" ? "blue" : "zinc"} />
-          {user.disabled && <Badge label="Disabled" color="red" />}
-          {isSelf && <Badge label="You" color="zinc" />}
+    <li className="flex items-center gap-4 px-6 py-3 border-b border-line last:border-0 hover:bg-white/[0.02]">
+      <div className="flex items-center justify-center size-9 rounded-full bg-surface-2 border border-line text-sm font-medium text-fg-muted shrink-0 select-none">
+        {user.username.charAt(0).toUpperCase()}
+      </div>
+
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center gap-2 flex-wrap">
+          <span className="text-sm font-medium text-fg">{user.username}</span>
+          {isSelf && <span className="text-xs text-fg-subtle">(you)</span>}
         </div>
-        <div className="ml-auto flex items-center gap-1.5 flex-wrap">
-          {/* Toggle disabled */}
-          <form action={toggleAction}>
+        <p className="text-xs text-fg-muted mt-0.5">
+          {user.disabled
+            ? "Disabled"
+            : user.isRoot
+            ? "Root administrator"
+            : user.role === "admin"
+            ? "Administrator"
+            : "Viewer — can view, cannot edit"}
+        </p>
+        {error && <p className="text-xs text-danger mt-1">{error}</p>}
+      </div>
+
+      <div className="flex items-center gap-1.5 shrink-0">
+        {user.isRoot && <Badge label="root" variant="amber" />}
+        {user.role === "admin" && !user.isRoot && <Badge label="admin" variant="active" />}
+        {user.disabled && <Badge label="disabled" variant="red" />}
+      </div>
+
+      <div className="flex items-center gap-1.5 shrink-0">
+        <form action={toggleAction}>
+          <input type="hidden" name="username" value={user.username} />
+          <button
+            type="submit"
+            disabled={togglePending || isSelf}
+            className={`h-7 px-3 rounded-md text-xs font-medium transition-colors disabled:opacity-30 ${
+              user.disabled
+                ? "text-fg-muted hover:text-fg hover:bg-white/5"
+                : "text-danger hover:text-danger hover:bg-danger/10"
+            }`}
+          >
+            {user.disabled ? "Enable" : "Disable"}
+          </button>
+        </form>
+
+        {!user.isRoot && !isSelf && (
+          <form action={roleAction}>
+            <input type="hidden" name="username" value={user.username} />
+            <input type="hidden" name="role" value={user.role === "admin" ? "user" : "admin"} />
+            <button
+              type="submit"
+              disabled={rolePending}
+              className="h-7 px-3 rounded-md text-xs font-medium text-fg-muted bg-surface-2 hover:bg-white/10 hover:text-fg disabled:opacity-30 transition-colors"
+            >
+              {rolePending ? "…" : user.role === "admin" ? "Demote" : "Promote"}
+            </button>
+          </form>
+        )}
+
+        {!user.isRoot && !isSelf && (
+          <form action={deleteAction}>
             <input type="hidden" name="username" value={user.username} />
             <button
               type="submit"
-              disabled={togglePending || isSelf}
-              title={user.disabled ? "Enable" : "Disable"}
-              className="h-7 px-2.5 rounded-lg text-[11px] font-medium bg-zinc-800 text-zinc-400 hover:bg-zinc-700 hover:text-zinc-200 disabled:opacity-30 transition-colors"
+              disabled={deletePending}
+              className="flex items-center justify-center size-7 rounded-md text-fg-subtle hover:text-danger hover:bg-danger/10 disabled:opacity-30 transition-colors"
             >
-              {user.disabled ? "Enable" : "Disable"}
+              <TrashIcon />
             </button>
           </form>
-
-          {/* Change role (not for root, not for self) */}
-          {!user.isRoot && !isSelf && (
-            <form action={roleAction} className="flex items-center gap-1">
-              <input type="hidden" name="username" value={user.username} />
-              <input type="hidden" name="role" value={user.role === "admin" ? "user" : "admin"} />
-              <button
-                type="submit"
-                disabled={rolePending}
-                className="h-7 px-2.5 rounded-lg text-[11px] font-medium bg-zinc-800 text-zinc-400 hover:bg-zinc-700 hover:text-zinc-200 disabled:opacity-30 transition-colors"
-              >
-                {rolePending ? "…" : user.role === "admin" ? "Demote" : "Promote"}
-              </button>
-            </form>
-          )}
-
-          {/* Delete (not for root, not for self) */}
-          {!user.isRoot && !isSelf && (
-            <form action={deleteAction}>
-              <input type="hidden" name="username" value={user.username} />
-              <button
-                type="submit"
-                disabled={deletePending}
-                title={`Delete ${user.username}`}
-                className="flex items-center justify-center w-7 h-7 rounded-lg text-zinc-500 hover:text-red-400 hover:bg-red-500/10 disabled:opacity-30 transition-colors"
-              >
-                <TrashIcon />
-              </button>
-            </form>
-          )}
-        </div>
+        )}
       </div>
-      {error && <p className="text-[11px] text-red-400 pl-0.5">{error}</p>}
     </li>
   );
 }
 
-function SettingsForm({ settings }: { settings: AppSettings }) {
+function SettingsPanel({ settings }: { settings: AppSettings }) {
   const [state, action, pending] = useActionState(updateSettingsAction, INITIAL);
   return (
-    <form action={action} className="flex flex-col gap-3">
-      <h2 className="text-sm font-semibold text-zinc-300">Access settings</h2>
-      <div className="flex items-center justify-between p-4 bg-zinc-900 border border-zinc-800 rounded-xl">
-        <div className="flex flex-col gap-0.5">
-          <span className="text-sm text-zinc-200">Force login</span>
-          <span className="text-xs text-zinc-500">
-            When on, visitors must sign in before seeing the homepage.
-          </span>
+    <Panel heading="Access">
+      <form action={action} className="p-6">
+        <div className="flex items-center justify-between gap-6">
+          <div>
+            <p className="text-sm font-medium text-fg">Force login</p>
+            <p className="text-sm text-fg-muted mt-0.5">
+              Visitors must sign in before seeing the dashboard.
+            </p>
+          </div>
+          <input type="hidden" name="forceLogin" value={settings.forceLogin ? "false" : "true"} />
+          <button
+            type="submit"
+            disabled={pending}
+            aria-label={settings.forceLogin ? "Disable force login" : "Enable force login"}
+            className={`relative shrink-0 w-11 h-6 rounded-full transition-colors ${
+              settings.forceLogin ? "bg-brand" : "bg-surface-2"
+            } disabled:opacity-50`}
+          >
+            <span
+              className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-all ${
+                settings.forceLogin ? "left-6" : "left-1"
+              }`}
+            />
+          </button>
         </div>
-        <input type="hidden" name="forceLogin" value={settings.forceLogin ? "false" : "true"} />
-        <button
-          type="submit"
-          disabled={pending}
-          aria-label={settings.forceLogin ? "Disable force login" : "Enable force login"}
-          className={`relative shrink-0 w-11 h-6 rounded-full transition-colors ${
-            settings.forceLogin ? "bg-white" : "bg-zinc-700"
-          } disabled:opacity-50`}
-        >
-          <span
-            className={`absolute top-1 w-4 h-4 rounded-full transition-all ${
-              settings.forceLogin ? "left-6 bg-zinc-900" : "left-1 bg-zinc-400"
-            }`}
-          />
-        </button>
-      </div>
-      {state.error && <p className="text-xs text-red-400">{state.error}</p>}
-    </form>
+        {state.error && <p className="text-xs text-danger mt-3">{state.error}</p>}
+      </form>
+    </Panel>
   );
 }
 
@@ -157,62 +198,65 @@ export default function UsersManager({ users, settings, currentUsername }: Props
   const [addState, addAction, addPending] = useActionState(addUserAction, INITIAL);
 
   return (
-    <div className="flex flex-col gap-8 max-w-lg">
-      <SettingsForm settings={settings} />
+    <>
+      <SettingsPanel settings={settings} />
 
-      <div className="flex flex-col gap-2">
-        <h2 className="text-sm font-semibold text-zinc-300">Users</h2>
+      <Panel heading="Users">
         {users.length === 0 ? (
-          <p className="text-sm text-zinc-500">No users.</p>
+          <div className="px-6 py-10 text-center">
+            <div className="flex justify-center mb-3 text-fg-subtle">
+              <UsersEmptyIcon />
+            </div>
+            <p className="text-sm font-medium text-fg-muted">No users yet</p>
+            <p className="text-xs text-fg-subtle mt-1">Add a user below to give someone access.</p>
+          </div>
         ) : (
-          <ul className="flex flex-col divide-y divide-zinc-800 border border-zinc-800 rounded-xl overflow-hidden">
+          <ul>
             {users.map((u) => (
               <UserRow key={u.username} user={u} currentUsername={currentUsername} />
             ))}
           </ul>
         )}
-      </div>
+      </Panel>
 
-      <form action={addAction} className="flex flex-col gap-3">
-        <h2 className="text-sm font-semibold text-zinc-300">Add user</h2>
+      <Panel heading="Add user">
+        <form action={addAction} className="p-6 flex flex-col gap-4 max-w-sm">
+          {addState.error && (
+            <p className="text-sm text-danger bg-danger/10 border border-danger/20 rounded-lg px-4 py-2.5">
+              {addState.error}
+            </p>
+          )}
+          {addState.success && (
+            <p className="text-sm text-success bg-success/10 border border-success/20 rounded-lg px-4 py-2.5">
+              {addState.success}
+            </p>
+          )}
 
-        {addState.error && (
-          <p className="text-xs text-red-400 bg-red-500/10 border border-red-500/20 rounded-lg px-3 py-2">
-            {addState.error}
-          </p>
-        )}
-        {addState.success && (
-          <p className="text-xs text-green-400 bg-green-500/10 border border-green-500/20 rounded-lg px-3 py-2">
-            {addState.success}
-          </p>
-        )}
+          <div className="flex flex-col gap-1.5">
+            <label className="text-sm font-medium text-fg">Username</label>
+            <input name="username" type="text" placeholder="jane" className={INPUT} />
+          </div>
 
-        <div className="flex flex-col gap-1">
-          <p className="text-[11px] font-semibold uppercase tracking-wider text-zinc-500">Username</p>
-          <input name="username" type="text" placeholder="jane" className={INPUT} />
-        </div>
+          <div className="flex flex-col gap-1.5">
+            <label className="text-sm font-medium text-fg">Password</label>
+            <input name="password" type="password" placeholder="••••••••" className={INPUT} />
+          </div>
 
-        <div className="flex flex-col gap-1">
-          <p className="text-[11px] font-semibold uppercase tracking-wider text-zinc-500">Password</p>
-          <input name="password" type="password" placeholder="••••••••" className={INPUT} />
-        </div>
+          <div className="flex flex-col gap-1.5">
+            <label className="text-sm font-medium text-fg">Role</label>
+            <select name="role" defaultValue="user" className={SELECT}>
+              <option value="user">User — can view, cannot edit</option>
+              <option value="admin">Admin — full access</option>
+            </select>
+          </div>
 
-        <div className="flex flex-col gap-1">
-          <p className="text-[11px] font-semibold uppercase tracking-wider text-zinc-500">Role</p>
-          <select name="role" defaultValue="user" className={SELECT}>
-            <option value="user">User — can view, cannot edit</option>
-            <option value="admin">Admin — can edit and manage users</option>
-          </select>
-        </div>
-
-        <button
-          type="submit"
-          disabled={addPending}
-          className="self-start h-9 px-4 rounded-lg bg-white text-zinc-900 text-sm font-medium hover:bg-zinc-200 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-        >
-          {addPending ? "Adding…" : "Add user"}
-        </button>
-      </form>
-    </div>
+          <div className="pt-1">
+            <Button type="submit" disabled={addPending}>
+              {addPending ? "Adding…" : "Add user"}
+            </Button>
+          </div>
+        </form>
+      </Panel>
+    </>
   );
 }

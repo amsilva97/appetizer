@@ -10,4 +10,5 @@ export interface WidgetInstance {
   y: number;
   parentId?: string;
   cellIndex?: number;
+  permissions?: string[];
 }

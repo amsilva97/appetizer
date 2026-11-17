@@ -8,7 +8,7 @@ export default async function LoginPage() {
   const session = await getSession();
   if (session.loggedIn) redirect("/");
   return (
-    <main className="min-h-screen bg-zinc-950 flex items-center justify-center p-6">
+    <main className="min-h-screen bg-bg flex items-center justify-center p-6">
       <LoginForm />
     </main>
   );

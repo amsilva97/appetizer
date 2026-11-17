@@ -1,5 +1,6 @@
 import { getIronSession, type IronSession, type SessionOptions } from "iron-session";
 import { cookies } from "next/headers";
+import { connection } from "next/server";
 import type { UserRole } from "@/lib/auth/users";
 
 export interface SessionData {
@@ -32,6 +33,7 @@ export function getSessionOptions(): SessionOptions {
 }
 
 export async function getSession(): Promise<IronSession<SessionData>> {
+  await connection();
   const cookieStore = await cookies();
   return getIronSession<SessionData>(cookieStore, getSessionOptions());
 }
