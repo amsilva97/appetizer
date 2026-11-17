@@ -1,6 +1,9 @@
 name: Release
 
 on:
+  push:
+    branches:
+      - main
   workflow_dispatch:
     inputs:
       bump:
@@ -16,6 +19,7 @@ on:
 
 jobs:
   release:
+    if: "!startsWith(github.event.head_commit.message, 'chore: release')"
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -32,8 +36,9 @@ jobs:
       - name: Determine bump type
         id: bump
         run: |
-          if [ "${{ inputs.bump }}" != "auto" ]; then
-            echo "type=${{ inputs.bump }}" >> $GITHUB_OUTPUT
+          REQUESTED="${{ inputs.bump }}"
+          if [ -n "$REQUESTED" ] && [ "$REQUESTED" != "auto" ]; then
+            echo "type=$REQUESTED" >> $GITHUB_OUTPUT
             exit 0
           fi
 
