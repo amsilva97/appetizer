@@ -250,7 +250,7 @@ export default function Home() {
       }
     }
 
-    const TOOLBAR_H = 48;
+    const TOOLBAR_H = toolbarStyle.height ?? 48;
     for (const w of widgets) {
       if (w.type !== "layout" || w.parentId) continue;
       traverse(w.id, 0, TOOLBAR_H, window.innerWidth, window.innerHeight);
@@ -415,7 +415,7 @@ export default function Home() {
         <div
           key={w.id}
           className="absolute"
-          style={{ top: 48, left: 0, right: 0, bottom: 0 }}
+          style={{ top: toolbarStyle.height ?? 48, left: 0, right: 0, bottom: 0 }}
         >
           <LayoutWidget
             config={w.config as LayoutWidgetConfig}
