@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
 import BackgroundRenderer from "@/components/background-renderer";
 import CanvasMenu, { type ContextItem } from "@/components/canvas-menu";
 import EditorPanel from "@/components/editor-panel";
@@ -20,6 +20,9 @@ import type { MenuWidgetConfig } from "@/types/menu-widget";
 import type { UserRole } from "@/lib/auth/users";
 import type { PageMeta, Permission } from "@/types/permissions";
 import type { ToolbarStyle } from "@/types/toolbar";
+import type { MobileConfig } from "@/types/mobile";
+import MobileView from "@/components/mobile/mobile-view";
+import MobileEditor from "@/components/mobile/mobile-editor";
 
 interface SceneConfig {
   background: BackgroundConfig;
@@ -56,6 +59,9 @@ export default function Home() {
   const [currentPage, setCurrentPage] = useState<string>("");
   const [availablePermissions, setAvailablePermissions] = useState<Permission[]>([]);
   const [toolbarStyle, setToolbarStyle] = useState<ToolbarStyle>({});
+  const [mobileConfig, setMobileConfig] = useState<MobileConfig>({ screens: [{ name: "main", label: "Main", slots: [] }] });
+  const [mobileEnabled, setMobileEnabled] = useState(false);
+  const [mobileEditorOpen, setMobileEditorOpen] = useState(false);
 
   const [loaded, setLoaded] = useState(false);
   const dragRef = useRef<DragState | null>(null);
@@ -67,15 +73,17 @@ export default function Home() {
   useEffect(() => {
     fetch("/api/state")
       .then((r) => r.json())
-      .then(({ pages: pg, activePage, layout }) => {
+      .then(({ pages: pg, activePage, layout, mobileEnabled: me }) => {
         const pageList: PageMeta[] = pg ?? [];
         setPages(pageList);
         setCurrentPage(activePage ?? "");
         currentPageRef.current = activePage ?? "";
+        setMobileEnabled(me ?? false);
         if (layout) {
           if (layout.background) setBg(layout.background);
           if (Array.isArray(layout.widgets)) setWidgets(layout.widgets);
           setToolbarStyle(layout.toolbarStyle ?? {});
+          if (layout.mobile) setMobileConfig(layout.mobile);
         }
       })
       .finally(() => setLoaded(true));
@@ -108,10 +116,10 @@ export default function Home() {
       fetch(`/api/state${page ? `?page=${encodeURIComponent(page)}` : ""}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ background: bg, widgets, toolbarStyle }),
+        body: JSON.stringify({ background: bg, widgets, toolbarStyle, mobile: mobileConfig, mobileEnabled }),
       });
     }, 1000);
-  }, [bg, widgets, toolbarStyle, loaded]);
+  }, [bg, widgets, toolbarStyle, mobileConfig, mobileEnabled, loaded]);
 
   async function switchPage(pageName: string) {
     if (pageName === currentPageRef.current) return;
@@ -126,10 +134,12 @@ export default function Home() {
         setBg(data.layout.background ?? BACKGROUND_PRESETS["Ocean Dusk"]);
         setWidgets(data.layout.widgets ?? []);
         setToolbarStyle(data.layout.toolbarStyle ?? {});
+        setMobileConfig(data.layout.mobile ?? { screens: [{ name: "main", label: "Main", slots: [] }] });
       } else {
         setBg(BACKGROUND_PRESETS["Ocean Dusk"]);
         setWidgets([]);
         setToolbarStyle({});
+        setMobileConfig({ screens: [{ name: "main", label: "Main", slots: [] }] });
       }
       setEditingId(null);
       setMenuPos(null);
@@ -374,6 +384,16 @@ export default function Home() {
 
   const editingWidget = widgets.find((w) => w.id === editingId) ?? null;
 
+  const isMobileViewport = useSyncExternalStore(
+    (cb) => {
+      window.addEventListener("resize", cb);
+      return () => window.removeEventListener("resize", cb);
+    },
+    () => window.innerWidth < 768,
+    () => false
+  );
+  const showMobileView = mobileEnabled && isMobileViewport && !editMode;
+
   return (
     <div
       className="w-screen h-screen relative overflow-hidden"
@@ -382,7 +402,11 @@ export default function Home() {
       onMouseLeave={handleMouseUp}
       onContextMenu={handleCanvasContextMenu}
     >
-      <BackgroundRenderer config={bg} />
+      {showMobileView && (
+        <MobileView config={mobileConfig} widgets={widgets} background={bg} />
+      )}
+
+      {!showMobileView && <BackgroundRenderer config={bg} />}
 
       <Toolbar
         editMode={editMode}
@@ -408,6 +432,9 @@ export default function Home() {
         availablePermissions={availablePermissions}
         toolbarStyle={toolbarStyle}
         onToolbarStyleChange={isAdmin ? setToolbarStyle : undefined}
+        mobileEditorOpen={mobileEditorOpen}
+        onMobileEditorToggle={isAdmin && editMode ? () => setMobileEditorOpen((o) => !o) : undefined}
+        mobileEnabled={mobileEnabled}
       />
 
       {/* Layout widgets — only root layouts, fill canvas below toolbar */}
@@ -531,6 +558,17 @@ export default function Home() {
           onImport={handleImport}
           keyNames={keyNames}
           availablePermissions={availablePermissions}
+        />
+      )}
+
+      {mobileEditorOpen && isAdmin && (
+        <MobileEditor
+          mobile={mobileConfig}
+          widgets={widgets}
+          mobileEnabled={mobileEnabled}
+          onMobileChange={setMobileConfig}
+          onMobileEnabledChange={setMobileEnabled}
+          onClose={() => setMobileEditorOpen(false)}
         />
       )}
     </div>

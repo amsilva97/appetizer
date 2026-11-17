@@ -6,6 +6,7 @@ import type { BackgroundConfig } from "@/types/background";
 import type { WidgetInstance } from "@/types/widget";
 import type { PageMeta } from "@/types/permissions";
 import type { ToolbarStyle } from "@/types/toolbar";
+import type { MobileConfig } from "@/types/mobile";
 import { getSession } from "@/lib/auth/session";
 import { findUser } from "@/lib/auth/users";
 import { readPermissionsConfig, resolveUserPermissions, userCanAccess } from "@/lib/auth/permissions";
@@ -16,6 +17,7 @@ interface IndexConfig {
   active: string;
   pages?: PageMeta[];
   import?: string[];
+  mobileEnabled?: boolean;
 }
 
 interface LayoutConfig {
@@ -23,6 +25,7 @@ interface LayoutConfig {
   background: BackgroundConfig;
   widgets: WidgetInstance[];
   toolbarStyle?: ToolbarStyle;
+  mobile?: MobileConfig;
 }
 
 function ensureDir() {
@@ -120,6 +123,7 @@ export async function GET(request: Request) {
       pages: visiblePages.map(({ name, label }) => ({ name, label })),
       activePage: null,
       layout: null,
+      mobileEnabled: index.mobileEnabled ?? false,
     });
   }
 
@@ -135,6 +139,7 @@ export async function GET(request: Request) {
     pages: visiblePages.map(({ name, label }) => ({ name, label })),
     activePage: activePage.name,
     layout: filteredLayout,
+    mobileEnabled: index.mobileEnabled ?? false,
   });
 }
 
@@ -150,6 +155,8 @@ export async function POST(request: Request) {
     background: BackgroundConfig;
     widgets: WidgetInstance[];
     toolbarStyle?: ToolbarStyle;
+    mobile?: MobileConfig;
+    mobileEnabled?: boolean;
   };
 
   const { searchParams } = new URL(request.url);
@@ -174,12 +181,18 @@ export async function POST(request: Request) {
     background: body.background,
     widgets: body.widgets,
     toolbarStyle: body.toolbarStyle,
+    mobile: body.mobile,
   };
 
   writeFileSync(
     join(DATA_DIR, `${targetName}.yaml`),
     yaml.dump(layout, { indent: 2, lineWidth: -1 })
   );
+
+  if (body.mobileEnabled !== undefined) {
+    index.mobileEnabled = body.mobileEnabled;
+    writeIndex(index);
+  }
 
   return NextResponse.json({ ok: true });
 }
