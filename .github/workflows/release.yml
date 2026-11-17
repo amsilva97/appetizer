@@ -51,12 +51,15 @@ jobs:
 
           if echo "$COMMITS" | grep -qE "^feat(\(.+\))?:"; then
             echo "type=minor" >> $GITHUB_OUTPUT
-          else
+          elif echo "$COMMITS" | grep -qE "^fix(\(.+\))?:"; then
             echo "type=patch" >> $GITHUB_OUTPUT
+          else
+            echo "No releasable commits (no feat: or fix:) — skipping release."
           fi
 
       - name: Bump version in package.json
         id: version
+        if: steps.bump.outputs.type != ''
         run: |
           npm version ${{ steps.bump.outputs.type }} --no-git-tag-version
           NEW=$(node -p "require('./package.json').version")
@@ -64,6 +67,7 @@ jobs:
           echo "version=${NEW}" >> $GITHUB_OUTPUT
 
       - name: Commit and tag
+        if: steps.bump.outputs.type != ''
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
@@ -73,6 +77,7 @@ jobs:
           git push origin main --follow-tags
 
       - name: Create GitHub release
+        if: steps.bump.outputs.type != ''
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ steps.version.outputs.tag }}
