@@ -509,7 +509,7 @@ export default function Toolbar({
   }
 
   function handleContextMenu(e: React.MouseEvent) {
-    if (!isAdmin || !onToolbarStyleChange) return;
+    if (!isAdmin || !editMode || !onToolbarStyleChange) return;
     e.preventDefault();
     const panelWidth = 288;
     const x = Math.min(e.clientX, window.innerWidth - panelWidth - 16);
