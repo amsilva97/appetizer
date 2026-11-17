@@ -96,6 +96,15 @@ function DotsIcon({ size = 16 }: { size?: number }) {
   );
 }
 
+function PhoneIcon({ size = 15 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="5" y="2" width="14" height="20" rx="2" ry="2" />
+      <line x1="12" y1="18" x2="12.01" y2="18" />
+    </svg>
+  );
+}
+
 // ─── ClientPortal ─────────────────────────────────────────────────────────────
 
 function ClientPortal({ children }: { children: React.ReactNode }) {
@@ -439,6 +448,9 @@ interface ToolbarProps {
   availablePermissions?: Permission[];
   toolbarStyle?: ToolbarStyle;
   onToolbarStyleChange?: (s: ToolbarStyle) => void;
+  mobileEditorOpen?: boolean;
+  onMobileEditorToggle?: () => void;
+  mobileEnabled?: boolean;
 }
 
 export default function Toolbar({
@@ -455,6 +467,9 @@ export default function Toolbar({
   availablePermissions = [],
   toolbarStyle = {},
   onToolbarStyleChange,
+  mobileEditorOpen,
+  onMobileEditorToggle,
+  mobileEnabled,
 }: ToolbarProps) {
   const isAdmin = role === "admin";
   const showTabs = pages.length > 1 || (isAdmin && editMode && pages.length >= 1);
@@ -602,6 +617,20 @@ export default function Toolbar({
         {!showTabs && <div className="flex-1" />}
 
         <div className="flex items-center gap-2 shrink-0">
+          {isAdmin && editMode && onMobileEditorToggle && (
+            <button
+              onClick={onMobileEditorToggle}
+              title="Mobile layout"
+              className={`${btnCls} ${mobileEditorOpen ? "!bg-white/[0.12] !text-zinc-100" : ""}`}
+              style={btnStyle}
+            >
+              <PhoneIcon size={15} />
+              {mobileEnabled && (
+                <span className="absolute top-1.5 right-1.5 w-1.5 h-1.5 rounded-full bg-emerald-400" />
+              )}
+            </button>
+          )}
+
           {isAdmin && (
             <AdminMenu
               editMode={editMode}
