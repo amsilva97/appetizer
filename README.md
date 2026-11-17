@@ -1,6 +1,6 @@
 # Appetizer
 
-A browser-based homepage dashboard builder. Arrange app shortcuts, group them into menus, structure the canvas with layouts, and choose a live animated background — all configured visually or through YAML. App widgets can optionally embed a live feed that polls an HTTP endpoint and displays results inline. Requires authentication by default; supports multiple users with role-based access.
+A browser-based homepage dashboard builder. Arrange app shortcuts, group them into menus, structure the canvas with layouts, and choose a live animated background — all configured visually or through YAML. App widgets can optionally embed a live feed that polls an HTTP endpoint and displays results inline. Supports multiple pages with per-page permission gating, a fully customizable toolbar, and multiple users with role-based access.
 
 ---
 
@@ -60,17 +60,30 @@ The Force Login setting is managed from `/admin/users` by any admin.
 | Role | Capabilities |
 |---|---|
 | **Root Admin** | All admin capabilities. Cannot be deleted; can only be disabled by another admin. Created on first run. |
-| **Admin** | Edit the homepage, manage users, manage secret keys. |
-| **User** | View-only access. Cannot enter edit mode or access admin pages. |
+| **Admin** | Edit the dashboard, manage users, manage secret keys, manage permissions, create and configure pages. |
+| **User** | View pages they have been granted permission to see. Cannot enter edit mode or access admin pages. |
 | **Guest** | View-only, unauthenticated. Only possible when Force Login is off. |
 
-The toolbar adapts to the current session. Admin controls (edit, users, keys) are only shown to admins.
+The toolbar adapts to the current session. Admin controls are shown only to admins.
+
+---
+
+## Permissions
+
+Permissions are named access tokens that can be assigned to pages and granted to users. They act as fine-grained visibility gates: a user must hold all the permissions required by a page in order to see its tab.
+
+Admins manage permissions at `/admin/permissions`:
+
+- **Create permissions** — give each one a short ID and a human-readable label.
+- **Delete permissions** — removes the permission and revokes it from all pages and users automatically.
+
+Granting permissions to individual users is done from `/admin/users` — expand a user's row to see which permissions they hold.
 
 ---
 
 ## User Management
 
-Admins access `/admin/users` from the Users icon in the toolbar. From this page admins can:
+Admins access `/admin/users` from the admin menu in the toolbar. From this page admins can:
 
 - **Add users** — set a username, password, and role (admin or user).
 - **Change roles** — promote a user to admin or demote an admin to user. The last active admin cannot be demoted.
@@ -82,7 +95,7 @@ Admins access `/admin/users` from the Users icon in the toolbar. From this page 
 
 ## Secret Keys
 
-Admins access `/admin/keys` from the Keys icon in the toolbar. Keys are named secrets stored encrypted on disk. They are never exposed to the browser — only their names are returned by the API.
+Admins access `/admin/keys` from the admin menu in the toolbar. Keys are named secrets stored encrypted on disk. They are never exposed to the browser — only their names are returned by the API.
 
 Keys are referenced in app widget feed headers using the `{KEY_NAME}` placeholder syntax (see [Feed tab](#feed-tab)).
 
@@ -95,11 +108,34 @@ Keys are referenced in app widget feed headers using the `{KEY_NAME}` placeholde
 The toolbar sits at the top of the screen. Its contents depend on your role:
 
 - **Appetizer mark** (top-left) — always visible.
-- **Users icon** *(admin only)* — navigate to `/admin/users`.
-- **Keys icon** *(admin only)* — navigate to `/admin/keys`.
-- **Edit toggle** *(admin only)* — switches between view mode and edit mode. Active state fills white.
+- **Page tabs** — shown when multiple pages exist, or when an admin is in edit mode. Click a tab to switch pages. See [Pages](#pages).
+- **Admin menu** *(admin only)* — a single ⋮ button that expands a dropdown containing: Edit layout toggle, Users, Keys, and Permissions links. A blue dot on the button indicates edit mode is active.
 - **Sign out** *(when logged in)* — ends the session and redirects to `/login`.
 - **Sign in** *(when not logged in)* — navigates to `/login`.
+
+#### Toolbar Style Editor
+
+Right-clicking anywhere on the toolbar opens the style editor (admin only). Changes apply immediately and persist per page. The editor is organised into four sections:
+
+**Bar** — the toolbar strip itself:
+- Background color
+
+**Tabs** — the page tab strip:
+- Active tab color and inactive tab color
+- Tab style: **Pill** (highlighted background on active tab) or **Underline** (bottom border on active tab)
+- Tab radius — corner radius of the pill highlight (0–24 px)
+- Tab gap — spacing between tabs (0–16 px)
+
+**Buttons** — the icon action buttons (admin menu, sign out):
+- Background color
+- Border color
+- Icon color
+
+**Layout** — structural dimensions:
+- Height — toolbar height (36–72 px)
+- Blur — backdrop blur intensity (0–24 px)
+
+**Reset to defaults** — restores all values to the built-in defaults.
 
 ### View Mode
 
@@ -108,6 +144,54 @@ The dashboard as your end users see it. Layouts are invisible. Menus and apps ar
 ### Edit Mode
 
 Reveals the structure of the canvas. Layouts show their cells with a subtle background and border. Hovering a cell highlights it. Right-clicking anywhere opens the **context menu**. Only admins can enter edit mode.
+
+---
+
+## Pages
+
+The dashboard supports multiple pages. Each page has its own background, widget layout, and toolbar style. Users see only the pages their permissions allow.
+
+The toolbar shows a tab strip when two or more pages exist, or when an admin is in edit mode with at least one page.
+
+### Managing pages (admin, edit mode only)
+
+- **Create a page** — click the **+** button at the end of the tab strip.
+- **Configure a page** — click the ⚙ gear icon on any tab. A popover opens with:
+  - **Page label** — the display name shown on the tab.
+  - **Required permissions** — a checklist of defined permissions. Users must hold all checked permissions to see the tab. Leave all unchecked to make the page visible to everyone.
+- **Delete a page** — open the gear popover and click **Delete**. The last page cannot be deleted.
+- **Switch pages** — click any tab (edit mode and view mode).
+
+### Data model
+
+Each page is stored as a separate YAML file: `data/<name>.yaml`. The list of pages and the active page are tracked in `data/index.yaml`.
+
+```yaml
+# data/index.yaml
+active: home
+pages:
+  - name: home
+    label: Home
+    permissions: []
+  - name: ops
+    label: Ops
+    permissions:
+      - monitoring
+```
+
+Each `data/<name>.yaml` file has the same structure as the former single `data/state.yaml`, plus a `toolbarStyle` key:
+
+```yaml
+# data/home.yaml
+name: home
+background:
+  type: solid
+  color: "#0a0a0a"
+widgets: []
+toolbarStyle:
+  bgColor: "#18181b"
+  activeTabColor: "#00aaff"
+```
 
 ---
 
@@ -333,8 +417,9 @@ Appetizer stores its persistent state in the `data/` directory (created automati
 
 | File | Description |
 |---|---|
-| `data/state.yaml` | The homepage scene (background + widgets). |
-| `data/users.yaml` | User accounts (usernames, bcrypt hashes, roles). |
+| `data/index.yaml` | Page registry — list of pages, their labels, permissions, and the currently active page. |
+| `data/<name>.yaml` | Per-page scene (background, widgets, toolbar style). One file per page; the filename matches the page `name` field. |
+| `data/users.yaml` | User accounts (usernames, bcrypt hashes, roles, and granted permissions). |
 | `data/settings.yaml` | App settings (e.g. `forceLogin`). |
 | `data/.key` | Encryption key for the secrets store. Auto-generated on first use. |
 | `data/keys.enc` | Encrypted secret keys store. |
@@ -345,14 +430,51 @@ Do not commit the `data/` directory. It contains credentials and secrets.
 
 ## YAML Schema Reference
 
-The full scene file has two top-level keys:
+Each page file (`data/<name>.yaml`) has three top-level keys:
 
 ```yaml
+name: <string>
 background: <BackgroundConfig>
 widgets:
   - <WidgetInstance>
   - <WidgetInstance>
+toolbarStyle: <ToolbarStyle>   # optional
 ```
+
+---
+
+### ToolbarStyle
+
+All fields are optional. Omitting a field uses the built-in default.
+
+```yaml
+toolbarStyle:
+  bgColor: "rgba(24, 24, 27, 0.8)"   # toolbar background color
+  activeTabColor: "#00aaff"           # active page tab color
+  tabColor: "#71717a"                 # inactive page tab color
+  height: 48                          # toolbar height in px (36–72)
+  tabRadius: 8                        # tab pill corner radius in px (0–24)
+  gap: 4                              # gap between tabs in px (0–16)
+  blur: 12                            # backdrop blur in px (0–24)
+  tabVariant: pill                    # "pill" or "underline"
+  buttonBg: transparent               # icon button background
+  buttonBorderColor: "rgba(255,255,255,0.08)"  # icon button border
+  buttonIconColor: "#71717a"          # icon button icon color
+```
+
+| Field | Type | Default | Range | Description |
+|---|---|---|---|---|
+| `bgColor` | CSS color | `rgba(24,24,27,0.8)` | — | Toolbar background. Accepts any CSS color including `rgba`. |
+| `activeTabColor` | hex string | `#00aaff` | — | Text/indicator color for the active page tab. |
+| `tabColor` | hex string | `#71717a` | — | Text color for inactive page tabs. |
+| `height` | number | `48` | 36–72 | Toolbar height in pixels. |
+| `tabRadius` | number | `8` | 0–24 | Corner radius of the active tab highlight (pill mode only). |
+| `gap` | number | `4` | 0–16 | Gap between page tabs in pixels. |
+| `blur` | number | `12` | 0–24 | Backdrop blur in pixels. |
+| `tabVariant` | `pill` \| `underline` | `pill` | — | `pill` fills the active tab with a tinted background. `underline` draws a 2 px line at the bottom of the active tab. |
+| `buttonBg` | CSS color | `transparent` | — | Background fill of the icon action buttons. |
+| `buttonBorderColor` | CSS color | `rgba(255,255,255,0.08)` | — | Border color of the icon action buttons. |
+| `buttonIconColor` | CSS color | `#71717a` | — | Icon color inside the action buttons. |
 
 ---
 
@@ -723,9 +845,16 @@ background:
 
 ---
 
-## Full Scene Example
+## Full Page File Example
 
 ```yaml
+name: home
+toolbarStyle:
+  bgColor: "rgba(18, 18, 20, 0.85)"
+  activeTabColor: "#00aaff"
+  tabVariant: pill
+  height: 48
+
 background:
   type: aurora
   baseColor: "#000814"
