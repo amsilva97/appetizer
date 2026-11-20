@@ -55,6 +55,7 @@ export default function MenuWidget({ config, widgetId, allWidgets, editMode }: P
             <AppWidget
               key={child.id}
               config={cfg}
+              widgetId={child.id}
               fillAxis={fillAxis}
               onClick={() => { if (cfg.url) window.open(cfg.url, "_blank"); }}
             />
