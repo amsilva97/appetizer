@@ -1,28 +1,9 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
-import DOMPurify from "dompurify";
+import { useEffect, useRef, useState, type MouseEvent } from "react";
 import type { AppWidgetConfig, AppFeedConfig } from "@/types/app-widget";
-
-const FEED_SANITIZE: DOMPurify.Config = {
-  ALLOWED_TAGS: [
-    "h1","h2","h3","h4","h5","h6",
-    "p","span","div","section",
-    "ul","ol","li",
-    "table","thead","tbody","tfoot","tr","th","td",
-    "strong","em","b","i","u","s",
-    "code","pre","blockquote",
-    "br","hr","small","sup","sub",
-    "dl","dt","dd","mark",
-  ],
-  ALLOWED_ATTR: ["class", "style"],
-  FORCE_BODY: true,
-};
-
-function sanitizeFeedHtml(html: string): string {
-  if (typeof window === "undefined") return "";
-  return DOMPurify.sanitize(html, FEED_SANITIZE as Parameters<typeof DOMPurify.sanitize>[1]) as string;
-}
+import { isSafeLink, sanitizeFeedHtml } from "@/lib/feed/sanitize";
+import { useCurrentPage } from "@/lib/page-context";
 
 // ─── Ping hook ────────────────────────────────────────────────────────────────
 
@@ -61,7 +42,12 @@ function usePing(url: string | undefined, intervalSec: number): PingStatus | nul
 
 type FeedStatus = "idle" | "loading" | "ok" | "error";
 
-function useFeed(feed: AppFeedConfig | undefined) {
+interface FeedRef {
+  page: string;
+  widgetId?: string;
+}
+
+function useFeed(feed: AppFeedConfig | undefined, { page, widgetId }: FeedRef) {
   const [data, setData] = useState<unknown[] | string>([]);
   const [status, setStatus] = useState<FeedStatus>("idle");
   const hasLoadedRef = useRef(false);
@@ -80,7 +66,11 @@ function useFeed(feed: AppFeedConfig | undefined) {
         const res = await fetch("/api/feed/run", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
+          // Non-admins get the feed saved on page/widgetId; the server ignores
+          // the live config below unless the viewer is an admin.
           body: JSON.stringify({
+            page,
+            widgetId,
             url: feed!.url,
             headers: Object.fromEntries(
               feed!.headers.filter((h) => h.key.trim()).map((h) => [h.key, h.value])
@@ -110,7 +100,7 @@ function useFeed(feed: AppFeedConfig | undefined) {
       document.removeEventListener("visibilitychange", poll);
       abortRef.current?.abort();
     };
-  }, [feed]);
+  }, [feed, page, widgetId]);
 
   return { data, status, hasLoaded: hasLoadedRef.current };
 }
@@ -177,14 +167,22 @@ function AppIcon({ url, title, size = 36 }: { url?: string; title: string; size?
 
 interface Props {
   config: AppWidgetConfig;
+  /** Saved widget id; lets non-admin viewers load the widget's feed. */
+  widgetId?: string;
   onClick: () => void;
   fillAxis?: "width" | "height";
 }
 
-export default function AppWidget({ config, onClick, fillAxis }: Props) {
+/** Let links inside the feed open on their own instead of also opening the card's app. */
+function stopLinkClicks(e: MouseEvent): void {
+  if ((e.target as HTMLElement).closest("a[href]")) e.stopPropagation();
+}
+
+export default function AppWidget({ config, widgetId, onClick, fillAxis }: Props) {
+  const page = useCurrentPage();
   const pingUrl = config.ping ? (config.pingUrl || config.url) || undefined : undefined;
   const ping = usePing(pingUrl, config.pingInterval);
-  const { data: feedData, status: feedStatus, hasLoaded: feedHasLoaded } = useFeed(config.feed);
+  const { data: feedData, status: feedStatus, hasLoaded: feedHasLoaded } = useFeed(config.feed, { page, widgetId });
 
   const { logoView, openUrl } = config;
   const [coverErr, setCoverErr] = useState(false);
@@ -291,6 +289,7 @@ export default function AppWidget({ config, onClick, fillAxis }: Props) {
         <div
           className="border-t border-white/[0.08] overflow-hidden relative"
           style={{ height: feedHeight }}
+          onClick={stopLinkClicks}
         >
           {feedStatus === "error" && (
             <p className="p-3 text-xs text-red-400">Failed to load feed.</p>
@@ -308,7 +307,8 @@ export default function AppWidget({ config, onClick, fillAxis }: Props) {
                 [&_hr]:border-white/10 [&_hr]:my-2
                 [&_code]:bg-white/[0.06] [&_code]:px-1 [&_code]:rounded
                 [&_pre]:bg-white/[0.06] [&_pre]:p-2 [&_pre]:rounded [&_pre]:overflow-x-auto
-                [&_strong]:text-zinc-100 [&_mark]:bg-yellow-400/20 [&_mark]:text-yellow-200"
+                [&_strong]:text-zinc-100 [&_mark]:bg-yellow-400/20 [&_mark]:text-yellow-200
+                [&_a]:text-sky-300 [&_a]:underline [&_a:hover]:text-sky-200 [&_img]:max-w-full"
               dangerouslySetInnerHTML={{ __html: sanitizeFeedHtml(feedData) }}
             />
           )}
@@ -322,9 +322,17 @@ export default function AppWidget({ config, onClick, fillAxis }: Props) {
                   const obj = item && typeof item === "object" ? (item as Record<string, unknown>) : null;
                   const title = obj ? renderValue(obj.title ?? obj.name ?? obj.label) : renderValue(item);
                   const subtitle = obj ? renderValue(obj.subtitle ?? obj.status ?? obj.description ?? "") : "";
+                  const href = obj ? obj.url ?? obj.link : undefined;
+                  const label = title || JSON.stringify(item);
                   return (
                     <li key={i} className="px-3 py-2">
-                      <p className="text-xs text-zinc-200 truncate">{title || JSON.stringify(item)}</p>
+                      <p className="text-xs text-zinc-200 truncate">
+                        {isSafeLink(href) ? (
+                          <a href={href} target="_blank" rel="noopener noreferrer nofollow" className="hover:underline hover:text-sky-200">
+                            {label}
+                          </a>
+                        ) : label}
+                      </p>
                       {subtitle && <p className="text-[10px] text-zinc-500 truncate mt-0.5">{subtitle}</p>}
                     </li>
                   );
