@@ -1,9 +1,4 @@
-export interface MobileScreen {
-  name: string;
-  label: string;
-  slots: string[]; // ordered widget IDs from the same desktop page
-}
-
+/** A page's phone version: the page's own app cards, top to bottom. */
 export interface MobileConfig {
-  screens: MobileScreen[];
+  slots: string[]; // ordered app widget ids from the same page
 }

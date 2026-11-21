@@ -10,9 +10,9 @@ import {
   trayWidgets,
 } from "./mobile";
 
-const app = (id: string, parentId?: string, extra: object = {}): WidgetInstance => ({
+const app = (id: string, parentId?: string): WidgetInstance => ({
   id, type: "app", x: 0, y: 0, parentId,
-  config: { title: id, url: "https://a.test", height: 72, width: 240, ...extra } as never,
+  config: { title: id, url: "https://a.test", height: 72, width: 240 } as never,
 });
 const menu = (id: string, parentId?: string): WidgetInstance => ({
   id, type: "menu", x: 0, y: 0, parentId, config: { label: `Menu ${id}` } as never,
@@ -23,40 +23,50 @@ const layout = (id: string): WidgetInstance => ({ id, type: "layout", x: 0, y: 0
 const WIDGETS = [layout("root"), menu("media", "root"), app("jellyfin", "media"), app("seerr", "media"), app("loose")];
 
 describe("trayWidgets", () => {
-  test("offers menus and app cards at any depth, but not layouts", () => {
-    expect(trayWidgets(WIDGETS).map((w) => w.id)).toEqual(["media", "jellyfin", "seerr", "loose"]);
+  test("offers every app card on the page, including ones inside menus, and nothing else", () => {
+    expect(trayWidgets(WIDGETS).map((w) => w.id)).toEqual(["jellyfin", "seerr", "loose"]);
   });
 });
 
 describe("resolveMobileSlots", () => {
-  test("turns slot ids into apps and menus with their app children, in slot order", () => {
-    const items = resolveMobileSlots(["loose", "media"], WIDGETS);
-    expect(items.map((i) => i.kind)).toEqual(["app", "menu"]);
-    expect(items[1].kind === "menu" && items[1].children.map((c) => c.id)).toEqual(["jellyfin", "seerr"]);
+  test("returns app cards in slot order", () => {
+    expect(resolveMobileSlots(["loose", "jellyfin"], WIDGETS).map((w) => w.id)).toEqual(["loose", "jellyfin"]);
   });
 
-  test("skips ids that are missing or point at layouts", () => {
-    expect(resolveMobileSlots(["gone", "root", "seerr"], WIDGETS).map((i) => i.widget.id)).toEqual(["seerr"]);
+  test("never shows a card twice", () => {
+    expect(resolveMobileSlots(["jellyfin", "seerr", "jellyfin"], WIDGETS).map((w) => w.id)).toEqual(["jellyfin", "seerr"]);
+  });
+
+  test("skips missing ids, menus and layouts", () => {
+    expect(resolveMobileSlots(["gone", "media", "root", "seerr"], WIDGETS).map((w) => w.id)).toEqual(["seerr"]);
+  });
+
+  test("skips cards the viewer can't see, since they're absent from the filtered widgets", () => {
+    const visible = WIDGETS.filter((w) => w.id !== "seerr");
+    expect(resolveMobileSlots(["jellyfin", "seerr"], visible).map((w) => w.id)).toEqual(["jellyfin"]);
   });
 });
 
 describe("filterMobileConfig", () => {
-  test("drops slots for widgets the viewer can't see", () => {
-    const mobile = { screens: [{ name: "main", label: "Main", slots: ["loose", "secret"] }] };
-    expect(filterMobileConfig(mobile, new Set(["loose"])).screens[0].slots).toEqual(["loose"]);
+  test("drops ids for widgets the viewer can't see", () => {
+    expect(filterMobileConfig({ slots: ["loose", "secret"] }, new Set(["loose"])).slots).toEqual(["loose"]);
   });
 });
 
 describe("parseMobileConfig", () => {
-  test("keeps well-formed screens", () => {
-    const m = { screens: [{ name: "a", label: "A", slots: ["x"] }] };
-    expect(parseMobileConfig(m)).toEqual(m);
+  test("keeps a slot list and removes repeats", () => {
+    expect(parseMobileConfig({ slots: ["a", "b", "a"] })).toEqual({ slots: ["a", "b"] });
+  });
+
+  test("merges the old multi-screen shape into one list", () => {
+    const old = { screens: [{ name: "main", label: "Apps", slots: ["a", "b"] }, { name: "s2", label: "2", slots: ["b", "c"] }] };
+    expect(parseMobileConfig(old)).toEqual({ slots: ["a", "b", "c"] });
   });
 
   test("rejects anything else", () => {
     expect(parseMobileConfig(undefined)).toBeUndefined();
-    expect(parseMobileConfig({ screens: "x" })).toBeUndefined();
-    expect(parseMobileConfig({ screens: [{ name: "a", label: "A", slots: [1] }] })).toBeUndefined();
+    expect(parseMobileConfig({ slots: [1] })).toBeUndefined();
+    expect(parseMobileConfig("x")).toBeUndefined();
   });
 });
 
@@ -74,6 +84,6 @@ describe("phoneAppConfig", () => {
   });
 });
 
-test("DEFAULT_MOBILE has one empty main screen", () => {
-  expect(DEFAULT_MOBILE).toEqual({ screens: [{ name: "main", label: "Main", slots: [] }] });
+test("DEFAULT_MOBILE is an empty list", () => {
+  expect(DEFAULT_MOBILE).toEqual({ slots: [] });
 });

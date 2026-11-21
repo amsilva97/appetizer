@@ -1,60 +1,58 @@
 import type { AppWidgetConfig } from "@/types/app-widget";
-import type { MobileConfig, MobileScreen } from "@/types/mobile";
+import type { MobileConfig } from "@/types/mobile";
 import type { WidgetInstance } from "@/types/widget";
 
-export const DEFAULT_MOBILE: MobileConfig = { screens: [{ name: "main", label: "Main", slots: [] }] };
+export const DEFAULT_MOBILE: MobileConfig = { slots: [] };
 
 /** Fallback heights for cards whose desktop height is relative to a grid cell (e.g. "100%"). */
 const PHONE_CARD_HEIGHT = 140;
 const PHONE_FEED_HEIGHT = 360;
 
-export type MobileItem =
-  | { kind: "app"; widget: WidgetInstance }
-  | { kind: "menu"; widget: WidgetInstance; children: WidgetInstance[] };
-
-/** Widgets an admin can place on a phone screen: menus and app cards at any depth. Layouts are grid scaffolding only. */
+/** Cards an admin can place on the page's phone version: every app card on the page, at any depth. */
 export function trayWidgets(widgets: WidgetInstance[]): WidgetInstance[] {
-  return widgets.filter((w) => w.type === "app" || w.type === "menu");
+  return widgets.filter((w) => w.type === "app");
 }
 
-/** Slot ids → things to draw, in slot order. Menus carry their app children; unknown ids and layouts are skipped. */
-export function resolveMobileSlots(slots: string[], widgets: WidgetInstance[]): MobileItem[] {
-  const items: MobileItem[] = [];
+/**
+ * The cards to draw, in order: each id at most once, and only app cards that exist in `widgets`.
+ * Because `widgets` is already filtered for the viewer, hidden cards drop out here too.
+ */
+export function resolveMobileSlots(slots: string[], widgets: WidgetInstance[]): WidgetInstance[] {
+  const seen = new Set<string>();
+  const out: WidgetInstance[] = [];
   for (const id of slots) {
-    const widget = widgets.find((w) => w.id === id);
-    if (widget?.type === "app") items.push({ kind: "app", widget });
-    if (widget?.type === "menu") {
-      const children = widgets.filter((w) => w.type === "app" && w.parentId === widget.id);
-      items.push({ kind: "menu", widget, children });
-    }
+    if (seen.has(id)) continue;
+    const w = widgets.find((x) => x.id === id && x.type === "app");
+    if (!w) continue;
+    seen.add(id);
+    out.push(w);
   }
-  return items;
+  return out;
 }
 
-/** Remove slot ids the viewer can't see, so guests don't learn the ids of hidden widgets. */
+/** Remove ids the viewer can't see, so guests don't learn the ids of hidden widgets. */
 export function filterMobileConfig(mobile: MobileConfig, visibleIds: Set<string>): MobileConfig {
-  return {
-    screens: mobile.screens.map((s) => ({ ...s, slots: s.slots.filter((id) => visibleIds.has(id)) })),
-  };
+  return { slots: mobile.slots.filter((id) => visibleIds.has(id)) };
 }
 
-function isScreen(s: unknown): s is MobileScreen {
-  if (!s || typeof s !== "object") return false;
-  const { name, label, slots } = s as Record<string, unknown>;
-  return (
-    typeof name === "string" &&
-    typeof label === "string" &&
-    Array.isArray(slots) &&
-    slots.every((id) => typeof id === "string")
-  );
-}
+const isStringArray = (v: unknown): v is string[] => Array.isArray(v) && v.every((x) => typeof x === "string");
 
-/** Validate a mobile config from a request body; undefined if it isn't one. */
+/**
+ * Validate a stored or posted phone config; undefined if it isn't one.
+ * Also reads the older `{ screens: [{ slots }] }` shape by merging its screens into one list.
+ */
 export function parseMobileConfig(raw: unknown): MobileConfig | undefined {
   if (!raw || typeof raw !== "object") return undefined;
-  const screens = (raw as Record<string, unknown>).screens;
-  if (!Array.isArray(screens) || !screens.every(isScreen)) return undefined;
-  return { screens: screens.map(({ name, label, slots }) => ({ name, label, slots: [...slots] })) };
+  const { slots, screens } = raw as Record<string, unknown>;
+  if (isStringArray(slots)) return { slots: [...new Set(slots)] };
+  if (Array.isArray(screens)) {
+    const merged = screens.flatMap((s) => {
+      const inner = s && typeof s === "object" ? (s as Record<string, unknown>).slots : undefined;
+      return isStringArray(inner) ? inner : [];
+    });
+    return { slots: [...new Set(merged)] };
+  }
+  return undefined;
 }
 
 /** Card config for the phone stack: swap cell-relative heights for fixed ones so cards don't collapse. */

@@ -7,7 +7,7 @@ import type { WidgetInstance } from "@/types/widget";
 import type { PageMeta } from "@/types/permissions";
 import type { ToolbarStyle } from "@/types/toolbar";
 import { getSession } from "@/lib/auth/session";
-import { filterMobileConfig, parseMobileConfig } from "@/lib/mobile";
+import { DEFAULT_MOBILE, filterMobileConfig, parseMobileConfig } from "@/lib/mobile";
 import { findUser } from "@/lib/auth/users";
 import { readPermissionsConfig, resolveUserPermissions, userCanAccess } from "@/lib/auth/permissions";
 import {
@@ -72,9 +72,10 @@ export async function GET(request: Request) {
     ? {
         ...layout,
         widgets: visibleWidgets,
-        mobile: layout.mobile
-          ? filterMobileConfig(layout.mobile, new Set(visibleWidgets.map((w) => w.id)))
-          : undefined,
+        mobile: filterMobileConfig(
+          parseMobileConfig(layout.mobile) ?? DEFAULT_MOBILE,
+          new Set(visibleWidgets.map((w) => w.id))
+        ),
       }
     : null;
 
@@ -124,7 +125,7 @@ export async function POST(request: Request) {
     background: body.background,
     widgets: body.widgets,
     toolbarStyle: body.toolbarStyle,
-    mobile: parseMobileConfig(body.mobile) ?? existing?.mobile,
+    mobile: parseMobileConfig(body.mobile) ?? parseMobileConfig(existing?.mobile),
   };
 
   writeFileSync(
