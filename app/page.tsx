@@ -440,8 +440,8 @@ export default function Home() {
         mobileEnabled={mobileEnabled}
       />
 
-      {/* Layout widgets — only root layouts, fill canvas below toolbar */}
-      {widgets.filter((w) => w.type === "layout" && !w.parentId).map((w) => (
+      {/* Layout widgets — only root layouts, fill canvas below toolbar. Hidden while the phone view is showing. */}
+      {!showMobileView && widgets.filter((w) => w.type === "layout" && !w.parentId).map((w) => (
         <div
           key={w.id}
           className="absolute"
@@ -457,7 +457,7 @@ export default function Home() {
       ))}
 
       {/* App widgets — freely positioned, draggable (only those not inside a menu) */}
-      {widgets.filter((w) => w.type === "app" && !w.parentId).map((w) => (
+      {!showMobileView && widgets.filter((w) => w.type === "app" && !w.parentId).map((w) => (
         <div
           key={w.id}
           style={{ position: "absolute", left: w.x, top: w.y, cursor: editMode ? "grab" : "default", userSelect: "none" }}
