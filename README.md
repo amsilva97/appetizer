@@ -343,7 +343,9 @@ An app shortcut card. Apps can be floating (draggable, positioned freely on the 
 
 Embeds a live scrollable data list directly below the app card header. The feed is part of the app widget — no separate widget type is needed.
 
-The feed runs as a server-side proxy: the browser posts the config to `/api/feed/run`, the server fetches the upstream URL, applies the transform, and returns the data. Secrets in headers are substituted server-side and never sent to the browser.
+The feed runs as a server-side proxy: the browser asks `/api/feed/run` for a widget's feed, the server fetches the upstream URL, applies the transform, and returns the data. Secrets in headers are substituted server-side and never sent to the browser.
+
+Only admins can run feed config sent from the browser (the editor needs this to preview unsaved changes). For every other user the server ignores any URL, headers or transform in the request and runs only the feed saved on that widget, and only if the user can see the page and widget. So non-admin users can't make the server fetch other URLs, run their own transform code, or inject links.
 
 - **Method** — `None` (no feed) or `GET` (fetch and display data below the header row).
 - **URL** — the endpoint to fetch. Must be `http://` or `https://`.
@@ -351,16 +353,20 @@ The feed runs as a server-side proxy: the browser posts the config to `/api/feed
 - **Transform** — a JavaScript expression evaluated in a sandboxed `vm` context (2-second timeout, 10MB response cap). The variable `body` holds the parsed JSON response. The expression must return **either an array** (renders as a plain list) **or an HTML string** (renders as a sanitized rich panel).
 
   ```js
-  // Array — rendered as a list of rows
-  body.records.map(r => ({ title: r.title, subtitle: r.status }))
+  // Array — rendered as a list of rows; add url (or link) to make the title a link
+  body.records.map(r => ({ title: r.title, subtitle: r.status, url: r.link }))
 
-  // HTML string — rendered as a rich panel (links and scripts stripped)
+  // HTML string — rendered as a rich panel (scripts stripped, links allowed)
   `<h2>Queue</h2><table>${body.records.map(r =>
     `<tr><td>${r.title}</td><td>${r.status}</td></tr>`
   ).join("")}</table>`
   ```
 
-  When returning HTML, all `<a>` tags, `href` and `src` attributes, and event handlers are stripped by DOMPurify. The feed displays data only — it cannot navigate or execute code. `style` attributes are allowed so you can apply inline CSS.
+  HTML is cleaned with DOMPurify's standard HTML profile, so links, images, tables and other normal markup work, and `style` attributes are allowed for inline CSS. Scripts, event handlers, `<style>` tags and form controls (`<form>`, `<input>`, `<button>`, …) are always removed.
+
+  Links must be absolute `http://`, `https://` or `mailto:` URLs; anything else (`javascript:`, relative paths) loses its `href`. Every link opens in a new tab with `rel="noopener noreferrer nofollow"`, and clicking one doesn't also open the app card's own URL. In array mode a row's `url` or `link` field follows the same rules.
+
+  Values from the upstream app land in your HTML as-is. If that data can be typed by other people (request titles, torrent names, …), anyone who can write it can add a link to your feed, so escape such values in the transform.
 
   The feed container is `overflow: hidden` — it clips its content rather than scrolling itself. If you want the content to scroll, add an `overflow-y: auto` wrapper in your HTML. Because the container has an explicit pixel height, `height: 100%` and `width: 100%` resolve correctly inside it:
 
