@@ -7,6 +7,7 @@ import EditorPanel from "@/components/editor-panel";
 import Toolbar from "@/components/toolbar";
 import AppWidget from "@/components/widgets/app-widget";
 import LayoutWidget from "@/components/widgets/layout-widget";
+import { PageContext } from "@/lib/page-context";
 import { BACKGROUND_PRESETS } from "@/lib/background-presets";
 import { download, loadFile, parse } from "@/lib/yaml-parser";
 import type { BackgroundConfig } from "@/types/background";
@@ -375,6 +376,7 @@ export default function Home() {
   const editingWidget = widgets.find((w) => w.id === editingId) ?? null;
 
   return (
+    <PageContext.Provider value={currentPage}>
     <div
       className="w-screen h-screen relative overflow-hidden"
       onMouseMove={handleMouseMove}
@@ -438,6 +440,7 @@ export default function Home() {
             return (
               <AppWidget
                 config={cfg}
+                widgetId={w.id}
                 onClick={() => { if (cfg.url) window.open(cfg.url, "_blank"); }}
               />
             );
@@ -534,5 +537,6 @@ export default function Home() {
         />
       )}
     </div>
+    </PageContext.Provider>
   );
 }
