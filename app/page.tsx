@@ -85,7 +85,7 @@ export default function Home() {
           if (layout.background) setBg(layout.background);
           if (Array.isArray(layout.widgets)) setWidgets(layout.widgets);
           setToolbarStyle(layout.toolbarStyle ?? {});
-          if (layout.mobile) setMobileConfig(layout.mobile);
+          setMobileConfig(layout.mobile ?? DEFAULT_MOBILE);
         }
       })
       .finally(() => setLoaded(true));
@@ -567,6 +567,7 @@ export default function Home() {
 
       {mobileEditorOpen && isAdmin && (
         <MobileEditor
+          pageLabel={pages.find((p) => p.name === currentPage)?.label ?? currentPage}
           mobile={mobileConfig}
           widgets={widgets}
           mobileEnabled={mobileEnabled}

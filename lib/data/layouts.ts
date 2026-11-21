@@ -23,6 +23,7 @@ export interface LayoutConfig {
   background: BackgroundConfig;
   widgets: WidgetInstance[];
   toolbarStyle?: ToolbarStyle;
+  /** Phone version of the page. Older files may still hold the multi-screen shape; read it with parseMobileConfig. */
   mobile?: MobileConfig;
 }
 
