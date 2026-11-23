@@ -1,7 +1,7 @@
 import type { ButtonHTMLAttributes } from "react";
 
 type Variant = "primary" | "secondary" | "ghost" | "destructive" | "destructive-confirm";
-type BtnSize = "default" | "icon";
+type BtnSize = "default" | "sm" | "icon";
 
 const BASE =
   "inline-flex items-center justify-center rounded-lg text-sm font-medium transition-colors " +
@@ -19,6 +19,7 @@ const VARIANTS: Record<Variant, string> = {
 
 const SIZES: Record<BtnSize, string> = {
   default: "h-9 px-4",
+  sm: "h-8 px-3 text-xs",
   icon: "size-9 p-0",
 };
 

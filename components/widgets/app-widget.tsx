@@ -10,7 +10,9 @@ import { useCurrentPage } from "@/lib/page-context";
 type PingStatus = "checking" | "online" | "offline";
 
 function usePing(url: string | undefined, intervalSec: number): PingStatus | null {
-  const [status, setStatus] = useState<PingStatus>("checking");
+  // Results are tagged with the url they're for, so a new url reads as
+  // "checking" until its first answer, without resetting state in the effect.
+  const [result, setResult] = useState<{ url: string; status: PingStatus } | null>(null);
 
   useEffect(() => {
     if (!url) return;
@@ -21,21 +23,21 @@ function usePing(url: string | undefined, intervalSec: number): PingStatus | nul
       const t = setTimeout(() => ctrl.abort(), 5000);
       try {
         await fetch(url!, { method: "HEAD", mode: "no-cors", cache: "no-store", signal: ctrl.signal });
-        if (alive) setStatus("online");
+        if (alive) setResult({ url: url!, status: "online" });
       } catch {
-        if (alive) setStatus("offline");
+        if (alive) setResult({ url: url!, status: "offline" });
       } finally {
         clearTimeout(t);
       }
     }
 
-    setStatus("checking");
     check();
     const id = setInterval(check, intervalSec * 1000);
     return () => { alive = false; clearInterval(id); };
   }, [url, intervalSec]);
 
-  return url ? status : null;
+  if (!url) return null;
+  return result?.url === url ? result.status : "checking";
 }
 
 // ─── Feed hook ─────────────────────────────────────────────────────────────────
@@ -50,7 +52,7 @@ interface FeedRef {
 function useFeed(feed: AppFeedConfig | undefined, { page, widgetId }: FeedRef) {
   const [data, setData] = useState<unknown[] | string>([]);
   const [status, setStatus] = useState<FeedStatus>("idle");
-  const hasLoadedRef = useRef(false);
+  const [hasLoaded, setHasLoaded] = useState(false);
   const abortRef = useRef<AbortController | null>(null);
 
   useEffect(() => {
@@ -66,8 +68,8 @@ function useFeed(feed: AppFeedConfig | undefined, { page, widgetId }: FeedRef) {
         const res = await fetch("/api/feed/run", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          // Non-admins get the feed saved on page/widgetId; the server ignores
-          // the live config below unless the viewer is an admin.
+          // Viewers get the feed saved on page/widgetId; the server only uses
+          // the live config below for layout editors (pages:update).
           body: JSON.stringify({
             page,
             widgetId,
@@ -83,7 +85,7 @@ function useFeed(feed: AppFeedConfig | undefined, { page, widgetId }: FeedRef) {
         if (!res.ok || json.error) {
           setStatus("error");
         } else {
-          hasLoadedRef.current = true;
+          setHasLoaded(true);
           setData(json.data ?? []);
           setStatus("ok");
         }
@@ -102,7 +104,7 @@ function useFeed(feed: AppFeedConfig | undefined, { page, widgetId }: FeedRef) {
     };
   }, [feed, page, widgetId]);
 
-  return { data, status, hasLoaded: hasLoadedRef.current };
+  return { data, status, hasLoaded };
 }
 
 // ─── Shared atoms ─────────────────────────────────────────────────────────────

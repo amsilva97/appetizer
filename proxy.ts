@@ -23,12 +23,10 @@ export async function proxy(request: NextRequest) {
     if (!session.loggedIn) {
       return NextResponse.redirect(new URL("/login", request.url));
     }
-    if (session.role !== "admin") {
-      return NextResponse.redirect(new URL("/", request.url));
-    }
-    // Re-verify admin is still active
-    const adminUser = findUser(session.username ?? "");
-    if (!adminUser || adminUser.disabled || adminUser.role !== "admin") {
+    // Re-verify the account is still active. Which admin areas they can use
+    // (role capabilities, IP allowlist) is checked by the admin layout and pages.
+    const user = findUser(session.username ?? "");
+    if (!user || user.disabled) {
       return NextResponse.redirect(new URL("/login", request.url));
     }
     return response;

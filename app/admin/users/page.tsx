@@ -1,31 +1,34 @@
-import { redirect } from "next/navigation";
-import { readUsers } from "@/lib/auth/users";
-import { readSettings } from "@/lib/auth/settings";
-import { getSession } from "@/lib/auth/session";
+import { readUsers, toPublicUser } from "@/lib/auth/users";
+import { readPermissionsConfig } from "@/lib/auth/permissions";
+import { can } from "@/lib/auth/viewer";
+import { requirePageCapability } from "@/lib/auth/page-guard";
 import UsersManager from "@/components/admin/users-manager";
+import { PageHeader } from "@/components/admin/admin-ui";
 
 export const instant = false;
 
 export default async function UsersPage() {
-  const session = await getSession();
-  if (!session.loggedIn || session.role !== "admin") redirect("/");
+  const viewer = await requirePageCapability("users:read");
 
-  const users = readUsers();
-  const settings = readSettings();
+  const users = readUsers().map(toPublicUser);
+  const { roles } = readPermissionsConfig();
 
   return (
     <div className="space-y-6">
-      <div className="mb-8">
-        <h1 className="text-2xl font-semibold text-fg">Users</h1>
-        <div className="mt-3 h-0.5 w-8 bg-gradient-to-r from-brand to-brand-alt" />
-        <p className="mt-2 text-sm text-fg-muted">
-          Manage who can access and edit this dashboard.
-        </p>
-      </div>
+      <PageHeader title="Users">
+        Who can sign in, and whether they&apos;re an admin. Roles and page permissions are assigned on{" "}
+        <a href="/admin/permissions" className="text-brand hover:underline">Roles &amp; permissions</a>.
+      </PageHeader>
       <UsersManager
         users={users}
-        settings={settings}
-        currentUsername={session.username ?? ""}
+        roles={roles.map(({ id, label }) => ({ id, label }))}
+        currentUsername={viewer.username ?? ""}
+        abilities={{
+          isAdmin: viewer.isAdmin,
+          write: can(viewer, "users:write"),
+          update: can(viewer, "users:update"),
+          delete: can(viewer, "users:delete"),
+        }}
       />
     </div>
   );

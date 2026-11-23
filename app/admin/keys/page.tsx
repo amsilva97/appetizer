@@ -1,23 +1,22 @@
 import { readKeys } from "@/lib/auth/keys";
+import { can } from "@/lib/auth/viewer";
+import { requirePageCapability } from "@/lib/auth/page-guard";
 import KeysManager from "@/components/admin/keys-manager";
+import { PageHeader } from "@/components/admin/admin-ui";
 
-export default function KeysPage() {
+export const instant = false;
+
+export default async function KeysPage() {
+  const viewer = await requirePageCapability("keys:read");
   const keyNames = Object.keys(readKeys());
 
   return (
     <div className="space-y-6">
-      <div className="mb-8">
-        <h1 className="text-2xl font-semibold text-fg">Secret Keys</h1>
-        <div className="mt-3 h-0.5 w-8 bg-gradient-to-r from-brand to-brand-alt" />
-        <p className="mt-2 text-sm text-fg-muted">
-          Server-side API keys for feed sources. Reference them in feed headers with{" "}
-          <code className="text-xs font-mono text-fg bg-surface-2 px-1.5 py-0.5 rounded">
-            {"{KEY_NAME}"}
-          </code>
-          .
-        </p>
-      </div>
-      <KeysManager keyNames={keyNames} />
+      <PageHeader title="Secret keys">
+        Server-side API keys for feed sources. Reference them in feed headers with{" "}
+        <code className="text-xs font-mono text-fg bg-surface-2 px-1.5 py-0.5 rounded">{"{KEY_NAME}"}</code>.
+      </PageHeader>
+      <KeysManager keyNames={keyNames} canWrite={can(viewer, "keys:write")} canDelete={can(viewer, "keys:delete")} />
     </div>
   );
 }
