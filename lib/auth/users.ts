@@ -14,6 +14,15 @@ export interface AppUser {
   permissions?: string[];
 }
 
+/** A user as it's safe to send to the browser: no password hash. */
+export type PublicUser = Omit<AppUser, "passwordHash">;
+
+export function toPublicUser(user: AppUser): PublicUser {
+  const rest: Partial<AppUser> = { ...user };
+  delete rest.passwordHash;
+  return rest as PublicUser;
+}
+
 const DATA_DIR = join(process.cwd(), "data");
 const USERS_PATH = join(DATA_DIR, "users.yaml");
 

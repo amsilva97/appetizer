@@ -1,14 +1,18 @@
 // @vitest-environment node
 import { beforeEach, describe, expect, test, vi } from "vitest";
 import type { Viewer } from "@/lib/auth/viewer";
+import { ALL_CAPABILITIES } from "@/types/permissions";
 
 const viewer = vi.fn<() => Promise<Viewer>>();
 const findSavedFeed = vi.fn();
 const fetchFeed = vi.fn();
 const runTransform = vi.fn();
 
-vi.mock("@/lib/auth/viewer", () => ({ getViewer: () => viewer() }));
-vi.mock("@/lib/auth/keys", () => ({ readKeys: () => ({}) }));
+vi.mock("@/lib/auth/viewer", () => ({
+  getViewer: () => viewer(),
+  can: (v: Viewer, c: string) => v.capabilities.has(c as never),
+}));
+vi.mock("@/lib/auth/keys", () => ({ readKeys: () => ({}), referencesKeys: () => false }));
 vi.mock("@/lib/feed/resolve", () => ({ findSavedFeed: (...a: unknown[]) => findSavedFeed(...a) }));
 vi.mock("@/lib/feed/runner", () => ({
   substituteHeaders: (h: Record<string, string>) => h,
@@ -18,9 +22,19 @@ vi.mock("@/lib/feed/runner", () => ({
 
 const { POST } = await import("./route");
 
-const ADMIN: Viewer = { loggedIn: true, isAdmin: true, permissions: new Set() };
-const USER: Viewer = { loggedIn: true, isAdmin: false, permissions: new Set(["media"]) };
-const GUEST: Viewer = { loggedIn: false, isAdmin: false, permissions: new Set() };
+const base: Viewer = {
+  loggedIn: true,
+  username: "x",
+  isAdmin: false,
+  isAdminAccount: false,
+  ipAllowed: true,
+  clientIp: null,
+  permissions: new Set(),
+  capabilities: new Set(),
+};
+const ADMIN: Viewer = { ...base, isAdmin: true, isAdminAccount: true, capabilities: new Set(ALL_CAPABILITIES) };
+const USER: Viewer = { ...base, permissions: new Set(["media"]) };
+const GUEST: Viewer = { ...base, loggedIn: false };
 
 const SAVED = {
   method: "GET",

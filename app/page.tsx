@@ -18,8 +18,8 @@ import { DEFAULT_LAYOUT_WIDGET } from "@/types/layout-widget";
 import type { LayoutWidgetConfig } from "@/types/layout-widget";
 import { DEFAULT_MENU_WIDGET } from "@/types/menu-widget";
 import type { MenuWidgetConfig } from "@/types/menu-widget";
-import type { UserRole } from "@/lib/auth/users";
-import type { PageMeta, Permission } from "@/types/permissions";
+import type { Capability, PageMeta, Permission } from "@/types/permissions";
+import { adminTabsFor } from "@/lib/admin-tabs";
 import type { ToolbarStyle } from "@/types/toolbar";
 import type { MobileConfig } from "@/types/mobile";
 import MobileView from "@/components/mobile/mobile-view";
@@ -55,7 +55,7 @@ export default function Home() {
     cellTargets: { widgetId: string; cellIndex: number }[];
   } | null>(null);
   const [keyNames, setKeyNames] = useState<string[]>([]);
-  const [role, setRole] = useState<UserRole | null>(null);
+  const [capabilities, setCapabilities] = useState<Capability[]>([]);
   const [loggedIn, setLoggedIn] = useState(false);
   const [pages, setPages] = useState<PageMeta[]>([]);
   const [currentPage, setCurrentPage] = useState<string>("");
@@ -70,7 +70,12 @@ export default function Home() {
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const currentPageRef = useRef<string>("");
 
-  const isAdmin = role === "admin";
+  // What the UI offers; the server checks every call again.
+  const caps = new Set(capabilities);
+  const canEdit = caps.has("pages:update");
+  const canCreatePage = caps.has("pages:write");
+  const canDeletePage = caps.has("pages:delete");
+  const adminLinks = adminTabsFor(caps);
 
   useEffect(() => {
     fetch("/api/state")
@@ -91,27 +96,30 @@ export default function Home() {
       .finally(() => setLoaded(true));
 
     fetch("/api/me")
-      .then((r) => r.ok ? r.json() : { loggedIn: false, role: null })
-      .then(({ loggedIn: li, role: r }: { loggedIn: boolean; role: UserRole | null }) => {
+      .then((r) => r.ok ? r.json() : { loggedIn: false, capabilities: [] })
+      .then(({ loggedIn: li, capabilities: c }: { loggedIn: boolean; capabilities?: Capability[] }) => {
+        const held = new Set(c ?? []);
         setLoggedIn(li);
-        setRole(r);
-        if (li && r === "admin") {
+        setCapabilities([...held]);
+        if (held.has("pages:update") || held.has("roles:read")) {
           fetch("/api/admin/permissions")
             .then((res) => res.ok ? res.json() : { permissions: [] })
             .then(({ permissions }) => setAvailablePermissions(permissions ?? []))
             .catch(() => {});
         }
+        if (held.has("keys:read")) {
+          fetch("/api/keys")
+            .then((r) => r.ok ? r.json() : { keyNames: [] })
+            .then(({ keyNames }: { keyNames: string[] }) => setKeyNames(keyNames))
+            .catch(() => {});
+        }
       })
-      .catch(() => {});
-
-    fetch("/api/keys")
-      .then((r) => r.ok ? r.json() : { keyNames: [] })
-      .then(({ keyNames }: { keyNames: string[] }) => setKeyNames(keyNames))
       .catch(() => {});
   }, []);
 
   useEffect(() => {
-    if (!loaded) return;
+    // Only editors save; everyone else would just get a 403 back.
+    if (!loaded || !canEdit) return;
     if (saveTimer.current) clearTimeout(saveTimer.current);
     saveTimer.current = setTimeout(() => {
       const page = currentPageRef.current;
@@ -121,7 +129,7 @@ export default function Home() {
         body: JSON.stringify({ background: bg, widgets, toolbarStyle, mobile: mobileConfig, mobileEnabled }),
       });
     }, 1000);
-  }, [bg, widgets, toolbarStyle, mobileConfig, mobileEnabled, loaded]);
+  }, [bg, widgets, toolbarStyle, mobileConfig, mobileEnabled, loaded, canEdit]);
 
   async function switchPage(pageName: string) {
     if (pageName === currentPageRef.current) return;
@@ -414,7 +422,7 @@ export default function Home() {
       <Toolbar
         editMode={editMode}
         onToggleEdit={() => {
-          if (!isAdmin) return;
+          if (!canEdit) return;
           setEditMode((m) => {
             if (m) {
               setBgEditorOpen(false);
@@ -424,19 +432,20 @@ export default function Home() {
             return !m;
           });
         }}
-        role={role}
+        canEdit={canEdit}
+        adminLinks={adminLinks}
         loggedIn={loggedIn}
         pages={pages}
         currentPage={currentPage}
         onPageChange={switchPage}
-        onCreatePage={isAdmin ? handleCreatePage : undefined}
-        onUpdatePage={isAdmin ? handleUpdatePage : undefined}
-        onDeletePage={isAdmin ? handleDeletePage : undefined}
+        onCreatePage={canCreatePage ? handleCreatePage : undefined}
+        onUpdatePage={canEdit ? handleUpdatePage : undefined}
+        onDeletePage={canDeletePage ? handleDeletePage : undefined}
         availablePermissions={availablePermissions}
         toolbarStyle={toolbarStyle}
-        onToolbarStyleChange={isAdmin ? setToolbarStyle : undefined}
+        onToolbarStyleChange={canEdit ? setToolbarStyle : undefined}
         mobileEditorOpen={mobileEditorOpen}
-        onMobileEditorToggle={isAdmin && editMode ? () => setMobileEditorOpen((o) => !o) : undefined}
+        onMobileEditorToggle={canEdit && editMode ? () => setMobileEditorOpen((o) => !o) : undefined}
         mobileEnabled={mobileEnabled}
       />
 
@@ -565,7 +574,7 @@ export default function Home() {
         />
       )}
 
-      {mobileEditorOpen && isAdmin && (
+      {mobileEditorOpen && canEdit && (
         <MobileEditor
           pageLabel={pages.find((p) => p.name === currentPage)?.label ?? currentPage}
           mobile={mobileConfig}

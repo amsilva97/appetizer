@@ -4,7 +4,7 @@ import { join } from "path";
 import * as yaml from "js-yaml";
 import type { PageMeta } from "@/types/permissions";
 import type { BackgroundConfig } from "@/types/background";
-import { getSession } from "@/lib/auth/session";
+import { guard } from "@/lib/auth/guard";
 import { BACKGROUND_PRESETS } from "@/lib/background-presets";
 
 const DATA_DIR = join(process.cwd(), "data");
@@ -60,24 +60,20 @@ function uniqueSlug(base: string, existing: string[]): string {
 }
 
 export async function GET() {
-  const session = await getSession();
-  if (!session.loggedIn || session.role !== "admin") {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
+  const viewer = await guard("pages:read");
+  if (viewer instanceof NextResponse) return viewer;
   ensureDir();
   const index = readIndex();
   return NextResponse.json({ pages: index.pages, active: index.active });
 }
 
 export async function POST(request: Request) {
-  const session = await getSession();
-  if (!session.loggedIn || session.role !== "admin") {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
+  const viewer = await guard("pages:write");
+  if (viewer instanceof NextResponse) return viewer;
   ensureDir();
 
-  const body = await request.json() as { label?: string };
-  const label = (body.label ?? "New Page").trim();
+  const body = (await request.json().catch(() => ({}))) as { label?: unknown };
+  const label = (typeof body.label === "string" ? body.label : "New Page").trim().slice(0, 64);
   if (!label) return NextResponse.json({ error: "Label is required" }, { status: 400 });
 
   const index = readIndex();

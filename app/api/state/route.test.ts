@@ -12,8 +12,10 @@ vi.spyOn(process, "cwd").mockReturnValue(root);
 
 const session = vi.fn();
 vi.mock("@/lib/auth/session", () => ({ getSession: () => session() }));
+vi.mock("next/headers", () => ({ headers: async () => new Headers() }));
 vi.mock("@/lib/auth/users", () => ({
   findUser: (name: string) =>
+    name === "root" ? { username: "root", role: "admin", disabled: false } :
     name === "viewer" ? { username: "viewer", role: "user", permissions: [] } :
     name === "media" ? { username: "media", role: "user", permissions: ["media"] } : null,
 }));
@@ -27,6 +29,8 @@ const { GET } = await import("./route");
 const app = (id: string, extra: object = {}) => ({ id, type: "app", x: 0, y: 0, config: { title: id }, ...extra });
 
 beforeEach(() => {
+  // Guests are part of these cases, so Force Login is off.
+  writeFileSync(join(root, "data", "settings.yaml"), yaml.dump({ forceLogin: false }));
   writeFileSync(join(root, "data", "index.yaml"), yaml.dump({ active: "home", mobileEnabled: true, pages: [{ name: "home", label: "Home", permissions: [] }] }));
   writeFileSync(
     join(root, "data", "home.yaml"),

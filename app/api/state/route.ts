@@ -6,10 +6,11 @@ import type { BackgroundConfig } from "@/types/background";
 import type { WidgetInstance } from "@/types/widget";
 import type { PageMeta } from "@/types/permissions";
 import type { ToolbarStyle } from "@/types/toolbar";
-import { getSession } from "@/lib/auth/session";
 import { DEFAULT_MOBILE, filterMobileConfig, parseMobileConfig } from "@/lib/mobile";
-import { findUser } from "@/lib/auth/users";
-import { readPermissionsConfig, resolveUserPermissions, userCanAccess } from "@/lib/auth/permissions";
+import { userCanAccess } from "@/lib/auth/permissions";
+import { readSettings } from "@/lib/auth/settings";
+import { can, getViewer, type Viewer } from "@/lib/auth/viewer";
+import { mergeEditorChanges } from "@/lib/data/merge-layout";
 import {
   DATA_DIR,
   filterWidgets,
@@ -27,20 +28,20 @@ function writeIndex(index: IndexConfig): void {
   writeFileSync(join(DATA_DIR, "index.yaml"), yaml.dump(index, { indent: 2 }));
 }
 
+/** pages:read (and admin) sees every page and widget regardless of view permissions. */
+function seesAll(viewer: Viewer): boolean {
+  return can(viewer, "pages:read");
+}
 
 export async function GET(request: Request) {
   ensureDir();
 
-  const session = await getSession();
-  const isAdmin = !!(session.loggedIn && session.role === "admin");
-  let userPerms = new Set<string>();
-  if (session.loggedIn && !isAdmin) {
-    const user = session.username ? findUser(session.username) : null;
-    if (user) {
-      const permConfig = readPermissionsConfig();
-      userPerms = resolveUserPermissions(user, permConfig);
-    }
+  const viewer = await getViewer();
+  // The proxy doesn't cover /api, so Force Login has to be checked here too.
+  if (!viewer.loggedIn && readSettings().forceLogin) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+  const seeAll = seesAll(viewer);
 
   const index = readIndex();
   if (!index) return NextResponse.json({ pages: [], activePage: null, layout: null });
@@ -48,7 +49,7 @@ export async function GET(request: Request) {
   const allPages = index.pages ?? [];
 
   const visiblePages = allPages.filter((page) =>
-    userCanAccess(page.permissions, userPerms, isAdmin)
+    userCanAccess(page.permissions, viewer.permissions, seeAll)
   );
 
   const { searchParams } = new URL(request.url);
@@ -67,7 +68,7 @@ export async function GET(request: Request) {
   }
 
   const layout = readLayout(activePage.name);
-  const visibleWidgets = layout ? filterWidgets(layout.widgets ?? [], userPerms, isAdmin) : [];
+  const visibleWidgets = layout ? filterWidgets(layout.widgets ?? [], viewer.permissions, seeAll) : [];
   const filteredLayout = layout
     ? {
         ...layout,
@@ -87,21 +88,32 @@ export async function GET(request: Request) {
   });
 }
 
+interface StateBody {
+  background: BackgroundConfig;
+  widgets: WidgetInstance[];
+  toolbarStyle?: ToolbarStyle;
+  mobile?: unknown;
+  mobileEnabled?: unknown;
+}
+
 export async function POST(request: Request) {
   ensureDir();
 
-  const session = await getSession();
-  if (!session.loggedIn || session.role !== "admin") {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const viewer = await getViewer();
+  if (!can(viewer, "pages:update")) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: viewer.loggedIn ? 403 : 401 });
   }
+  const seeAll = seesAll(viewer);
 
-  const body = (await request.json()) as {
-    background: BackgroundConfig;
-    widgets: WidgetInstance[];
-    toolbarStyle?: ToolbarStyle;
-    mobile?: unknown;
-    mobileEnabled?: unknown;
-  };
+  let body: StateBody;
+  try {
+    body = (await request.json()) as StateBody;
+  } catch {
+    return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
+  }
+  if (!body || typeof body !== "object" || !Array.isArray(body.widgets)) {
+    return NextResponse.json({ error: "widgets must be an array" }, { status: 400 });
+  }
 
   const { searchParams } = new URL(request.url);
   const pageParam = searchParams.get("page");
@@ -114,18 +126,26 @@ export async function POST(request: Request) {
   }
 
   const targetName = pageParam ?? index.active;
-  const pageExists = (index.pages ?? []).some((p) => p.name === targetName);
-  if (!pageExists) {
+  const page = (index.pages ?? []).find((p) => p.name === targetName);
+  // Editors can only save pages they can see; a hidden page looks the same as a missing one.
+  if (!page || !userCanAccess(page.permissions, viewer.permissions, seeAll)) {
     return NextResponse.json({ error: "Page not found" }, { status: 404 });
   }
 
   const existing = readLayout(targetName);
+  const merged = mergeEditorChanges(
+    { widgets: existing?.widgets, mobileSlots: parseMobileConfig(existing?.mobile)?.slots },
+    { widgets: body.widgets, mobileSlots: parseMobileConfig(body.mobile)?.slots },
+    { seeAll, permissions: viewer.permissions, canUseKeys: can(viewer, "keys:read") }
+  );
+  if (!merged.ok) return NextResponse.json({ error: merged.error }, { status: 403 });
+
   const layout: LayoutConfig = {
     name: existing?.name ?? targetName,
     background: body.background,
-    widgets: body.widgets,
+    widgets: merged.widgets,
     toolbarStyle: body.toolbarStyle,
-    mobile: parseMobileConfig(body.mobile) ?? parseMobileConfig(existing?.mobile),
+    mobile: merged.mobileSlots ? { slots: merged.mobileSlots } : parseMobileConfig(existing?.mobile),
   };
 
   writeFileSync(

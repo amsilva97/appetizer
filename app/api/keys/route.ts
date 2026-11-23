@@ -1,12 +1,10 @@
 import { NextResponse } from "next/server";
-import { getSession } from "@/lib/auth/session";
+import { guard } from "@/lib/auth/guard";
 import { readKeys } from "@/lib/auth/keys";
 
+/** Key names (never values), for the feed header picker. */
 export async function GET() {
-  const session = await getSession();
-  if (!session.loggedIn) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
-  const keyNames = Object.keys(readKeys());
-  return NextResponse.json({ keyNames });
+  const viewer = await guard("keys:read");
+  if (viewer instanceof NextResponse) return viewer;
+  return NextResponse.json({ keyNames: Object.keys(readKeys()) });
 }

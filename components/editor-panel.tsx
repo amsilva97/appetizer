@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useState } from "react";
 import BackgroundFields from "@/components/background-fields";
 import AppWidgetFields from "@/components/widgets/app-widget-fields";
 import MenuWidgetFields from "@/components/widgets/menu-widget-fields";
@@ -131,25 +131,17 @@ export default function EditorPanel({
   const [savedConfig, setSavedConfig] = useState<WidgetInstance["config"] | null>(null);
   const [draftPermissions, setDraftPermissions] = useState<string[]>([]);
   const [savedPermissions, setSavedPermissions] = useState<string[]>([]);
-  const prevIdRef = useRef<string | null>(null);
-
-  useEffect(() => {
-    if (!editingWidget) {
-      prevIdRef.current = null;
-      setDraftConfig(null);
-      setSavedConfig(null);
-      setDraftPermissions([]);
-      setSavedPermissions([]);
-      return;
-    }
-    if (editingWidget.id !== prevIdRef.current) {
-      prevIdRef.current = editingWidget.id;
-      setDraftConfig(editingWidget.config);
-      setSavedConfig(editingWidget.config);
-      setDraftPermissions(editingWidget.permissions ?? []);
-      setSavedPermissions(editingWidget.permissions ?? []);
-    }
-  }, [editingWidget]);
+  // Reset the drafts when a different widget is opened. Done during render
+  // (React's "adjust state when a prop changes" pattern) rather than in an effect.
+  const editingId = editingWidget?.id ?? null;
+  const [syncedId, setSyncedId] = useState<string | null>(null);
+  if (editingId !== syncedId) {
+    setSyncedId(editingId);
+    setDraftConfig(editingWidget?.config ?? null);
+    setSavedConfig(editingWidget?.config ?? null);
+    setDraftPermissions(editingWidget?.permissions ?? []);
+    setSavedPermissions(editingWidget?.permissions ?? []);
+  }
 
   const hasChanges =
     (draftConfig !== null && JSON.stringify(draftConfig) !== JSON.stringify(savedConfig)) ||

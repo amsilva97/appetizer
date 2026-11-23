@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { ADMIN_TAB_INFO, type AdminTab } from "@/lib/admin-tabs";
 
 function UsersIcon() {
   return (
@@ -32,17 +33,28 @@ function ShieldIcon() {
   );
 }
 
-const TABS = [
-  { href: "/admin/users",       label: "Users",       Icon: UsersIcon  },
-  { href: "/admin/keys",        label: "Keys",        Icon: KeyIcon    },
-  { href: "/admin/permissions", label: "Permissions", Icon: ShieldIcon },
-];
+function GearIcon() {
+  return (
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="12" cy="12" r="3" />
+      <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33h0a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51h0a1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82v0a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
+    </svg>
+  );
+}
 
-export default function AdminNav() {
+export const TAB_ICONS: Record<AdminTab, () => React.JSX.Element> = {
+  users: UsersIcon,
+  permissions: ShieldIcon,
+  keys: KeyIcon,
+  settings: GearIcon,
+};
+
+/** Tabs for the admin areas this viewer can read. */
+export default function AdminNav({ tabs }: { tabs: AdminTab[] }) {
   const path = usePathname();
   return (
-    <nav className="max-w-5xl mx-auto px-6 flex gap-1">
-      {TABS.map(({ href, label, Icon }) => {
+    <nav className="max-w-6xl mx-auto px-6 flex gap-1 overflow-x-auto">
+      {tabs.map((tab) => ({ ...ADMIN_TAB_INFO[tab], Icon: TAB_ICONS[tab] })).map(({ href, label, Icon }) => {
         const active = path.startsWith(href);
         return (
           <Link

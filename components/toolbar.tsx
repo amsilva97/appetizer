@@ -1,10 +1,10 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useSyncExternalStore } from "react";
 import { createPortal } from "react-dom";
 import Link from "next/link";
-import type { UserRole } from "@/lib/auth/users";
 import type { PageMeta, Permission } from "@/types/permissions";
+import { ADMIN_TAB_INFO, type AdminTab } from "@/lib/admin-tabs";
 import type { ToolbarStyle } from "@/types/toolbar";
 import { TOOLBAR_DEFAULTS } from "@/types/toolbar";
 
@@ -107,9 +107,11 @@ function PhoneIcon({ size = 15 }: { size?: number }) {
 
 // ─── ClientPortal ─────────────────────────────────────────────────────────────
 
+const noopSubscribe = () => () => {};
+
 function ClientPortal({ children }: { children: React.ReactNode }) {
-  const [mounted, setMounted] = useState(false);
-  useEffect(() => setMounted(true), []);
+  // false while server rendering, true in the browser, without a mount effect.
+  const mounted = useSyncExternalStore(noopSubscribe, () => true, () => false);
   if (!mounted) return null;
   return createPortal(children, document.body);
 }
@@ -354,12 +356,21 @@ function ToolbarStylePanel({ style, onChange, onClose }: ToolbarStylePanelProps)
 
 interface AdminMenuProps {
   editMode: boolean;
-  onToggleEdit: () => void;
+  /** Undefined when the viewer can't edit layouts. */
+  onToggleEdit?: () => void;
+  links: AdminTab[];
   btnStyle: React.CSSProperties;
   btnCls: string;
 }
 
-function AdminMenu({ editMode, onToggleEdit, btnStyle, btnCls }: AdminMenuProps) {
+const LINK_ICONS: Record<AdminTab, (p: { size?: number }) => React.JSX.Element> = {
+  users: UsersIcon,
+  permissions: ShieldIcon,
+  keys: KeyIcon,
+  settings: GearIcon,
+};
+
+function AdminMenu({ editMode, onToggleEdit, links, btnStyle, btnCls }: AdminMenuProps) {
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
@@ -391,41 +402,33 @@ function AdminMenu({ editMode, onToggleEdit, btnStyle, btnCls }: AdminMenuProps)
 
       {menuOpen && (
         <div className="absolute right-0 top-full mt-1 z-50 w-48 bg-zinc-900 border border-zinc-800 rounded-xl shadow-2xl shadow-black/60 p-1.5 flex flex-col gap-0.5">
-          <button
-            onClick={() => { onToggleEdit(); setMenuOpen(false); }}
-            className={`${menuItemCls} ${editMode ? "text-brand" : "text-zinc-300"}`}
-          >
-            <PencilIcon size={14} />
-            <span>{editMode ? "Stop editing" : "Edit layout"}</span>
-            {editMode && <span className="ml-auto w-1.5 h-1.5 rounded-full bg-brand shrink-0" />}
-          </button>
+          {onToggleEdit && (
+            <button
+              onClick={() => { onToggleEdit(); setMenuOpen(false); }}
+              className={`${menuItemCls} ${editMode ? "text-brand" : "text-zinc-300"}`}
+            >
+              <PencilIcon size={14} />
+              <span>{editMode ? "Stop editing" : "Edit layout"}</span>
+              {editMode && <span className="ml-auto w-1.5 h-1.5 rounded-full bg-brand shrink-0" />}
+            </button>
+          )}
 
-          <div className="h-px bg-white/[0.06] my-0.5" />
+          {onToggleEdit && links.length > 0 && <div className="h-px bg-white/[0.06] my-0.5" />}
 
-          <Link
-            href="/admin/users"
-            onClick={() => setMenuOpen(false)}
-            className={`${menuItemCls} text-zinc-400 hover:text-zinc-200`}
-          >
-            <UsersIcon size={14} />
-            Users
-          </Link>
-          <Link
-            href="/admin/keys"
-            onClick={() => setMenuOpen(false)}
-            className={`${menuItemCls} text-zinc-400 hover:text-zinc-200`}
-          >
-            <KeyIcon size={14} />
-            Keys
-          </Link>
-          <Link
-            href="/admin/permissions"
-            onClick={() => setMenuOpen(false)}
-            className={`${menuItemCls} text-zinc-400 hover:text-zinc-200`}
-          >
-            <ShieldIcon size={14} />
-            Permissions
-          </Link>
+          {links.map((tab) => {
+            const Icon = LINK_ICONS[tab];
+            return (
+              <Link
+                key={tab}
+                href={ADMIN_TAB_INFO[tab].href}
+                onClick={() => setMenuOpen(false)}
+                className={`${menuItemCls} text-zinc-400 hover:text-zinc-200`}
+              >
+                <Icon size={14} />
+                {ADMIN_TAB_INFO[tab].label}
+              </Link>
+            );
+          })}
         </div>
       )}
     </div>
@@ -437,7 +440,10 @@ function AdminMenu({ editMode, onToggleEdit, btnStyle, btnCls }: AdminMenuProps)
 interface ToolbarProps {
   editMode: boolean;
   onToggleEdit: () => void;
-  role?: UserRole | null;
+  /** Can edit layouts (pages:update). */
+  canEdit?: boolean;
+  /** Admin areas to link to from the menu. */
+  adminLinks?: AdminTab[];
   loggedIn?: boolean;
   pages?: PageMeta[];
   currentPage?: string;
@@ -456,7 +462,8 @@ interface ToolbarProps {
 export default function Toolbar({
   editMode,
   onToggleEdit,
-  role,
+  canEdit = false,
+  adminLinks = [],
   loggedIn,
   pages = [],
   currentPage,
@@ -471,8 +478,8 @@ export default function Toolbar({
   onMobileEditorToggle,
   mobileEnabled,
 }: ToolbarProps) {
-  const isAdmin = role === "admin";
-  const showTabs = pages.length > 1 || (isAdmin && editMode && pages.length >= 1);
+  const editing = canEdit && editMode;
+  const showTabs = pages.length > 1 || (editing && pages.length >= 1);
 
   const [settingsPage, setSettingsPage] = useState<string | null>(null);
   const [settingsAnchor, setSettingsAnchor] = useState<{ x: number; y: number } | null>(null);
@@ -524,7 +531,7 @@ export default function Toolbar({
   }
 
   function handleContextMenu(e: React.MouseEvent) {
-    if (!isAdmin || !editMode || !onToolbarStyleChange) return;
+    if (!editing || !onToolbarStyleChange) return;
     e.preventDefault();
     const panelWidth = 288;
     const x = Math.min(e.clientX, window.innerWidth - panelWidth - 16);
@@ -581,7 +588,7 @@ export default function Toolbar({
                     >
                       {page.label}
                     </button>
-                    {isAdmin && editMode && (
+                    {editing && onUpdatePage && (
                       <button
                         onClick={(e) => handleTabSettings(e, page.name)}
                         title="Page settings"
@@ -602,7 +609,7 @@ export default function Toolbar({
               );
             })}
 
-            {isAdmin && editMode && (
+            {editing && onCreatePage && (
               <button
                 onClick={onCreatePage}
                 title="New page"
@@ -617,7 +624,7 @@ export default function Toolbar({
         {!showTabs && <div className="flex-1" />}
 
         <div className="flex items-center gap-2 shrink-0">
-          {isAdmin && editMode && onMobileEditorToggle && (
+          {editing && onMobileEditorToggle && (
             <button
               onClick={onMobileEditorToggle}
               title="Mobile layout"
@@ -631,10 +638,11 @@ export default function Toolbar({
             </button>
           )}
 
-          {isAdmin && (
+          {(canEdit || adminLinks.length > 0) && (
             <AdminMenu
               editMode={editMode}
-              onToggleEdit={onToggleEdit}
+              onToggleEdit={canEdit ? onToggleEdit : undefined}
+              links={adminLinks}
               btnStyle={btnStyle}
               btnCls={btnCls}
             />
@@ -662,7 +670,7 @@ export default function Toolbar({
               onClose={closeSettings}
               onUpdate={(patch) => onUpdatePage(settingsPageMeta.name, patch)}
               onDelete={() => { onDeletePage?.(settingsPageMeta.name); closeSettings(); }}
-              canDelete={pages.length > 1}
+              canDelete={pages.length > 1 && !!onDeletePage}
             />
           </div>
         )}
