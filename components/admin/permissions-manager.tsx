@@ -1,347 +1,498 @@
 "use client";
 
-import { useState, useActionState } from "react";
+import { useActionState, useState } from "react";
 import {
   addPermissionAction,
   addRoleAction,
   deletePermissionAction,
   deleteRoleAction,
-  updateRolePermissionsAction,
-  updateUserRolesAction,
+  saveRoleMatrixAction,
   type PermissionActionState,
 } from "@/app/admin/permissions/actions";
-import type { PermissionsConfig, Permission, Role } from "@/types/permissions";
-import type { AppUser } from "@/lib/auth/users";
+import { saveUserAccessAction, type UserActionState } from "@/app/admin/users/actions";
+import type { Capability, PermissionsConfig, Role } from "@/types/permissions";
+import type { PublicUser } from "@/lib/auth/users";
+import type { EffectiveAccess } from "@/lib/auth/effective";
 import { Button } from "@/components/ui/button";
+import {
+  Badge,
+  EmptyRow,
+  ICON_BTN_DANGER,
+  INPUT,
+  Notice,
+  Panel,
+  ROW,
+  TD,
+  TH,
+  Table,
+  TrashIcon,
+} from "@/components/admin/admin-ui";
+import {
+  CAPABILITY_COLUMNS,
+  CELL,
+  CHECKBOX,
+  MatrixHeader,
+  MatrixLegend,
+  Mark,
+  NotApplicable,
+  STICKY_TD,
+  groupEdge,
+} from "@/components/admin/matrix";
 
 const INITIAL: PermissionActionState = {};
+const INITIAL_USER: UserActionState = {};
 
-const INPUT =
-  "w-full h-9 px-3 text-sm text-fg bg-surface-2 border border-line rounded-lg " +
-  "placeholder:text-fg-subtle focus:outline-none focus:ring-2 focus:ring-brand/20 " +
-  "focus:border-brand/60 transition-colors";
-
-function TrashIcon() {
-  return (
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
-      <polyline points="3 6 5 6 21 6" />
-      <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2" />
-    </svg>
-  );
+export interface PermissionAbilities {
+  username: string;
+  isAdmin: boolean;
+  /** Capabilities the viewer holds; partial admins can only grant these. */
+  held: Capability[];
+  rolesWrite: boolean;
+  rolesUpdate: boolean;
+  rolesDelete: boolean;
+  usersRead: boolean;
+  usersUpdate: boolean;
 }
 
-function ChevronIcon({ open }: { open: boolean }) {
-  return (
-    <svg
-      width="14" height="14" viewBox="0 0 24 24" fill="none"
-      stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-      style={{ transform: open ? "rotate(180deg)" : "none", transition: "transform 0.15s" }}
-    >
-      <polyline points="6 9 12 15 18 9" />
-    </svg>
-  );
+export interface PermissionUsage {
+  roles: number;
+  users: number;
+  pages: number;
 }
 
-function Panel({ heading, subheading, children }: { heading: string; subheading?: string; children: React.ReactNode }) {
-  return (
-    <div className="rounded-xl bg-surface border border-line overflow-hidden">
-      <div className="px-6 py-4 border-b border-line">
-        <p className="text-base font-semibold text-fg">{heading}</p>
-        {subheading && <p className="text-sm text-fg-muted mt-0.5">{subheading}</p>}
-      </div>
-      {children}
-    </div>
-  );
-}
+// ── Role matrix ───────────────────────────────────────────────────────────────
 
-// ── Permissions ───────────────────────────────────────────────────────────────
-
-function PermissionRow({ perm }: { perm: Permission }) {
-  const [state, action, pending] = useActionState(deletePermissionAction, INITIAL);
-  return (
-    <li className="flex items-center gap-4 px-6 py-3.5 border-b border-line last:border-0 hover:bg-white/[0.02]">
-      <div className="flex-1 min-w-0">
-        <p className="text-sm font-medium text-fg">{perm.label}</p>
-        <p className="text-xs font-mono text-fg-subtle mt-0.5">{perm.id}</p>
-      </div>
-      <form action={action}>
-        <input type="hidden" name="id" value={perm.id} />
-        <button
-          type="submit"
-          disabled={pending}
-          className="flex items-center justify-center size-8 rounded-md text-fg-subtle hover:text-danger hover:bg-danger/10 disabled:opacity-30 transition-colors"
-        >
-          <TrashIcon />
-        </button>
-      </form>
-      {state.error && <span className="text-xs text-danger">{state.error}</span>}
-    </li>
-  );
-}
-
-function PermissionsSection({ permissions }: { permissions: Permission[] }) {
-  const [state, action, pending] = useActionState(addPermissionAction, INITIAL);
-
-  return (
-    <Panel
-      heading="Permissions"
-      subheading="Named access gates assigned to roles, users, widgets, and pages."
-    >
-      {permissions.length > 0 && (
-        <ul className="border-b border-line">
-          {permissions.map((p) => <PermissionRow key={p.id} perm={p} />)}
-        </ul>
-      )}
-      <form action={action} className="p-6 flex flex-col gap-4 max-w-sm">
-        {permissions.length === 0 && (
-          <p className="text-sm text-fg-subtle">No permissions defined yet.</p>
-        )}
-        {state.error && (
-          <p className="text-sm text-danger bg-danger/10 border border-danger/20 rounded-lg px-4 py-2.5">{state.error}</p>
-        )}
-        {state.success && (
-          <p className="text-sm text-success bg-success/10 border border-success/20 rounded-lg px-4 py-2.5">{state.success}</p>
-        )}
-        <div className="flex flex-col gap-1.5">
-          <label className="text-sm font-medium text-fg">Label</label>
-          <input name="label" type="text" placeholder="Media Access" className={INPUT} />
-        </div>
-        <div className="flex flex-col gap-1.5">
-          <label className="text-sm font-medium text-fg">
-            ID <span className="text-fg-subtle font-normal">(optional — auto-generated from label)</span>
-          </label>
-          <input name="id" type="text" placeholder="media-access" className={INPUT} />
-        </div>
-        <div className="pt-1">
-          <Button type="submit" disabled={pending}>
-            {pending ? "Adding…" : "Add permission"}
-          </Button>
-        </div>
-      </form>
-    </Panel>
-  );
-}
-
-// ── Roles ─────────────────────────────────────────────────────────────────────
-
-function RoleRow({ role, allPermissions }: { role: Role; allPermissions: Permission[] }) {
-  const [open, setOpen] = useState(false);
+function RoleMatrix({ config, abilities }: { config: PermissionsConfig; abilities: PermissionAbilities }) {
+  const [state, action, pending] = useActionState(saveRoleMatrixAction, INITIAL);
   const [deleteState, deleteAction, deletePending] = useActionState(deleteRoleAction, INITIAL);
-  const [updateState, updateAction] = useActionState(updateRolePermissionsAction, INITIAL);
+  const [addState, addAction, addPending] = useActionState(addRoleAction, INITIAL);
+  const [dirty, setDirty] = useState(false);
+  const held = new Set(abilities.held);
+  const { roles, permissions } = config;
 
-  return (
-    <li className="border-b border-line last:border-0">
-      <div className="flex items-center gap-4 px-6 py-3.5 hover:bg-white/[0.02]">
-        <button
-          onClick={() => setOpen((o) => !o)}
-          className="flex items-center gap-3 flex-1 min-w-0 text-left"
-        >
-          <span className="text-sm font-medium text-fg">{role.label}</span>
-          <span className="text-xs font-mono text-fg-subtle">{role.id}</span>
-          <span className="text-xs text-fg-subtle ml-auto mr-2">
-            {role.permissions.length > 0
-              ? `${role.permissions.length} permission${role.permissions.length !== 1 ? "s" : ""}`
-              : "no permissions"}
-          </span>
-          <span className="text-fg-subtle shrink-0"><ChevronIcon open={open} /></span>
-        </button>
-        <form action={deleteAction}>
-          <input type="hidden" name="id" value={role.id} />
-          <button
-            type="submit"
-            disabled={deletePending}
-            className="flex items-center justify-center size-8 rounded-md text-fg-subtle hover:text-danger hover:bg-danger/10 disabled:opacity-30 transition-colors"
-          >
-            <TrashIcon />
-          </button>
-        </form>
-        {deleteState.error && <span className="text-xs text-danger">{deleteState.error}</span>}
-      </div>
-
-      {open && (
-        <div className="bg-surface-2/50 border-t border-line px-6 py-5">
-          <form action={updateAction} className="flex flex-col gap-3">
-            <input type="hidden" name="roleId" value={role.id} />
-            <p className="text-xs font-medium text-fg-muted mb-1">Permissions</p>
-            {allPermissions.length === 0 ? (
-              <p className="text-sm text-fg-subtle">No permissions defined yet.</p>
-            ) : (
-              allPermissions.map((p) => (
-                <label key={p.id} className="flex items-center gap-3 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    name="permissions"
-                    value={p.id}
-                    defaultChecked={role.permissions.includes(p.id)}
-                    className="accent-brand w-4 h-4 shrink-0"
-                  />
-                  <span className="text-sm text-fg">{p.label}</span>
-                  <span className="text-xs font-mono text-fg-subtle">{p.id}</span>
-                </label>
-              ))
-            )}
-            {updateState.error && <p className="text-sm text-danger mt-1">{updateState.error}</p>}
-            {updateState.success && <p className="text-sm text-success mt-1">{updateState.success}</p>}
-            <div className="pt-1">
-              <Button type="submit" variant="secondary" size="default">
-                Save
-              </Button>
-            </div>
-          </form>
-        </div>
-      )}
-    </li>
-  );
-}
-
-function RolesSection({ roles, allPermissions }: { roles: Role[]; allPermissions: Permission[] }) {
-  const [state, action, pending] = useActionState(addRoleAction, INITIAL);
+  // Partial admins can only tick or untick capabilities they hold themselves.
+  const capEditable = (cap: Capability) => abilities.rolesUpdate && (abilities.isAdmin || held.has(cap));
 
   return (
     <Panel
       heading="Roles"
-      subheading="Group permissions into roles, then assign roles to users."
+      subheading="What each role grants: admin areas (read, write, update, delete) and which pages and widgets holders can see."
+      actions={
+        abilities.rolesUpdate && roles.length > 0 ? (
+          <>
+            {dirty && <span className="text-xs text-warning">Unsaved changes</span>}
+            <Button type="submit" form="role-matrix" disabled={pending || !dirty} size="sm">
+              {pending ? "Saving…" : "Save roles"}
+            </Button>
+          </>
+        ) : undefined
+      }
     >
-      {roles.length > 0 && (
-        <ul className="border-b border-line">
-          {roles.map((r) => <RoleRow key={r.id} role={r} allPermissions={allPermissions} />)}
-        </ul>
+      {(state.error || state.success || deleteState.error || deleteState.success) && (
+        <div className="px-6 pt-4">
+          <Notice error={state.error ?? deleteState.error} success={state.success ?? deleteState.success} />
+        </div>
       )}
-      <form action={action} className="p-6 flex flex-col gap-4 max-w-sm">
-        {roles.length === 0 && (
-          <p className="text-sm text-fg-subtle">No roles defined yet.</p>
-        )}
-        {state.error && (
-          <p className="text-sm text-danger bg-danger/10 border border-danger/20 rounded-lg px-4 py-2.5">{state.error}</p>
-        )}
-        {state.success && (
-          <p className="text-sm text-success bg-success/10 border border-success/20 rounded-lg px-4 py-2.5">{state.success}</p>
-        )}
-        <div className="flex flex-col gap-1.5">
-          <label className="text-sm font-medium text-fg">Label</label>
-          <input name="label" type="text" placeholder="Media User" className={INPUT} />
+
+      {/* Delete buttons in the table submit this form, so the forms aren't nested. */}
+      <form id="delete-role" action={deleteAction} />
+
+      <form
+        id="role-matrix"
+        key={JSON.stringify(roles)}
+        action={async (fd) => {
+          await action(fd);
+          setDirty(false);
+        }}
+        onChange={() => setDirty(true)}
+      >
+        {roles.map((r) => <input key={r.id} type="hidden" name="roles" value={r.id} />)}
+        <Table>
+          <MatrixHeader rowLabel="Role" permissions={permissions} />
+          <tbody>
+            {roles.length === 0 ? (
+              <EmptyRow colSpan={1 + CAPABILITY_COLUMNS.length + permissions.length}>No roles yet. Add one below.</EmptyRow>
+            ) : (
+              roles.map((role) => (
+                <RoleMatrixRow
+                  key={role.id}
+                  role={role}
+                  permissions={permissions.map((p) => p.id)}
+                  capEditable={capEditable}
+                  permEditable={abilities.rolesUpdate}
+                  canDelete={abilities.rolesDelete && (abilities.isAdmin || (role.capabilities ?? []).every((c) => held.has(c)))}
+                  deletePending={deletePending}
+                />
+              ))
+            )}
+          </tbody>
+        </Table>
+      </form>
+      <MatrixLegend />
+
+      {abilities.rolesWrite && (
+        <form action={addAction} className="px-6 py-4 border-t border-line flex flex-col gap-3">
+          <Notice error={addState.error} success={addState.success} />
+          <div className="flex flex-wrap items-end gap-3">
+            <label className="flex flex-col gap-1.5 w-56">
+              <span className="text-xs font-medium text-fg-muted">New role</span>
+              <input name="label" type="text" placeholder="Media manager" className={INPUT} />
+            </label>
+            <label className="flex flex-col gap-1.5 w-44">
+              <span className="text-xs font-medium text-fg-muted">ID (optional)</span>
+              <input name="id" type="text" placeholder="media-manager" className={INPUT} />
+            </label>
+            <Button type="submit" variant="secondary" disabled={addPending}>
+              {addPending ? "Adding…" : "Add role"}
+            </Button>
+          </div>
+        </form>
+      )}
+    </Panel>
+  );
+}
+
+function RoleMatrixRow({
+  role,
+  permissions,
+  capEditable,
+  permEditable,
+  canDelete,
+  deletePending,
+}: {
+  role: Role;
+  permissions: string[];
+  capEditable: (cap: Capability) => boolean;
+  permEditable: boolean;
+  canDelete: boolean;
+  deletePending: boolean;
+}) {
+  const caps = new Set(role.capabilities ?? []);
+  return (
+    <tr className={ROW}>
+      <td className={STICKY_TD}>
+        <div className="flex items-center gap-2">
+          <div className="min-w-0">
+            <p className="text-sm font-medium text-fg">{role.label}</p>
+            <p className="text-xs font-mono text-fg-subtle">{role.id}</p>
+          </div>
+          {canDelete && (
+            <button
+              type="submit"
+              form="delete-role"
+              name="id"
+              value={role.id}
+              disabled={deletePending}
+              className={`${ICON_BTN_DANGER} ml-auto`}
+              aria-label={`Delete role ${role.label}`}
+              onClick={(e) => {
+                if (!confirm(`Delete role "${role.label}"? Users lose what it grants.`)) e.preventDefault();
+              }}
+            >
+              <TrashIcon />
+            </button>
+          )}
         </div>
-        <div className="flex flex-col gap-1.5">
-          <label className="text-sm font-medium text-fg">
-            ID <span className="text-fg-subtle font-normal">(optional)</span>
-          </label>
-          <input name="id" type="text" placeholder="media-user" className={INPUT} />
-        </div>
-        <div className="pt-1">
-          <Button type="submit" disabled={pending}>
-            {pending ? "Adding…" : "Add role"}
-          </Button>
+      </td>
+      {CAPABILITY_COLUMNS.map(({ cap, help }, i) =>
+        help ? (
+          <td key={cap} className={`${CELL} ${groupEdge(i)}`}>
+            <input
+              type="checkbox"
+              name="grant"
+              value={`${role.id}|cap|${cap}`}
+              defaultChecked={caps.has(cap)}
+              disabled={!capEditable(cap)}
+              aria-label={`${role.label}: ${cap}`}
+              className={CHECKBOX}
+            />
+            {/* Disabled boxes aren't submitted; keep what they hold. */}
+            {!capEditable(cap) && caps.has(cap) && <input type="hidden" name="grant" value={`${role.id}|cap|${cap}`} />}
+          </td>
+        ) : (
+          <NotApplicable key={cap} edge={groupEdge(i)} />
+        )
+      )}
+      {permissions.map((p, i) => (
+        <td key={p} className={`${CELL} ${i === 0 ? "border-l border-line" : ""}`}>
+          <input
+            type="checkbox"
+            name="grant"
+            value={`${role.id}|perm|${p}`}
+            defaultChecked={role.permissions.includes(p)}
+            disabled={!permEditable}
+            aria-label={`${role.label}: view ${p}`}
+            className={CHECKBOX}
+          />
+        </td>
+      ))}
+    </tr>
+  );
+}
+
+// ── Permissions list ──────────────────────────────────────────────────────────
+
+function PermissionsTable({
+  config,
+  usage,
+  abilities,
+}: {
+  config: PermissionsConfig;
+  usage: Record<string, PermissionUsage>;
+  abilities: PermissionAbilities;
+}) {
+  const [state, action, pending] = useActionState(addPermissionAction, INITIAL);
+  const [deleteState, deleteAction, deletePending] = useActionState(deletePermissionAction, INITIAL);
+
+  return (
+    <Panel
+      heading="View permissions"
+      subheading="Tags you put on pages and widgets. Someone sees a page or widget only if they hold every tag on it."
+    >
+      {(deleteState.error || deleteState.success) && (
+        <div className="px-6 pt-4"><Notice error={deleteState.error} success={deleteState.success} /></div>
+      )}
+      <Table>
+        <thead>
+          <tr>
+            <th className={TH}>Permission</th>
+            <th className={TH}>ID</th>
+            <th className={`${TH} text-right`}>Roles</th>
+            <th className={`${TH} text-right`}>Users</th>
+            <th className={`${TH} text-right`}>Pages</th>
+            <th className={TH}><span className="sr-only">Actions</span></th>
+          </tr>
+        </thead>
+        <tbody>
+          {config.permissions.length === 0 ? (
+            <EmptyRow colSpan={6}>No permissions yet.</EmptyRow>
+          ) : (
+            config.permissions.map((p) => {
+              const u = usage[p.id] ?? { roles: 0, users: 0, pages: 0 };
+              return (
+                <tr key={p.id} className={ROW}>
+                  <td className={`${TD} font-medium text-fg`}>{p.label}</td>
+                  <td className={`${TD} font-mono text-xs text-fg-subtle`}>{p.id}</td>
+                  <td className={`${TD} text-right tabular-nums text-fg-muted`}>{u.roles}</td>
+                  <td className={`${TD} text-right tabular-nums text-fg-muted`}>{u.users}</td>
+                  <td className={`${TD} text-right tabular-nums text-fg-muted`}>{u.pages}</td>
+                  <td className={`${TD} text-right w-12`}>
+                    {abilities.rolesDelete && (
+                      <form
+                        action={deleteAction}
+                        onSubmit={(e) => {
+                          if (!confirm(`Delete "${p.label}"? It's removed from every role and user.`)) e.preventDefault();
+                        }}
+                      >
+                        <input type="hidden" name="id" value={p.id} />
+                        <button type="submit" disabled={deletePending} className={ICON_BTN_DANGER} aria-label={`Delete ${p.label}`}>
+                          <TrashIcon />
+                        </button>
+                      </form>
+                    )}
+                  </td>
+                </tr>
+              );
+            })
+          )}
+        </tbody>
+      </Table>
+      {abilities.rolesWrite && (
+        <form action={action} className="px-6 py-4 border-t border-line flex flex-col gap-3">
+          <Notice error={state.error} success={state.success} />
+          <div className="flex flex-wrap items-end gap-3">
+            <label className="flex flex-col gap-1.5 w-56">
+              <span className="text-xs font-medium text-fg-muted">New permission</span>
+              <input name="label" type="text" placeholder="Media access" className={INPUT} />
+            </label>
+            <label className="flex flex-col gap-1.5 w-44">
+              <span className="text-xs font-medium text-fg-muted">ID (optional)</span>
+              <input name="id" type="text" placeholder="media" className={INPUT} />
+            </label>
+            <Button type="submit" variant="secondary" disabled={pending}>
+              {pending ? "Adding…" : "Add permission"}
+            </Button>
+          </div>
+        </form>
+      )}
+    </Panel>
+  );
+}
+
+// ── User access ───────────────────────────────────────────────────────────────
+
+function UserAccessMatrix({
+  config,
+  users,
+  abilities,
+}: {
+  config: PermissionsConfig;
+  users: PublicUser[];
+  abilities: PermissionAbilities;
+}) {
+  const [state, action, pending] = useActionState(saveUserAccessAction, INITIAL_USER);
+  const [dirty, setDirty] = useState(false);
+  const held = new Set(abilities.held);
+  const people = users.filter((u) => u.role !== "admin");
+  // Matches the server: partial admins can't change their own access.
+  const editable = (u: PublicUser) => abilities.usersUpdate && (abilities.isAdmin || u.username !== abilities.username);
+  // A role you can newly grant: you hold everything it includes.
+  const grantable = (r: Role) => abilities.isAdmin || (r.capabilities ?? []).every((c) => held.has(c));
+
+  const cols = config.roles.length + config.permissions.length;
+
+  return (
+    <Panel
+      heading="User access"
+      subheading="Give people roles, or view permissions directly. Admins have everything and aren't listed."
+      actions={
+        abilities.usersUpdate && people.length > 0 && cols > 0 ? (
+          <>
+            {dirty && <span className="text-xs text-warning">Unsaved changes</span>}
+            <Button type="submit" form="user-access" disabled={pending || !dirty} size="sm">
+              {pending ? "Saving…" : "Save access"}
+            </Button>
+          </>
+        ) : undefined
+      }
+    >
+      {(state.error || state.success) && (
+        <div className="px-6 pt-4"><Notice error={state.error} success={state.success} /></div>
+      )}
+      <form
+        id="user-access"
+        key={JSON.stringify(people.map((u) => [u.username, u.roles, u.permissions]))}
+        action={async (fd) => {
+          await action(fd);
+          setDirty(false);
+        }}
+        onChange={() => setDirty(true)}
+      >
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm border-collapse">
+            <thead>
+              <tr>
+                <th className="sticky left-0 z-10 bg-surface px-4 py-2 text-left text-[11px] font-semibold uppercase tracking-wider text-fg-subtle border-b border-r border-line">
+                  User
+                </th>
+                {config.roles.map((r, i) => (
+                  <th key={r.id} title={r.id} className={`px-3 py-2 text-xs font-medium text-fg-muted border-b border-line whitespace-nowrap text-center ${i === 0 ? "border-l" : ""}`}>
+                    {r.label}
+                    <span className="block text-[10px] uppercase tracking-wider text-fg-subtle">role</span>
+                  </th>
+                ))}
+                {config.permissions.map((p, i) => (
+                  <th key={p.id} title={p.id} className={`px-3 py-2 text-xs font-medium text-fg-muted border-b border-line whitespace-nowrap text-center ${i === 0 ? "border-l" : ""}`}>
+                    {p.label}
+                    <span className="block text-[10px] uppercase tracking-wider text-fg-subtle">view</span>
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {people.length === 0 ? (
+                <EmptyRow colSpan={1 + cols}>No non-admin users.</EmptyRow>
+              ) : cols === 0 ? (
+                <EmptyRow colSpan={1}>Create roles or permissions first.</EmptyRow>
+              ) : (
+                people.map((u) => {
+                  const roles = u.roles ?? [];
+                  const perms = u.permissions ?? [];
+                  return (
+                    <tr key={u.username} className={ROW}>
+                      <td className={STICKY_TD}>
+                        <input type="hidden" name="users" value={u.username} />
+                        <span className="font-medium text-fg">{u.username}</span>
+                        {u.disabled && <span className="ml-2"><Badge label="Disabled" variant="red" /></span>}
+                      </td>
+                      {config.roles.map((r, i) => {
+                        const has = roles.includes(r.id);
+                        // You can always take a role away; adding needs you to hold what it grants.
+                        const disabled = !editable(u) || (!has && !grantable(r));
+                        return (
+                          <td key={r.id} className={`${CELL} ${i === 0 ? "border-l border-line" : ""}`}>
+                            <input
+                              type="checkbox"
+                              name="grant"
+                              value={`${u.username}|role|${r.id}`}
+                              defaultChecked={has}
+                              disabled={disabled}
+                              title={disabled && !has ? "Grants things you don't hold" : undefined}
+                              aria-label={`${u.username}: role ${r.label}`}
+                              className={CHECKBOX}
+                            />
+                            {disabled && has && <input type="hidden" name="grant" value={`${u.username}|role|${r.id}`} />}
+                          </td>
+                        );
+                      })}
+                      {config.permissions.map((p, i) => (
+                        <td key={p.id} className={`${CELL} ${i === 0 ? "border-l border-line" : ""}`}>
+                          <input
+                            type="checkbox"
+                            name="grant"
+                            value={`${u.username}|perm|${p.id}`}
+                            defaultChecked={perms.includes(p.id)}
+                            disabled={!editable(u)}
+                            aria-label={`${u.username}: view ${p.label}`}
+                            className={CHECKBOX}
+                          />
+                        </td>
+                      ))}
+                    </tr>
+                  );
+                })
+              )}
+            </tbody>
+          </table>
         </div>
       </form>
     </Panel>
   );
 }
 
-// ── User assignments ──────────────────────────────────────────────────────────
+// ── Effective access ──────────────────────────────────────────────────────────
 
-function UserRoleRow({ user, allRoles, allPermissions }: { user: AppUser; allRoles: Role[]; allPermissions: Permission[] }) {
-  const [open, setOpen] = useState(false);
-  const [state, action] = useActionState(updateUserRolesAction, INITIAL);
-
-  const userRoles = user.roles ?? [];
-  const userPerms = user.permissions ?? [];
-
-  return (
-    <li className="border-b border-line last:border-0">
-      <button
-        onClick={() => setOpen((o) => !o)}
-        className="flex items-center gap-4 px-6 py-3.5 w-full text-left hover:bg-white/[0.02] transition-colors"
-      >
-        <div className="flex items-center justify-center size-8 rounded-full bg-surface-2 border border-line text-sm font-medium text-fg-muted shrink-0 select-none">
-          {user.username.charAt(0).toUpperCase()}
-        </div>
-        <div className="flex-1 min-w-0">
-          <p className="text-sm font-medium text-fg">{user.username}</p>
-          {userRoles.length > 0 && (
-            <p className="text-xs text-fg-muted mt-0.5">{userRoles.join(", ")}</p>
-          )}
-        </div>
-        <span className="text-fg-subtle shrink-0"><ChevronIcon open={open} /></span>
-      </button>
-
-      {open && (
-        <div className="bg-surface-2/50 border-t border-line px-6 py-5">
-          <form action={action} className="flex flex-col gap-5">
-            <input type="hidden" name="username" value={user.username} />
-
-            {allRoles.length > 0 && (
-              <div className="flex flex-col gap-3">
-                <p className="text-xs font-medium text-fg-muted">Roles</p>
-                {allRoles.map((r) => (
-                  <label key={r.id} className="flex items-center gap-3 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      name="roles"
-                      value={r.id}
-                      defaultChecked={userRoles.includes(r.id)}
-                      className="accent-brand w-4 h-4 shrink-0"
-                    />
-                    <span className="text-sm text-fg">{r.label}</span>
-                    <span className="text-xs font-mono text-fg-subtle">{r.id}</span>
-                  </label>
-                ))}
-              </div>
-            )}
-
-            {allPermissions.length > 0 && (
-              <div className="flex flex-col gap-3">
-                <p className="text-xs font-medium text-fg-muted">Direct permissions</p>
-                {allPermissions.map((p) => (
-                  <label key={p.id} className="flex items-center gap-3 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      name="permissions"
-                      value={p.id}
-                      defaultChecked={userPerms.includes(p.id)}
-                      className="accent-brand w-4 h-4 shrink-0"
-                    />
-                    <span className="text-sm text-fg">{p.label}</span>
-                    <span className="text-xs font-mono text-fg-subtle">{p.id}</span>
-                  </label>
-                ))}
-              </div>
-            )}
-
-            {allRoles.length === 0 && allPermissions.length === 0 && (
-              <p className="text-sm text-fg-subtle">No roles or permissions defined yet.</p>
-            )}
-
-            {state.error && <p className="text-sm text-danger">{state.error}</p>}
-            {state.success && <p className="text-sm text-success">{state.success}</p>}
-
-            <div>
-              <Button type="submit" variant="secondary">
-                Save
-              </Button>
-            </div>
-          </form>
-        </div>
-      )}
-    </li>
-  );
-}
-
-function UsersSection({ users, allRoles, allPermissions }: { users: AppUser[]; allRoles: Role[]; allPermissions: Permission[] }) {
-  const nonRootUsers = users.filter((u) => !u.isRoot);
+function EffectiveAccessMatrix({ rows, config }: { rows: EffectiveAccess[]; config: PermissionsConfig }) {
   return (
     <Panel
-      heading="User assignments"
-      subheading="Assign roles and direct permissions to individual users."
+      heading="Who can do what"
+      subheading="Everything each person ends up with, from their account type, roles and direct grants. Hover a dot to see where it comes from. Admin rights also depend on the IP allowlist in Settings."
     >
-      {nonRootUsers.length === 0 ? (
-        <p className="px-6 py-5 text-sm text-fg-subtle">No non-root users to assign.</p>
-      ) : (
-        <ul>
-          {nonRootUsers.map((u) => (
-            <UserRoleRow key={u.username} user={u} allRoles={allRoles} allPermissions={allPermissions} />
-          ))}
-        </ul>
-      )}
+      <Table>
+        <MatrixHeader rowLabel="User" permissions={config.permissions} />
+        <tbody>
+          {rows.length === 0 ? (
+            <EmptyRow colSpan={1 + CAPABILITY_COLUMNS.length + config.permissions.length}>No users.</EmptyRow>
+          ) : (
+            rows.map((r) => (
+              <tr key={r.username} className={`${ROW} ${r.disabled ? "opacity-50" : ""}`}>
+                <td className={STICKY_TD}>
+                  <span className="font-medium text-fg">{r.username}</span>
+                  <span className="ml-2">
+                    {r.isAdmin ? <Badge label="Admin" variant="brand" /> : r.disabled ? <Badge label="Disabled" variant="red" /> : null}
+                  </span>
+                </td>
+                {CAPABILITY_COLUMNS.map(({ cap, help }, i) =>
+                  help ? (
+                    <Mark key={cap} on={!r.disabled && cap in r.capabilities} source={r.capabilities[cap]} edge={groupEdge(i)} />
+                  ) : (
+                    <NotApplicable key={cap} edge={groupEdge(i)} />
+                  )
+                )}
+                {config.permissions.map((p, i) => (
+                  <Mark
+                    key={p.id}
+                    on={!r.disabled && (r.isAdmin || p.id in r.permissions)}
+                    source={r.isAdmin ? "admin" : r.permissions[p.id]}
+                    edge={i === 0 ? "border-l border-line" : ""}
+                  />
+                ))}
+              </tr>
+            ))
+          )}
+        </tbody>
+      </Table>
+      <MatrixLegend />
     </Panel>
   );
 }
@@ -350,15 +501,19 @@ function UsersSection({ users, allRoles, allPermissions }: { users: AppUser[]; a
 
 interface Props {
   config: PermissionsConfig;
-  users: AppUser[];
+  users: PublicUser[];
+  effective: EffectiveAccess[];
+  usage: Record<string, PermissionUsage>;
+  abilities: PermissionAbilities;
 }
 
-export default function PermissionsManager({ config, users }: Props) {
+export default function PermissionsManager({ config, users, effective, usage, abilities }: Props) {
   return (
     <>
-      <PermissionsSection permissions={config.permissions} />
-      <RolesSection roles={config.roles} allPermissions={config.permissions} />
-      <UsersSection users={users} allRoles={config.roles} allPermissions={config.permissions} />
+      <RoleMatrix config={config} abilities={abilities} />
+      <PermissionsTable config={config} usage={usage} abilities={abilities} />
+      {abilities.usersRead && <UserAccessMatrix config={config} users={users} abilities={abilities} />}
+      {abilities.usersRead && <EffectiveAccessMatrix rows={effective} config={config} />}
     </>
   );
 }

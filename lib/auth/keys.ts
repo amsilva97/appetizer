@@ -45,8 +45,15 @@ export function deleteKey(name: string): void {
   writeKeys(rest);
 }
 
+const KEY_PLACEHOLDER = /\{([A-Z0-9_]+)\}/g;
+
+/** True when the text contains a {KEY_NAME} placeholder. */
+export function referencesKeys(template: unknown): boolean {
+  return typeof template === "string" && new RegExp(KEY_PLACEHOLDER.source).test(template);
+}
+
 export function substituteKeys(template: string, keys: Record<string, string>): string {
-  return template.replace(/\{([A-Z0-9_]+)\}/g, (match, key: string) =>
+  return template.replace(KEY_PLACEHOLDER, (match, key: string) =>
     Object.prototype.hasOwnProperty.call(keys, key) ? keys[key] : match
   );
 }

@@ -1,7 +1,8 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { addKey, deleteKey } from "@/lib/auth/keys";
+import { addKey, deleteKey, readKeys } from "@/lib/auth/keys";
+import { actionGuard } from "@/lib/auth/action-guard";
 
 export interface KeyActionState {
   error?: string;
@@ -13,6 +14,9 @@ export async function addKeyAction(
   _prev: KeyActionState,
   formData: FormData
 ): Promise<KeyActionState> {
+  const { error } = await actionGuard("keys:write");
+  if (error) return { error };
+
   const name = (formData.get("name") as string | null)?.trim().toUpperCase() ?? "";
   const value = (formData.get("value") as string | null) ?? "";
 
@@ -20,6 +24,7 @@ export async function addKeyAction(
   if (!KEY_NAME_RE.test(name)) return { error: "Name must be uppercase letters, digits, and underscores only" };
   if (name.length > 64) return { error: "Name too long (max 64 characters)" };
   if (!value) return { error: "Value is required" };
+  if (/[\r\n]/.test(value)) return { error: "Value can't contain line breaks" };
 
   addKey(name, value);
   revalidatePath("/admin/keys");
@@ -30,8 +35,12 @@ export async function deleteKeyAction(
   _prev: KeyActionState,
   formData: FormData
 ): Promise<KeyActionState> {
+  const { error } = await actionGuard("keys:delete");
+  if (error) return { error };
+
   const name = (formData.get("name") as string | null)?.trim() ?? "";
   if (!name) return { error: "Key name is required" };
+  if (!Object.prototype.hasOwnProperty.call(readKeys(), name)) return { error: "Key not found" };
   deleteKey(name);
   revalidatePath("/admin/keys");
   return {};

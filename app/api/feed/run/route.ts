@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
-import { getViewer } from "@/lib/auth/viewer";
-import { readKeys } from "@/lib/auth/keys";
+import { can, getViewer } from "@/lib/auth/viewer";
+import { readKeys, referencesKeys } from "@/lib/auth/keys";
 import { substituteHeaders, fetchFeed, runTransform } from "@/lib/feed/runner";
 import { findSavedFeed } from "@/lib/feed/resolve";
 
@@ -32,10 +32,11 @@ function isValidUrl(raw: string): boolean {
 }
 
 /**
- * Admins can run any feed config they send. Everyone else can only run the
- * feed saved on a widget they can see; anything else in the request is ignored.
- * Without this, any logged-in user could make the server fetch arbitrary URLs
- * and run arbitrary transform code.
+ * Layout editors (pages:update) can run feed config they send, to preview
+ * unsaved widgets; using secret keys in that config also needs keys:read.
+ * Everyone else can only run the feed saved on a widget they can see; anything
+ * else in the request is ignored. Without this, any logged-in user could make
+ * the server fetch arbitrary URLs and run arbitrary transform code.
  */
 async function resolveJob(body: RunRequest): Promise<FeedJob | NextResponse> {
   const viewer = await getViewer();
@@ -43,14 +44,19 @@ async function resolveJob(body: RunRequest): Promise<FeedJob | NextResponse> {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  if (viewer.isAdmin && typeof body.url === "string") {
-    return { url: body.url, headers: body.headers ?? {}, transform: body.transform };
+  if (typeof body.url === "string" && can(viewer, "pages:update")) {
+    const headers = body.headers && typeof body.headers === "object" ? body.headers : {};
+    // Editors without keys:read fall through to the saved feed, so keyed feeds
+    // still load for them; they just can't preview changes to one.
+    if (!Object.values(headers).some(referencesKeys) || can(viewer, "keys:read")) {
+      return { url: body.url, headers, transform: body.transform };
+    }
   }
 
   if (typeof body.page !== "string" || typeof body.widgetId !== "string") {
     return NextResponse.json({ error: "page and widgetId required" }, { status: 400 });
   }
-  const feed = findSavedFeed(body.page, body.widgetId, viewer.permissions, viewer.isAdmin);
+  const feed = findSavedFeed(body.page, body.widgetId, viewer.permissions, can(viewer, "pages:read"));
   if (!feed) {
     return NextResponse.json({ error: "Feed not found" }, { status: 404 });
   }
