@@ -3,7 +3,9 @@ import { existsSync, mkdirSync, readFileSync, renameSync, unlinkSync, writeFileS
 import { join } from "path";
 import * as yaml from "js-yaml";
 import type { PageMeta } from "@/types/permissions";
-import { getSession } from "@/lib/auth/session";
+import { guard } from "@/lib/auth/guard";
+import { can } from "@/lib/auth/viewer";
+import { userCanAccess } from "@/lib/auth/permissions";
 
 const DATA_DIR = join(process.cwd(), "data");
 
@@ -34,20 +36,23 @@ export async function PATCH(
   request: Request,
   { params }: { params: Promise<{ name: string }> }
 ) {
-  const session = await getSession();
-  if (!session.loggedIn || session.role !== "admin") {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
+  const viewer = await guard("pages:update");
+  if (viewer instanceof NextResponse) return viewer;
 
   const { name } = await params;
   const index = readIndex();
   const pageIdx = index.pages.findIndex((p) => p.name === name);
-  if (pageIdx === -1) return NextResponse.json({ error: "Page not found" }, { status: 404 });
+  const seeAll = can(viewer, "pages:read");
+  if (pageIdx === -1 || !userCanAccess(index.pages[pageIdx].permissions, viewer.permissions, seeAll)) {
+    return NextResponse.json({ error: "Page not found" }, { status: 404 });
+  }
 
-  const body = await request.json() as { label?: string; permissions?: string[] };
+  const body = (await request.json().catch(() => ({}))) as { label?: unknown; permissions?: unknown };
   const updated = { ...index.pages[pageIdx] };
-  if (typeof body.label === "string" && body.label.trim()) updated.label = body.label.trim();
-  if (Array.isArray(body.permissions)) updated.permissions = body.permissions;
+  if (typeof body.label === "string" && body.label.trim()) updated.label = body.label.trim().slice(0, 64);
+  if (Array.isArray(body.permissions)) {
+    updated.permissions = body.permissions.filter((p): p is string => typeof p === "string");
+  }
 
   index.pages = index.pages.map((p, i) => (i === pageIdx ? updated : p));
   writeIndex(index);
@@ -59,10 +64,8 @@ export async function DELETE(
   _request: Request,
   { params }: { params: Promise<{ name: string }> }
 ) {
-  const session = await getSession();
-  if (!session.loggedIn || session.role !== "admin") {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
+  const viewer = await guard("pages:delete");
+  if (viewer instanceof NextResponse) return viewer;
 
   const { name } = await params;
   const index = readIndex();
