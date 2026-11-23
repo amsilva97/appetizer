@@ -5,6 +5,7 @@ import type { BackgroundConfig } from "@/types/background";
 import type { WidgetInstance } from "@/types/widget";
 import type { PageMeta } from "@/types/permissions";
 import type { ToolbarStyle } from "@/types/toolbar";
+import type { MobileConfig } from "@/types/mobile";
 import { userCanAccess } from "@/lib/auth/permissions";
 
 export const DATA_DIR = join(process.cwd(), "data");
@@ -13,6 +14,8 @@ export interface IndexConfig {
   active: string;
   pages?: PageMeta[];
   import?: string[];
+  /** Site-wide switch for the phone layout. */
+  mobileEnabled?: boolean;
 }
 
 export interface LayoutConfig {
@@ -20,6 +23,8 @@ export interface LayoutConfig {
   background: BackgroundConfig;
   widgets: WidgetInstance[];
   toolbarStyle?: ToolbarStyle;
+  /** Phone version of the page. Older files may still hold the multi-screen shape; read it with parseMobileConfig. */
+  mobile?: MobileConfig;
 }
 
 const PAGE_NAME_RE = /^[a-z0-9][a-z0-9_-]*$/i;

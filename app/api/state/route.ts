@@ -7,6 +7,7 @@ import type { WidgetInstance } from "@/types/widget";
 import type { PageMeta } from "@/types/permissions";
 import type { ToolbarStyle } from "@/types/toolbar";
 import { getSession } from "@/lib/auth/session";
+import { DEFAULT_MOBILE, filterMobileConfig, parseMobileConfig } from "@/lib/mobile";
 import { findUser } from "@/lib/auth/users";
 import { readPermissionsConfig, resolveUserPermissions, userCanAccess } from "@/lib/auth/permissions";
 import {
@@ -61,14 +62,20 @@ export async function GET(request: Request) {
       pages: visiblePages.map(({ name, label }) => ({ name, label })),
       activePage: null,
       layout: null,
+      mobileEnabled: index.mobileEnabled ?? false,
     });
   }
 
   const layout = readLayout(activePage.name);
+  const visibleWidgets = layout ? filterWidgets(layout.widgets ?? [], userPerms, isAdmin) : [];
   const filteredLayout = layout
     ? {
         ...layout,
-        widgets: filterWidgets(layout.widgets ?? [], userPerms, isAdmin),
+        widgets: visibleWidgets,
+        mobile: filterMobileConfig(
+          parseMobileConfig(layout.mobile) ?? DEFAULT_MOBILE,
+          new Set(visibleWidgets.map((w) => w.id))
+        ),
       }
     : null;
 
@@ -76,6 +83,7 @@ export async function GET(request: Request) {
     pages: visiblePages.map(({ name, label }) => ({ name, label })),
     activePage: activePage.name,
     layout: filteredLayout,
+    mobileEnabled: index.mobileEnabled ?? false,
   });
 }
 
@@ -91,6 +99,8 @@ export async function POST(request: Request) {
     background: BackgroundConfig;
     widgets: WidgetInstance[];
     toolbarStyle?: ToolbarStyle;
+    mobile?: unknown;
+    mobileEnabled?: unknown;
   };
 
   const { searchParams } = new URL(request.url);
@@ -115,12 +125,18 @@ export async function POST(request: Request) {
     background: body.background,
     widgets: body.widgets,
     toolbarStyle: body.toolbarStyle,
+    mobile: parseMobileConfig(body.mobile) ?? parseMobileConfig(existing?.mobile),
   };
 
   writeFileSync(
     join(DATA_DIR, `${targetName}.yaml`),
     yaml.dump(layout, { indent: 2, lineWidth: -1 })
   );
+
+  // The phone switch is site-wide; only touch index.yaml when it actually changes.
+  if (typeof body.mobileEnabled === "boolean" && body.mobileEnabled !== (index.mobileEnabled ?? false)) {
+    writeIndex({ ...index, mobileEnabled: body.mobileEnabled });
+  }
 
   return NextResponse.json({ ok: true });
 }

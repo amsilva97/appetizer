@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
 import BackgroundRenderer from "@/components/background-renderer";
 import CanvasMenu, { type ContextItem } from "@/components/canvas-menu";
 import EditorPanel from "@/components/editor-panel";
@@ -21,6 +21,10 @@ import type { MenuWidgetConfig } from "@/types/menu-widget";
 import type { UserRole } from "@/lib/auth/users";
 import type { PageMeta, Permission } from "@/types/permissions";
 import type { ToolbarStyle } from "@/types/toolbar";
+import type { MobileConfig } from "@/types/mobile";
+import MobileView from "@/components/mobile/mobile-view";
+import MobileEditor from "@/components/mobile/mobile-editor";
+import { DEFAULT_MOBILE, openAppUrl } from "@/lib/mobile";
 
 interface SceneConfig {
   background: BackgroundConfig;
@@ -57,6 +61,9 @@ export default function Home() {
   const [currentPage, setCurrentPage] = useState<string>("");
   const [availablePermissions, setAvailablePermissions] = useState<Permission[]>([]);
   const [toolbarStyle, setToolbarStyle] = useState<ToolbarStyle>({});
+  const [mobileConfig, setMobileConfig] = useState<MobileConfig>(DEFAULT_MOBILE);
+  const [mobileEnabled, setMobileEnabled] = useState(false);
+  const [mobileEditorOpen, setMobileEditorOpen] = useState(false);
 
   const [loaded, setLoaded] = useState(false);
   const dragRef = useRef<DragState | null>(null);
@@ -68,15 +75,17 @@ export default function Home() {
   useEffect(() => {
     fetch("/api/state")
       .then((r) => r.json())
-      .then(({ pages: pg, activePage, layout }) => {
+      .then(({ pages: pg, activePage, layout, mobileEnabled: me }) => {
         const pageList: PageMeta[] = pg ?? [];
         setPages(pageList);
         setCurrentPage(activePage ?? "");
         currentPageRef.current = activePage ?? "";
+        setMobileEnabled(me ?? false);
         if (layout) {
           if (layout.background) setBg(layout.background);
           if (Array.isArray(layout.widgets)) setWidgets(layout.widgets);
           setToolbarStyle(layout.toolbarStyle ?? {});
+          setMobileConfig(layout.mobile ?? DEFAULT_MOBILE);
         }
       })
       .finally(() => setLoaded(true));
@@ -109,10 +118,10 @@ export default function Home() {
       fetch(`/api/state${page ? `?page=${encodeURIComponent(page)}` : ""}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ background: bg, widgets, toolbarStyle }),
+        body: JSON.stringify({ background: bg, widgets, toolbarStyle, mobile: mobileConfig, mobileEnabled }),
       });
     }, 1000);
-  }, [bg, widgets, toolbarStyle, loaded]);
+  }, [bg, widgets, toolbarStyle, mobileConfig, mobileEnabled, loaded]);
 
   async function switchPage(pageName: string) {
     if (pageName === currentPageRef.current) return;
@@ -127,10 +136,12 @@ export default function Home() {
         setBg(data.layout.background ?? BACKGROUND_PRESETS["Ocean Dusk"]);
         setWidgets(data.layout.widgets ?? []);
         setToolbarStyle(data.layout.toolbarStyle ?? {});
+        setMobileConfig(data.layout.mobile ?? DEFAULT_MOBILE);
       } else {
         setBg(BACKGROUND_PRESETS["Ocean Dusk"]);
         setWidgets([]);
         setToolbarStyle({});
+        setMobileConfig(DEFAULT_MOBILE);
       }
       setEditingId(null);
       setMenuPos(null);
@@ -375,6 +386,16 @@ export default function Home() {
 
   const editingWidget = widgets.find((w) => w.id === editingId) ?? null;
 
+  const isMobileViewport = useSyncExternalStore(
+    (cb) => {
+      window.addEventListener("resize", cb);
+      return () => window.removeEventListener("resize", cb);
+    },
+    () => window.innerWidth < 768,
+    () => false
+  );
+  const showMobileView = mobileEnabled && isMobileViewport && !editMode;
+
   return (
     <PageContext.Provider value={currentPage}>
     <div
@@ -384,7 +405,11 @@ export default function Home() {
       onMouseLeave={handleMouseUp}
       onContextMenu={handleCanvasContextMenu}
     >
-      <BackgroundRenderer config={bg} />
+      {showMobileView && (
+        <MobileView config={mobileConfig} widgets={widgets} background={bg} />
+      )}
+
+      {!showMobileView && <BackgroundRenderer config={bg} />}
 
       <Toolbar
         editMode={editMode}
@@ -410,10 +435,13 @@ export default function Home() {
         availablePermissions={availablePermissions}
         toolbarStyle={toolbarStyle}
         onToolbarStyleChange={isAdmin ? setToolbarStyle : undefined}
+        mobileEditorOpen={mobileEditorOpen}
+        onMobileEditorToggle={isAdmin && editMode ? () => setMobileEditorOpen((o) => !o) : undefined}
+        mobileEnabled={mobileEnabled}
       />
 
-      {/* Layout widgets — only root layouts, fill canvas below toolbar */}
-      {widgets.filter((w) => w.type === "layout" && !w.parentId).map((w) => (
+      {/* Layout widgets — only root layouts, fill canvas below toolbar. Hidden while the phone view is showing. */}
+      {!showMobileView && widgets.filter((w) => w.type === "layout" && !w.parentId).map((w) => (
         <div
           key={w.id}
           className="absolute"
@@ -429,7 +457,7 @@ export default function Home() {
       ))}
 
       {/* App widgets — freely positioned, draggable (only those not inside a menu) */}
-      {widgets.filter((w) => w.type === "app" && !w.parentId).map((w) => (
+      {!showMobileView && widgets.filter((w) => w.type === "app" && !w.parentId).map((w) => (
         <div
           key={w.id}
           style={{ position: "absolute", left: w.x, top: w.y, cursor: editMode ? "grab" : "default", userSelect: "none" }}
@@ -441,7 +469,7 @@ export default function Home() {
               <AppWidget
                 config={cfg}
                 widgetId={w.id}
-                onClick={() => { if (cfg.url) window.open(cfg.url, "_blank"); }}
+                onClick={() => openAppUrl(cfg.url)}
               />
             );
           })()}
@@ -534,6 +562,18 @@ export default function Home() {
           onImport={handleImport}
           keyNames={keyNames}
           availablePermissions={availablePermissions}
+        />
+      )}
+
+      {mobileEditorOpen && isAdmin && (
+        <MobileEditor
+          pageLabel={pages.find((p) => p.name === currentPage)?.label ?? currentPage}
+          mobile={mobileConfig}
+          widgets={widgets}
+          mobileEnabled={mobileEnabled}
+          onMobileChange={setMobileConfig}
+          onMobileEnabledChange={setMobileEnabled}
+          onClose={() => setMobileEditorOpen(false)}
         />
       )}
     </div>
