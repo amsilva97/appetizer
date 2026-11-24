@@ -21,9 +21,14 @@ interface Props {
   onBgChange: (bg: BackgroundConfig) => void;
   bgEditorOpen: boolean;
   onBgEditorOpenChange: (open: boolean) => void;
+  /** The widget being edited, with any unsaved changes applied (what the canvas shows). */
   editingWidget: WidgetInstance | null;
+  /** True when editingWidget differs from what's saved. */
+  hasChanges: boolean;
   onEditingWidgetClose: () => void;
-  onUpdateWidget: (id: string, partial: Partial<WidgetInstance>) => void;
+  onDraftChange: (patch: { config?: WidgetInstance["config"]; permissions?: string[] }) => void;
+  onSaveDraft: () => void;
+  onRevertDraft: () => void;
   onDeleteWidget: (id: string) => void;
   onExport: () => void;
   onImport: (e: React.ChangeEvent<HTMLInputElement>) => void;
@@ -115,8 +120,11 @@ export default function EditorPanel({
   bgEditorOpen,
   onBgEditorOpenChange,
   editingWidget,
+  hasChanges,
   onEditingWidgetClose,
-  onUpdateWidget,
+  onDraftChange,
+  onSaveDraft,
+  onRevertDraft,
   onDeleteWidget,
   onExport,
   onImport,
@@ -126,39 +134,15 @@ export default function EditorPanel({
   const [panelPos, setPanelPos] = useState({ left: 16, bottom: 32 });
   const [panelWidth, setPanelWidth] = useState(DEFAULT_WIDTH);
 
-  // ── Draft state ───────────────────────────────────────────────────────────
-  const [draftConfig, setDraftConfig] = useState<WidgetInstance["config"] | null>(null);
-  const [savedConfig, setSavedConfig] = useState<WidgetInstance["config"] | null>(null);
-  const [draftPermissions, setDraftPermissions] = useState<string[]>([]);
-  const [savedPermissions, setSavedPermissions] = useState<string[]>([]);
-  // Reset the drafts when a different widget is opened. Done during render
-  // (React's "adjust state when a prop changes" pattern) rather than in an effect.
-  const editingId = editingWidget?.id ?? null;
-  const [syncedId, setSyncedId] = useState<string | null>(null);
-  if (editingId !== syncedId) {
-    setSyncedId(editingId);
-    setDraftConfig(editingWidget?.config ?? null);
-    setSavedConfig(editingWidget?.config ?? null);
-    setDraftPermissions(editingWidget?.permissions ?? []);
-    setSavedPermissions(editingWidget?.permissions ?? []);
-  }
-
-  const hasChanges =
-    (draftConfig !== null && JSON.stringify(draftConfig) !== JSON.stringify(savedConfig)) ||
-    JSON.stringify(draftPermissions) !== JSON.stringify(savedPermissions);
-
-  function handleSave() {
-    if (editingWidget && draftConfig) {
-      onUpdateWidget(editingWidget.id, { config: draftConfig, permissions: draftPermissions });
-      setSavedConfig(draftConfig);
-      setSavedPermissions(draftPermissions);
-    }
-  }
-
-  function handleRevert() {
-    setDraftConfig(savedConfig);
-    setDraftPermissions(savedPermissions);
-  }
+  // Edits go straight to the canvas as a preview; the page keeps the saved
+  // copy until Save. Closing the panel drops whatever wasn't saved.
+  const draftConfig = editingWidget?.config ?? null;
+  const draftPermissions = editingWidget?.permissions ?? [];
+  const setDraftConfig = (config: WidgetInstance["config"]) => onDraftChange({ config });
+  const setDraftPermissions = (permissions: string[]) => onDraftChange({ permissions });
+  const handleSave = onSaveDraft;
+  const handleRevert = onRevertDraft;
+  const unsavedNote = hasChanges ? "Previewing unsaved changes" : undefined;
 
   // ── Panel position drag ───────────────────────────────────────────────────
   function handlePanelDragStart(e: React.MouseEvent) {
@@ -280,7 +264,8 @@ export default function EditorPanel({
         const cfg = draftConfig as LayoutWidgetConfig;
         return (
           <Panel
-            title={cfg.label || "Layout"}
+            title={`${cfg.label || "Layout"} (Layout)`}
+            subtitle={unsavedNote}
             onClose={onEditingWidgetClose}
             onDragStart={handlePanelDragStart}
             footer={widgetFooter("Delete Layout", () => { onDeleteWidget(editingWidget.id); onEditingWidgetClose(); })}
@@ -300,7 +285,8 @@ export default function EditorPanel({
         const cfg = draftConfig as MenuWidgetConfig;
         return (
           <Panel
-            title={cfg.label || "Menu"}
+            title={`${cfg.label || "Menu"} (Menu)`}
+            subtitle={unsavedNote}
             onClose={onEditingWidgetClose}
             onDragStart={handlePanelDragStart}
             footer={widgetFooter("Delete Menu", () => { onDeleteWidget(editingWidget.id); onEditingWidgetClose(); })}
@@ -320,8 +306,8 @@ export default function EditorPanel({
         const cfg = draftConfig as AppWidgetConfig;
         return (
           <Panel
-            title={cfg.title || "Untitled App"}
-            subtitle={cfg.url || undefined}
+            title={`${cfg.title || "Untitled App"} (App)`}
+            subtitle={unsavedNote ?? (cfg.url || undefined)}
             onClose={onEditingWidgetClose}
             onDragStart={handlePanelDragStart}
             footer={widgetFooter("Delete App", () => { onDeleteWidget(editingWidget.id); onEditingWidgetClose(); })}

@@ -4,6 +4,12 @@ import type { LayoutWidgetConfig } from "@/types/layout-widget";
 import type { MenuWidgetConfig } from "@/types/menu-widget";
 import type { WidgetInstance } from "@/types/widget";
 import MenuWidget from "@/components/widgets/menu-widget";
+import EdgeShadow from "@/components/widgets/edge-shadow";
+import { layoutGeometry } from "@/lib/layout-cells";
+import { CELL_INDEX_ATTR, CELL_LAYOUT_ATTR } from "@/lib/cell-targets";
+import { toRgba } from "@/lib/color";
+import { resolveEdgeShadow, resolveEdgeSides } from "@/types/edge-shadow";
+import { resolveSpacing, spacingCss } from "@/types/spacing";
 
 interface Props {
   config: LayoutWidgetConfig;
@@ -12,25 +18,24 @@ interface Props {
   editMode?: boolean;
 }
 
-function toRgba(hex: string, opacity: number): string {
-  const r = parseInt(hex.slice(1, 3), 16);
-  const g = parseInt(hex.slice(3, 5), 16);
-  const b = parseInt(hex.slice(5, 7), 16);
-  return `rgba(${r}, ${g}, ${b}, ${opacity / 100})`;
-}
-
 export default function LayoutWidget({ config, widgetId, allWidgets, editMode }: Props) {
-  const { columns, rows } = config.layout;
-  const totalCells = columns * rows;
+  const geometry = layoutGeometry(config.layout);
+  const margin = resolveSpacing(config.margin, 0);
+  const padding = resolveSpacing(config.padding, 0);
+  const edgeShadow = resolveEdgeShadow(config.edgeShadow);
 
   const cellBg = toRgba(config.bgColor ?? "#ffffff", config.bgOpacity ?? 3);
   const cellBorder = toRgba(config.borderColor ?? "#ffffff", config.borderOpacity ?? 6);
 
   return (
     <div
+      data-layout-widget={widgetId}
       className="absolute overflow-hidden"
       style={{
-        inset: config.margin,
+        top: margin.top,
+        right: margin.right,
+        bottom: margin.bottom,
+        left: margin.left,
         borderRadius: editMode ? (config.borderRadius ?? 0) : 0,
       }}
     >
@@ -38,20 +43,21 @@ export default function LayoutWidget({ config, widgetId, allWidgets, editMode }:
         className="w-full h-full"
         style={{
           display: "grid",
-          gridTemplateColumns: `repeat(${columns}, 1fr)`,
-          gridTemplateRows: `repeat(${rows}, 1fr)`,
-          padding: config.padding,
-          gap: config.gap,
+          gridTemplateColumns: geometry.gridTemplateColumns,
+          gridTemplateRows: geometry.gridTemplateRows,
+          padding: spacingCss(padding),
+          gap: config.gap ?? 0,
         }}
       >
-        {Array.from({ length: totalCells }).map((_, i) => {
+        {geometry.cells.map(({ index, fit }) => {
           const child = allWidgets.find(
-            (w) => (w.type === "layout" || w.type === "menu") && w.parentId === widgetId && w.cellIndex === i
+            (w) => (w.type === "layout" || w.type === "menu") && w.parentId === widgetId && w.cellIndex === index
           );
           return (
             <div
-              key={i}
-              className="relative group"
+              key={index}
+              {...{ [CELL_LAYOUT_ATTR]: widgetId, [CELL_INDEX_ATTR]: index }}
+              className="relative group min-w-0 min-h-0"
               style={editMode ? {
                 backgroundColor: cellBg,
                 border: `1px solid ${cellBorder}`,
@@ -74,12 +80,14 @@ export default function LayoutWidget({ config, widgetId, allWidgets, editMode }:
                   widgetId={child.id}
                   allWidgets={allWidgets}
                   editMode={editMode}
+                  fit={fit}
                 />
               )}
             </div>
           );
         })}
       </div>
+      <EdgeShadow config={edgeShadow} sides={resolveEdgeSides(edgeShadow.edges, "all")} />
     </div>
   );
 }

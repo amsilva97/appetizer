@@ -45,9 +45,9 @@ export default function CanvasMenu({ x, y, groups, onDismiss }: CanvasMenuProps)
       {groups.map((group, gi) => (
         <div key={gi}>
           {gi > 0 && <div className="my-1 border-t border-white/[0.06]" />}
-          {group.map((item) => (
+          {group.map((item, ii) => (
             <button
-              key={item.label}
+              key={`${ii}:${item.label}`}
               className="w-full flex items-center px-4 py-2 text-sm text-zinc-200 hover:bg-zinc-800 transition-colors text-left"
               onClick={() => { item.onClick(); onDismiss(); }}
             >

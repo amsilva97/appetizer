@@ -1,3 +1,5 @@
+import { resolveSpacing, type Spacing, type SpacingValue } from "./spacing";
+
 export type LogoView = "icon" | "none" | "full";
 export type FeedMethod = "none" | "GET";
 
@@ -37,8 +39,9 @@ export interface AppWidgetConfig {
   pingInterval: number; // seconds
   width: number;
   height: number;
-  padding: number;
-  margin: number;
+  /** A legacy plain number pads only the left and right of the header row. */
+  padding: SpacingValue;
+  margin: SpacingValue;
   borderRadius: number;
   iconZoom: number;
   iconOffsetX: number;
@@ -59,10 +62,19 @@ export const DEFAULT_APP_WIDGET: AppWidgetConfig = {
   pingInterval: 30,
   width: 240,
   height: 72,
-  padding: 16,
+  padding: { top: 0, right: 16, bottom: 0, left: 16 },
   margin: 0,
   borderRadius: 16,
   iconZoom: 1,
   iconOffsetX: 0,
   iconOffsetY: 0,
 };
+
+/**
+ * App padding as four sides. A legacy plain number only ever padded the left
+ * and right of the header row, so it keeps doing just that.
+ */
+export function resolveAppPadding(value: SpacingValue | undefined): Spacing {
+  if (typeof value === "number") return { top: 0, right: value, bottom: 0, left: value };
+  return resolveSpacing(value, 16);
+}
