@@ -74,6 +74,7 @@ export default function Home() {
   const [keyNames, setKeyNames] = useState<string[]>([]);
   const [capabilities, setCapabilities] = useState<Capability[]>([]);
   const [loggedIn, setLoggedIn] = useState(false);
+  const [username, setUsername] = useState<string | null>(null);
   const [pages, setPages] = useState<PageMeta[]>([]);
   const [currentPage, setCurrentPage] = useState<string>("");
   const [availablePermissions, setAvailablePermissions] = useState<Permission[]>([]);
@@ -116,10 +117,11 @@ export default function Home() {
       .finally(() => setLoaded(true));
 
     fetch("/api/me")
-      .then((r) => r.ok ? r.json() : { loggedIn: false, capabilities: [] })
-      .then(({ loggedIn: li, capabilities: c }: { loggedIn: boolean; capabilities?: Capability[] }) => {
+      .then((r) => r.ok ? r.json() : { loggedIn: false, username: null, capabilities: [] })
+      .then(({ loggedIn: li, username: name, capabilities: c }: { loggedIn: boolean; username?: string | null; capabilities?: Capability[] }) => {
         const held = new Set(c ?? []);
         setLoggedIn(li);
+        setUsername(name ?? null);
         setCapabilities([...held]);
         if (held.has("pages:update") || held.has("roles:read")) {
           fetch("/api/admin/permissions")
@@ -409,6 +411,7 @@ export default function Home() {
         canEdit={canEdit}
         adminLinks={adminLinks}
         loggedIn={loggedIn}
+        username={username}
         pages={pages}
         currentPage={currentPage}
         onPageChange={switchPage}

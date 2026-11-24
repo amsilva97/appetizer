@@ -6,8 +6,6 @@ import type { EdgeShadowConfig, EdgeSides } from "@/types/edge-shadow";
 interface Props {
   config: EdgeShadowConfig;
   sides: EdgeSides;
-  /** Edges with nothing beyond them; their fade is hidden. */
-  hidden?: Partial<EdgeSides>;
 }
 
 const DIRECTION: Record<keyof EdgeSides, string> = {
@@ -29,7 +27,7 @@ const PLACEMENT: Record<keyof EdgeSides, React.CSSProperties> = {
  * behind a shadow instead of being cut off. Sits over the content and lets
  * clicks through.
  */
-export default function EdgeShadow({ config, sides, hidden = {} }: Props) {
+export default function EdgeShadow({ config, sides }: Props) {
   if (!config.enabled || config.size <= 0) return null;
   const solid = toRgba(config.color, config.opacity);
   const clear = toRgba(config.color, 0);
@@ -44,12 +42,11 @@ export default function EdgeShadow({ config, sides, hidden = {} }: Props) {
             key={side}
             aria-hidden
             data-edge-shadow={side}
-            className="absolute pointer-events-none z-[5] transition-opacity duration-200"
+            className="absolute pointer-events-none z-[5]"
             style={{
               ...PLACEMENT[side],
               [vertical ? "height" : "width"]: config.size,
               background: `linear-gradient(${DIRECTION[side]}, ${solid}, ${clear})`,
-              opacity: hidden[side] ? 0 : 1,
             }}
           />
         );
