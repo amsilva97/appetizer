@@ -43,13 +43,13 @@ Setup is a one-time flow. Once an admin exists, `/setup` redirects to the homepa
 Sessions are managed with encrypted cookies (`iron-session`). The session secret is set via the `SESSION_SECRET` environment variable (see [Environment Variables](#environment-variables)).
 
 - **Login** — `/login`. Sign in with a username and password.
-- **Logout** — click the sign-out icon in the toolbar.
+- **Logout** — open the profile button in the toolbar and choose **Sign out**. The page reloads straight away: you land on the homepage as a guest, or on `/login` when Force Login is on.
 - **Session persistence** — sessions survive page reloads until the cookie expires or the user signs out.
 - **Disabled users** — if an admin disables your account, you are kicked out on the next request without waiting for session expiry.
 
 ### Force Login
 
-When **Force Login** is enabled (the default), unauthenticated visitors are redirected to `/login` and cannot access the homepage. When it is disabled, unauthenticated visitors can browse the homepage as guests but must log in manually to get admin capabilities.
+When **Force Login** is enabled (the default), unauthenticated visitors are redirected to `/login` and cannot access the homepage. That includes a session that ends while the page is open: the next page load or page switch sends the visitor to `/login`. When it is disabled, unauthenticated visitors browse the homepage as **Guest** and can sign in from the profile menu.
 
 The Force Login setting is managed from `/admin/users` by any admin.
 
@@ -62,7 +62,7 @@ The Force Login setting is managed from `/admin/users` by any admin.
 | **Root Admin** | All admin capabilities. Cannot be deleted; can only be disabled by another admin. Created on first run. |
 | **Admin** | Edit the dashboard, manage users, manage secret keys, manage permissions, create and configure pages. |
 | **User** | View pages they have been granted permission to see. Cannot enter edit mode or access admin pages. |
-| **Guest** | View-only, unauthenticated. Only possible when Force Login is off. |
+| **Guest** | View-only, unauthenticated. Shown as "Guest" on the profile button. Only possible when Force Login is off. |
 
 The toolbar adapts to the current session. Admin controls are shown only to admins.
 
@@ -83,7 +83,7 @@ Granting permissions to individual users is done from `/admin/users` — expand 
 
 ## User Management
 
-Admins access `/admin/users` from the admin menu in the toolbar. From this page admins can:
+Admins access `/admin/users` from the profile menu in the toolbar. From this page admins can:
 
 - **Add users** — set a username, password, and role (admin or user).
 - **Change roles** — promote a user to admin or demote an admin to user. The last active admin cannot be demoted.
@@ -95,7 +95,7 @@ Admins access `/admin/users` from the admin menu in the toolbar. From this page 
 
 ## Secret Keys
 
-Admins access `/admin/keys` from the admin menu in the toolbar. Keys are named secrets stored encrypted on disk. They are never exposed to the browser — only their names are returned by the API.
+Admins access `/admin/keys` from the profile menu in the toolbar. Keys are named secrets stored encrypted on disk. They are never exposed to the browser — only their names are returned by the API.
 
 Keys are referenced in app widget feed headers using the `{KEY_NAME}` placeholder syntax (see [Feed tab](#feed-tab)).
 
@@ -109,9 +109,12 @@ The toolbar sits at the top of the screen. Its contents depend on your role:
 
 - **Appetizer mark** (top-left) — always visible.
 - **Page tabs** — shown when multiple pages exist, or when an admin is in edit mode. Click a tab to switch pages. See [Pages](#pages).
-- **Admin menu** *(admin only)* — a single ⋮ button that expands a dropdown containing: Edit layout toggle, Users, Keys, and Permissions links. A blue dot on the button indicates edit mode is active.
-- **Sign out** *(when logged in)* — ends the session and redirects to `/login`.
-- **Sign in** *(when not logged in)* — navigates to `/login`.
+- **Profile button** — a round button showing the first two characters of your username (for example **PN** for `pndadmin`), or **GU** for a guest. Clicking it opens a menu with:
+  - who you are ("Signed in as …" or "Viewing as Guest")
+  - **Edit layout** / **Stop editing** *(editors only)* — a dot on the button shows edit mode is on
+  - **Phone layout** *(while editing)* — opens the phone layout editor; a green dot means the phone view is on
+  - links to the admin pages you can use (Users, Roles & permissions, Keys, Settings)
+  - **Sign out**, or **Sign in** for a guest
 
 #### Toolbar Style Editor
 
@@ -126,7 +129,7 @@ Right-clicking anywhere on the toolbar opens the style editor (admin only). Chan
 - Tab radius — corner radius of the pill highlight (0–24 px)
 - Tab gap — spacing between tabs (0–16 px)
 
-**Buttons** — the icon action buttons (admin menu, sign out):
+**Buttons** — the profile button:
 - Background color
 - Border color
 - Icon color
@@ -199,17 +202,21 @@ toolbarStyle:
 
 Right-click anywhere on the canvas while in edit mode. The menu is built dynamically based on what is under your cursor.
 
+Every widget is named with its type in brackets, so it's clear what each entry edits: `Edit Sidebar (Layout)`, `Edit Media (Menu)`, `Edit Jellyfin (App)`.
+
 **Edit section** — one entry per element in the stack at the cursor position:
 - Edit Background
-- Edit [Layout name] — for each layout the cursor is inside
-- Edit [Menu name] — if a menu occupies the cell under the cursor
-- Edit [App title] — for floating apps under the cursor, and apps inside any menu under the cursor
+- Edit [Layout name] (Layout) — for each layout the cursor is inside, outermost first
+- Edit [Menu name] (Menu) — if a menu occupies the cell under the cursor
+- Edit [App title] (App) — for floating apps under the cursor, and apps inside any menu under the cursor
 
 **Add section** — one entry per possible insertion point:
-- Add Layout to [parent layout name] — adds a sub-layout into the cell under the cursor
-- Add Menu to [parent layout name] — adds a menu into the cell under the cursor
-- Add App to [menu name] — adds an app widget inside a menu that is under the cursor
+- Add Layout to [parent layout name] (Layout) — adds a sub-layout into the cell under the cursor
+- Add Menu to [parent layout name] (Layout) — adds a menu into the cell under the cursor
+- Add App to [menu name] (Menu) — adds an app widget inside a menu that is under the cursor
 - Add Layout to Background — adds a new root layout that fills the whole canvas
+
+The cells under the cursor are read from what's drawn on screen, so this works the same for grid and gutters layouts.
 
 Clicking an edit entry opens the **editor panel** for that element. Clicking an add entry creates the widget immediately and opens its editor.
 
@@ -219,7 +226,9 @@ Clicking an edit entry opens the **editor panel** for that element. Clicking an 
 
 A floating panel that appears in the bottom-left corner when you select something to edit. It can be dragged by its grip handle and resized by dragging the right edge. It closes with the X button, or by switching edit mode off.
 
-Changes are **not applied until you click Save**. The **Revert** button discards unsaved changes. The **Delete** button permanently removes the widget and all its children.
+Changes show on the canvas **as you make them** (the panel says "Previewing unsaved changes"), but they are only kept when you click **Save**. **Revert** puts the widget back to its saved state. Closing the panel or opening another widget throws away unsaved changes. The **Delete** button permanently removes the widget and all its children.
+
+The YAML tab previews live too. Text that isn't valid YAML, or isn't a mapping, shows an error and leaves the canvas alone.
 
 ---
 
@@ -263,19 +272,31 @@ A layout can contain other layouts, menus, or feed widgets — one per cell.
 
 **Display tab:**
 - **Label** — internal name shown in context menu entries and the editor panel title. Not visible to end users.
-- **Layout type** — always Grid (the only current type).
-- **Columns** — number of grid columns, 1–12.
-- **Rows** — number of grid rows, 1–12.
+- **Layout type** — **Grid** or **Gutters**.
+- *Grid:* **Columns** and **Rows**, 1–12 each.
+- *Gutters:* a main area with a gutter on one or both sides.
+  - **Orientation** — **Horizontal** puts the gutters left and right of the main area; **Vertical** puts them above and below.
+  - **Gutters** — Both, or only the left (top) or right (bottom) gutter.
+  - **Gutter width / height** — set separately for each gutter: **Fixed (px)**, **Percent of layout (%)**, or **Fit content (min-content)**, which sizes the gutter to the menu inside it.
 
-**Visuals tab** (edit mode only — these styles are invisible in view mode):
-- **Corner radius** — rounds the outer corners of the layout container, in pixels.
-- **Padding** — space between the outer edge and the grid cells, in pixels.
-- **Gap** — space between grid cells, in pixels.
-- **Margin** — shrinks the layout inward from its container edges, in pixels.
-- **Background color** — hex color for the cell fill.
-- **Background opacity** — 0–100%.
-- **Border color** — hex color for the cell borders.
-- **Border opacity** — 0–100%.
+Gutter cells keep fixed cell numbers (left/top = 0, main = 1, right/bottom = 2), so switching a gutter off and on again keeps what was in it.
+
+**Visuals tab** — layouts and menus share the same controls, in the same order:
+- **Margin** — space between the widget and its container. One value for all sides, or click **Set sides separately** for top / right / bottom / left.
+- **Padding** — space inside the widget, around its content. Same all-sides / per-side choice as margin.
+- **Gap** — space between cells (layout) or app cards (menu).
+- **Corner radius** — rounds the corners, in pixels.
+- **Background color** / **Background opacity** (0–100%).
+- **Border color** / **Border opacity** (0–100%).
+- **Edge shadow** — a soft inner fade along the edges, so content looks like it slides behind a shadow instead of being cut off. When on:
+  - **Edges** — Auto, Left & right, Top & bottom, or All edges. Auto means the scroll direction for a menu and all edges for a layout.
+  - **Full strength until** — how far in from the edge the shadow stays at full strength.
+  - **Faded out at** — how far in from the edge it has faded to clear.
+  - **Shadow color** and **Shadow strength** (0–100%).
+
+Margin, padding and gap are typed in pixels with no upper limit.
+
+Layout colors and borders only show in edit mode; the edge shadow shows in both modes.
 
 **YAML tab** — directly edit the config as YAML. Applied live; errors are shown inline.
 
@@ -285,22 +306,32 @@ A layout can contain other layouts, menus, or feed widgets — one per cell.
 
 ### Menu
 
-A visible styled container that lives inside a layout cell. Menus hold app widgets and render them in a flex list. The label is displayed at the top of the menu.
+A visible styled container that lives inside a layout cell. Menus hold app widgets and show them as a scrolling list or a carousel.
 
 **Display tab:**
-- **Label** — displayed as a small heading at the top of the menu.
-- **Type** — always List (the only current type).
-- **Direction** — Vertical (apps stacked top-to-bottom) or Horizontal (apps side by side).
-- **Padding** — inner spacing between the menu border and its apps, in pixels.
-- **Gap** — spacing between app cards, in pixels.
+- **Label** — the menu's name, shown as a small heading at the top of the menu.
+- **Show label above the apps** — turn off to hide the heading. The label is still used in context menus and the editor.
+- **Menu type** — **List** or **Carousel**.
+  - *List* — every app in a row or column; scrolls when there are more than fit.
+  - *Carousel* — shows a set number of apps at a time and pages through the rest with the arrows (on hover), the mouse wheel, swiping, or the arrow keys.
+- **Direction** — Vertical (top to bottom) or Horizontal (side by side).
+- **Apps shown at once** *(carousel)* — 1–12.
+- **Infinite scroll** *(carousel)* — loop from the last app back to the first, both ways.
 
-**Visuals tab:**
-- **Margin** — shrinks the menu inward from its cell edges, in pixels.
-- **Corner radius** — rounds the menu's corners, in pixels.
-- **Background color** — hex color for the menu background.
-- **Background opacity** — 0–100%.
-- **Border color** — hex color for the menu border.
-- **Border opacity** — 0–100%.
+**Visuals tab** — layouts and menus share the same controls, in the same order:
+- **Margin** — space between the widget and its container. One value for all sides, or click **Set sides separately** for top / right / bottom / left.
+- **Padding** — space inside the widget, around its content. Same all-sides / per-side choice as margin.
+- **Gap** — space between cells (layout) or app cards (menu).
+- **Corner radius** — rounds the corners, in pixels.
+- **Background color** / **Background opacity** (0–100%).
+- **Border color** / **Border opacity** (0–100%).
+- **Edge shadow** — a soft inner fade along the edges, so content looks like it slides behind a shadow instead of being cut off. When on:
+  - **Edges** — Auto, Left & right, Top & bottom, or All edges. Auto means the scroll direction for a menu and all edges for a layout.
+  - **Full strength until** — how far in from the edge the shadow stays at full strength.
+  - **Faded out at** — how far in from the edge it has faded to clear.
+  - **Shadow color** and **Shadow strength** (0–100%).
+
+Margin, padding and gap are typed in pixels with no upper limit.
 
 **YAML tab** — directly edit the config as YAML.
 
@@ -310,7 +341,7 @@ A visible styled container that lives inside a layout cell. Menus hold app widge
 
 ### App
 
-An app shortcut card. Apps can be floating (draggable, positioned freely on the canvas) or live inside a menu. When inside a menu, apps fill the available axis — horizontally if the menu is vertical, vertically if the menu is horizontal.
+An app shortcut card. Apps can be floating (draggable, positioned freely on the canvas) or live inside a menu. When inside a list menu, apps fill the available axis — horizontally if the menu is vertical, vertically if the menu is horizontal. In a carousel, each app fills its slot.
 
 **Display tab:**
 - **Title** — main text shown on the card. Also used as the fallback icon initial(s) if no logo URL is set.
@@ -328,8 +359,8 @@ An app shortcut card. Apps can be floating (draggable, positioned freely on the 
 **Visuals tab:**
 - **Width** — card width in pixels, 160–480.
 - **Height** — card height in pixels, 48–300.
-- **Padding** — horizontal inner spacing, in pixels.
-- **Margin** — space between the card edge and its container, in pixels.
+- **Padding** — inner spacing, in pixels. One value for all sides or set per side (top / right / bottom / left).
+- **Margin** — space between the card edge and its container, in pixels. One value or per side.
 - **Corner radius** — rounds the card corners, in pixels.
 
 **Connection tab:**
@@ -496,7 +527,47 @@ Every widget in the scene is a flat entry in the `widgets` array. Hierarchy is e
 | `x` | number | yes | Horizontal position in pixels. Only meaningful for floating app widgets. Set to `0` for all other widget types. |
 | `y` | number | yes | Vertical position in pixels. Only meaningful for floating app widgets. Set to `0` for all other widget types. |
 | `parentId` | string | no | ID of the parent widget. Required for sub-layouts and menus (parent must be a layout). Required for apps inside menus (parent must be a menu). Omit for root layouts and floating apps. |
-| `cellIndex` | number | no | Zero-based cell index within the parent layout. `cellIndex = row * columns + column`. Required when a layout or menu has a `parentId`. Not used for apps inside menus. |
+| `cellIndex` | number | no | Zero-based cell index within the parent layout: `row * columns + column` in a grid; `0` / `1` / `2` (start gutter / main / end gutter) in a gutters layout. Required when a layout or menu has a `parentId`. Not used for apps inside menus. |
+
+---
+
+### Spacing values
+
+`margin` and `padding` on layouts, menus and apps take either one number for all four sides, or an object with each side:
+
+```yaml
+margin: 8              # all sides
+padding:               # per side
+  top: 0
+  right: 16
+  bottom: 0
+  left: 16
+```
+
+For apps, a single `padding` number only pads the left and right of the card's header row (that's how older pages were laid out). Use the object form to pad the top and bottom too.
+
+### Edge Shadow
+
+Layouts and menus take an optional `edgeShadow`:
+
+```yaml
+edgeShadow:
+  enabled: true
+  edges: auto        # auto | horizontal | vertical | all
+  solidSize: 20      # full strength from the edge up to this many px
+  size: 80           # faded to clear by this many px
+  color: "#000000"
+  opacity: 80        # 0–100, strength at the edge
+```
+
+| Field | Type | Default | Description |
+|---|---|---|---|
+| `enabled` | boolean | `false` | Turn the shadow on. |
+| `edges` | `auto` \| `horizontal` \| `vertical` \| `all` | `auto` | Which edges fade. `horizontal` = left and right. `auto` = the scroll direction for a menu, all edges for a layout. |
+| `solidSize` | number | `0` | Distance from the edge the shadow stays at full strength. Capped at `size`. |
+| `size` | number | `48` | Distance from the edge where the shadow has faded to clear. |
+| `color` | hex string | `"#000000"` | Shadow color. |
+| `opacity` | number | `80` | Strength at full strength, 0–100. |
 
 ---
 
@@ -525,17 +596,22 @@ config:
 | Field | Type | Default | Range | Description |
 |---|---|---|---|---|
 | `label` | string | `"Layout"` | — | Display name shown in context menus and the editor. |
-| `layout.type` | `grid` | `grid` | — | Always `grid`. |
-| `layout.columns` | number | `3` | 1–12 | Number of columns. |
-| `layout.rows` | number | `2` | 1–12 | Number of rows. |
-| `padding` | number | `0` | 0–64 | Inner padding around the grid. |
-| `gap` | number | `0` | 0–64 | Gap between grid cells. |
-| `margin` | number | `0` | 0–128 | Inset from container edges. |
+| `layout.type` | `grid` \| `gutters` | `grid` | — | Layout type. |
+| `layout.columns` | number | `3` | 1–12 | Grid: number of columns. |
+| `layout.rows` | number | `2` | 1–12 | Grid: number of rows. |
+| `layout.orientation` | `horizontal` \| `vertical` | `horizontal` | — | Gutters: `horizontal` = left/right gutters, `vertical` = top/bottom gutters. |
+| `layout.gutters` | `start` \| `end` \| `both` | `both` | — | Gutters: which gutters exist. `start` = left (or top), `end` = right (or bottom). |
+| `layout.startSize` | `{ mode, value }` | `{ mode: px, value: 240 }` | — | Gutters: size of the left/top gutter. `mode` is `px`, `%` or `min-content` (`value` is ignored for `min-content`). |
+| `layout.endSize` | `{ mode, value }` | `{ mode: px, value: 240 }` | — | Gutters: size of the right/bottom gutter. |
+| `padding` | number or sides | `0` | 0+ | Inner padding around the cells. See [Spacing values](#spacing-values). |
+| `gap` | number | `0` | 0+ | Gap between cells. |
+| `margin` | number or sides | `0` | 0+ | Inset from container edges. |
 | `borderRadius` | number | `0` | 0–200 | Corner radius of the outer container. |
 | `bgColor` | hex string | `"#ffffff"` | — | Cell background color (edit mode only). |
 | `bgOpacity` | number | `3` | 0–100 | Cell background opacity as a percentage. |
 | `borderColor` | hex string | `"#ffffff"` | — | Cell border color (edit mode only). |
 | `borderOpacity` | number | `6` | 0–100 | Cell border opacity as a percentage. |
+| `edgeShadow` | object | off | — | See [Edge Shadow](#edge-shadow). |
 
 ---
 
@@ -561,17 +637,21 @@ config:
 
 | Field | Type | Default | Range | Description |
 |---|---|---|---|---|
-| `label` | string | `"Menu"` | — | Heading displayed at the top of the menu. |
-| `type` | `list` | `list` | — | Always `list`. |
+| `label` | string | `"Menu"` | — | The menu's name; shown as a heading unless `showLabel` is false. |
+| `showLabel` | boolean | `true` | — | Draw the label above the apps. |
+| `type` | `list` \| `carousel` | `list` | — | Scrolling list, or a carousel showing `visibleCount` apps at a time. |
 | `direction` | `vertical` \| `horizontal` | `vertical` | — | Stack direction of child apps. |
-| `padding` | number | `12` | 0–64 | Inner padding around the app list. |
-| `gap` | number | `8` | 0–64 | Gap between app cards. |
-| `margin` | number | `0` | 0–128 | Inset from cell edges. |
+| `visibleCount` | number | `3` | 1–12 | Carousel: apps shown at once. |
+| `infinite` | boolean | `false` | — | Carousel: loop from the last app back to the first. |
+| `padding` | number or sides | `12` | 0+ | Inner padding around the apps. See [Spacing values](#spacing-values). |
+| `gap` | number | `8` | 0+ | Gap between app cards. |
+| `margin` | number or sides | `0` | 0+ | Inset from cell edges. |
 | `borderRadius` | number | `8` | 0–48 | Corner radius. |
 | `bgColor` | hex string | `"#ffffff"` | — | Background color. |
 | `bgOpacity` | number | `5` | 0–100 | Background opacity as a percentage. |
 | `borderColor` | hex string | `"#ffffff"` | — | Border color. |
 | `borderOpacity` | number | `10` | 0–100 | Border opacity as a percentage. |
+| `edgeShadow` | object | off | — | See [Edge Shadow](#edge-shadow). |
 
 ---
 
@@ -628,8 +708,8 @@ config:
 | `pingInterval` | number | `30` | 10–300 | Seconds between status checks. |
 | `width` | number | `240` | 160–480 | Card width in pixels. Ignored when the app fills a menu axis. |
 | `height` | number | `72` | 48–300 | Header row height in pixels. Ignored when the app fills a menu axis. |
-| `padding` | number | `16` | 0–48 | Horizontal inner padding. |
-| `margin` | number | `0` | 0–64 | Space between the card and its container. |
+| `padding` | number or sides | `{0,16,0,16}` | 0+ | Inner padding. A single number pads only the header row's left and right. See [Spacing values](#spacing-values). |
+| `margin` | number or sides | `0` | 0+ | Space between the card and its container. |
 | `borderRadius` | number | `16` | 0–48 | Corner radius in pixels. |
 | `feed.method` | `none` \| `GET` | `none` | — | `none` shows no feed; `GET` fetches and displays data below the header row. |
 | `feed.url` | string | `""` | — | Endpoint URL. Must be `http://` or `https://`. |
@@ -984,4 +1064,5 @@ widgets:
 - A **menu** has `parentId` pointing to a layout and a `cellIndex`. Each cell can hold at most one direct child (a sub-layout or a menu).
 - An **app inside a menu** has `parentId` pointing to a menu. It does not use `cellIndex`. It may include an optional `feed` config to display live data inline below its header.
 - A **floating app** has no `parentId`. Its `x` and `y` position it on the canvas. It may also include a `feed` config.
-- `cellIndex` is calculated as `row * columns + column`, zero-based, reading left-to-right, top-to-bottom.
+- In a grid, `cellIndex` is `row * columns + column`, zero-based, reading left-to-right, top-to-bottom.
+- In a gutters layout, `cellIndex` is `0` for the left/top gutter, `1` for the main area and `2` for the right/bottom gutter, whichever gutters are switched on.
