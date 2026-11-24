@@ -2,12 +2,12 @@
 
 import { useState, useRef, useEffect, useSyncExternalStore } from "react";
 import { createPortal } from "react-dom";
-import Link from "next/link";
 import type { PageMeta, Permission } from "@/types/permissions";
 import type { AdminTab } from "@/lib/admin-tabs";
 import type { ToolbarStyle } from "@/types/toolbar";
 import { TOOLBAR_DEFAULTS } from "@/types/toolbar";
-import { GearIcon, LogInIcon, PlusIcon } from "@/components/toolbar-icons";
+import { GearIcon, PlusIcon } from "@/components/toolbar-icons";
+import { GUEST_NAME, signOut } from "@/lib/auth/client";
 import ProfileMenu from "@/components/profile-menu";
 
 // ─── ClientPortal ─────────────────────────────────────────────────────────────
@@ -323,20 +323,12 @@ export default function Toolbar({
   const buttonBorderColor = toolbarStyle.buttonBorderColor ?? TOOLBAR_DEFAULTS.buttonBorderColor;
   const buttonIconColor = toolbarStyle.buttonIconColor ?? TOOLBAR_DEFAULTS.buttonIconColor;
 
-  const btnCls =
-    "relative flex items-center justify-center w-9 h-9 rounded-xl border transition-all duration-200 " +
-    "hover:brightness-125";
-
   const btnStyle: React.CSSProperties = {
     backgroundColor: buttonBg,
     borderColor: buttonBorderColor,
     color: buttonIconColor,
   };
 
-  async function handleLogout() {
-    await fetch("/api/auth/logout", { method: "POST" });
-    window.location.href = "/login";
-  }
 
   function handleTabSettings(e: React.MouseEvent, pageName: string) {
     e.stopPropagation();
@@ -449,23 +441,18 @@ export default function Toolbar({
         {!showTabs && <div className="flex-1" />}
 
         <div className="flex items-center gap-2 shrink-0">
-          {loggedIn ? (
-            <ProfileMenu
-              username={username ?? ""}
+          <ProfileMenu
+              username={loggedIn ? username ?? "" : GUEST_NAME}
+              signedIn={!!loggedIn}
               editMode={editMode}
               onToggleEdit={canEdit ? onToggleEdit : undefined}
               links={adminLinks}
               mobileEditorOpen={mobileEditorOpen}
               onMobileEditorToggle={editing ? onMobileEditorToggle : undefined}
               mobileEnabled={mobileEnabled}
-              onLogout={handleLogout}
+              onLogout={() => { void signOut(); }}
               btnStyle={btnStyle}
             />
-          ) : (
-            <Link href="/login" title="Sign in" className={btnCls} style={btnStyle}>
-              <LogInIcon size={15} />
-            </Link>
-          )}
         </div>
       </div>
 

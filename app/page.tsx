@@ -28,6 +28,7 @@ import { DEFAULT_MOBILE, openAppUrl } from "@/lib/mobile";
 import { cellTargetsFromElements, type CellTarget } from "@/lib/cell-targets";
 import { resolveSpacing } from "@/types/spacing";
 import { useWidgetDraft } from "@/lib/use-widget-draft";
+import { redirectIfSignInRequired } from "@/lib/auth/client";
 
 interface SceneConfig {
   background: BackgroundConfig;
@@ -100,8 +101,11 @@ export default function Home() {
 
   useEffect(() => {
     fetch("/api/state")
-      .then((r) => r.json())
-      .then(({ pages: pg, activePage, layout, mobileEnabled: me }) => {
+      // Guest viewing is off and this visitor isn't signed in: go sign in.
+      .then((r) => (redirectIfSignInRequired(r) ? null : r.json()))
+      .then((data) => {
+        if (!data) return;
+        const { pages: pg, activePage, layout, mobileEnabled: me } = data;
         const pageList: PageMeta[] = pg ?? [];
         setPages(pageList);
         setCurrentPage(activePage ?? "");
@@ -157,7 +161,9 @@ export default function Home() {
     if (pageName === currentPageRef.current) return;
     setLoaded(false);
     try {
-      const data = await fetch(`/api/state?page=${encodeURIComponent(pageName)}`).then((r) => r.json());
+      const res = await fetch(`/api/state?page=${encodeURIComponent(pageName)}`);
+      if (redirectIfSignInRequired(res)) return;
+      const data = await res.json();
       const pageList: PageMeta[] = data.pages ?? [];
       setPages(pageList);
       setCurrentPage(data.activePage ?? pageName);
