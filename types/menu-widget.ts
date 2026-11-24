@@ -6,6 +6,8 @@ export type MenuDirection = "vertical" | "horizontal";
 
 export interface MenuWidgetConfig {
   label: string;
+  /** Draw the label as a heading above the apps. Missing means shown. */
+  showLabel?: boolean;
   type: MenuType;
   direction: MenuDirection;
   /** Carousel: how many apps show at once. */

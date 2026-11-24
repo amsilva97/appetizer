@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Divider, Field, Label, Select, SliderRow, Swatch, Toggle } from "@/components/ui";
+import { Divider, Field, Label, NumberInput, Select, SliderRow, Swatch, Toggle } from "@/components/ui";
 import { parse, stringify } from "@/lib/yaml-parser";
 import {
   SPACING_SIDES,
@@ -39,13 +39,11 @@ const SIDE_LABELS: Record<(typeof SPACING_SIDES)[number], string> = {
 interface SpacingFieldsProps {
   label: string;
   value: Spacing;
-  max: number;
-  step?: number;
   onChange: (v: Spacing) => void;
 }
 
-/** One slider for all sides, or split into top / right / bottom / left. */
-export function SpacingFields({ label, value, max, step = 2, onChange }: SpacingFieldsProps) {
+/** One typed value for all sides, or split into top / right / bottom / left. No upper limit. */
+export function SpacingFields({ label, value, onChange }: SpacingFieldsProps) {
   const [linked, setLinked] = useState(() => isUniform(value));
 
   return (
@@ -64,22 +62,18 @@ export function SpacingFields({ label, value, max, step = 2, onChange }: Spacing
         </button>
       </div>
       {linked ? (
-        <SliderRow
+        <NumberInput
           label="All sides"
           value={value.top}
-          min={0} max={max} step={step}
-          display={`${value.top}px`}
           onChange={(n) => onChange(uniformSpacing(n))}
         />
       ) : (
-        <div className="grid grid-cols-2 gap-x-4 gap-y-3">
+        <div className="grid grid-cols-2 gap-x-3 gap-y-3">
           {SPACING_SIDES.map((side) => (
-            <SliderRow
+            <NumberInput
               key={side}
               label={SIDE_LABELS[side]}
               value={value[side]}
-              min={0} max={max} step={step}
-              display={`${value[side]}px`}
               onChange={(n) => onChange({ ...value, [side]: n })}
             />
           ))}
@@ -161,13 +155,21 @@ export function EdgeShadowFields({ value, autoHint, onChange }: EdgeShadowFields
             options={edgeOptions}
             onChange={(edges) => onChange({ ...shadow, edges: edges as EdgeShadowEdges })}
           />
-          <SliderRow
-            label="Shadow depth"
-            value={shadow.size}
-            min={4} max={200} step={4}
-            display={`${shadow.size}px`}
-            onChange={(size) => onChange({ ...shadow, size })}
-          />
+          <div className="grid grid-cols-2 gap-x-3">
+            <NumberInput
+              label="Full strength until"
+              value={shadow.solidSize ?? 0}
+              onChange={(solidSize) => onChange({ ...shadow, solidSize })}
+            />
+            <NumberInput
+              label="Faded out at"
+              value={shadow.size}
+              onChange={(size) => onChange({ ...shadow, size })}
+            />
+          </div>
+          <p className="text-[11px] text-fg-subtle leading-snug -mt-2">
+            Measured in from the edge. The shadow is at full strength up to the first depth, then fades to clear by the second.
+          </p>
           <Field label="Shadow color">
             <Swatch value={shadow.color} onChange={(color) => onChange({ ...shadow, color })} />
           </Field>
@@ -231,15 +233,9 @@ export function ContainerVisualsFields<T extends ContainerVisuals>({
 
   return (
     <div className="flex flex-col gap-4">
-      <SpacingFields label="Margin" value={margin} max={128} onChange={(m) => onChange({ ...value, margin: m })} />
-      <SpacingFields label="Padding" value={padding} max={64} onChange={(p) => onChange({ ...value, padding: p })} />
-      <SliderRow
-        label="Gap"
-        value={gap}
-        min={0} max={64} step={2}
-        display={`${gap}px`}
-        onChange={(g) => onChange({ ...value, gap: g })}
-      />
+      <SpacingFields label="Margin" value={margin} onChange={(m) => onChange({ ...value, margin: m })} />
+      <SpacingFields label="Padding" value={padding} onChange={(p) => onChange({ ...value, padding: p })} />
+      <NumberInput label="Gap" value={gap} onChange={(g) => onChange({ ...value, gap: g })} />
 
       <Divider />
 

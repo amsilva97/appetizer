@@ -1,7 +1,7 @@
 "use client";
 
 import { toRgba } from "@/lib/color";
-import type { EdgeShadowConfig, EdgeSides } from "@/types/edge-shadow";
+import { edgeShadowStops, type EdgeShadowConfig, type EdgeSides } from "@/types/edge-shadow";
 
 interface Props {
   config: EdgeShadowConfig;
@@ -46,7 +46,7 @@ export default function EdgeShadow({ config, sides }: Props) {
             style={{
               ...PLACEMENT[side],
               [vertical ? "height" : "width"]: config.size,
-              background: `linear-gradient(${DIRECTION[side]}, ${solid}, ${clear})`,
+              background: `linear-gradient(${DIRECTION[side]}, ${edgeShadowStops(config, solid, clear)})`,
             }}
           />
         );

@@ -50,6 +50,11 @@ function MenuDisplayFields({ value, onChange }: { value: MenuWidgetConfig; onCha
         placeholder="Menu 1"
         onChange={(label) => onChange({ ...value, label })}
       />
+      <Toggle
+        label="Show label above the apps"
+        checked={value.showLabel !== false}
+        onChange={(showLabel) => onChange({ ...value, showLabel })}
+      />
 
       <Divider />
 

@@ -1,7 +1,7 @@
 import { describe, expect, test } from "vitest";
 import { resolveSpacing, spacingCss, isUniform } from "@/types/spacing";
 import { resolveAppPadding } from "@/types/app-widget";
-import { resolveEdgeSides, resolveEdgeShadow } from "@/types/edge-shadow";
+import { DEFAULT_EDGE_SHADOW, edgeShadowStops, resolveEdgeSides, resolveEdgeShadow } from "@/types/edge-shadow";
 import { layoutGeometry, resolveLayout, GUTTER_START_CELL, GUTTER_MAIN_CELL, GUTTER_END_CELL } from "@/lib/layout-cells";
 import { cellTargetsFromElements, CELL_INDEX_ATTR, CELL_LAYOUT_ATTR } from "@/lib/cell-targets";
 import { canStep, carouselModel, itemAt, slotsToRender, stepIndex } from "@/lib/carousel";
@@ -167,5 +167,21 @@ describe("widget drafts", () => {
   test("a draft equal to what's saved has no changes", () => {
     expect(draftDiffers({ id: "a", config: widgets[0].config, permissions: [] }, widgets[0])).toBe(false);
     expect(draftDiffers({ id: "a", config: widgets[0].config, permissions: ["p"] }, widgets[0])).toBe(true);
+  });
+});
+
+describe("edge shadow depths", () => {
+  test("full strength up to the first depth, clear by the second", () => {
+    expect(edgeShadowStops({ ...DEFAULT_EDGE_SHADOW, solidSize: 20, size: 100 }, "S", "C")).toBe("S 0px, S 20px, C 100px");
+  });
+
+  test("older configs without a full-strength depth fade from the edge", () => {
+    const { solidSize: _unused, ...legacy } = DEFAULT_EDGE_SHADOW;
+    void _unused;
+    expect(edgeShadowStops({ ...legacy, size: 48 }, "S", "C")).toBe("S 0px, S 0px, C 48px");
+  });
+
+  test("a full-strength depth past the fade-out is capped there", () => {
+    expect(edgeShadowStops({ ...DEFAULT_EDGE_SHADOW, solidSize: 300, size: 100 }, "S", "C")).toBe("S 0px, S 100px, C 100px");
   });
 });

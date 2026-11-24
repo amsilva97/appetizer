@@ -115,9 +115,11 @@ export default function MenuWidget({ config, widgetId, allWidgets, fit }: Props)
         borderRadius: config.borderRadius ?? 8,
       }}
     >
-      <div className="shrink-0 px-3 pt-2.5 pb-1 text-[11px] font-semibold uppercase tracking-wider text-zinc-400">
-        {config.label}
-      </div>
+      {config.showLabel !== false && (
+        <div data-menu-label className="shrink-0 px-3 pt-2.5 pb-1 text-[11px] font-semibold uppercase tracking-wider text-zinc-400">
+          {config.label}
+        </div>
+      )}
 
       {isCarousel ? (
         <MenuCarousel
