@@ -2,9 +2,11 @@
 
 import { useState } from "react";
 import type { AppWidgetConfig, AppFeedConfig, FeedHeaderRow, FeedMethod } from "@/types/app-widget";
-import { DEFAULT_FEED_CONFIG } from "@/types/app-widget";
+import { DEFAULT_FEED_CONFIG, resolveAppPadding } from "@/types/app-widget";
 import { Divider, Select, SliderRow, TabBar, TextInput, Toggle } from "@/components/ui";
-import { parse, stringify } from "@/lib/yaml-parser";
+import { SpacingFields, YamlTab } from "@/components/widgets/shared-fields";
+import { normalizeAppConfig } from "@/lib/widget-config";
+import { resolveSpacing } from "@/types/spacing";
 import WidgetPermissionsFields from "@/components/widgets/widget-permissions-fields";
 import type { Permission } from "@/types/permissions";
 
@@ -66,23 +68,10 @@ export default function AppWidgetFields({ value, onChange, keyNames = [], permis
     setFeed({ headers: feed.headers.filter((_, idx) => idx !== i) });
   }
   const [tab, setTab] = useState<Tab>("display");
-  const [yaml, setYaml] = useState(() => stringify(value));
-  const [yamlErr, setYamlErr] = useState<string | null>(null);
-
-  function switchTab(next: Tab) {
-    if (next === "yaml") { setYaml(stringify(value)); setYamlErr(null); }
-    setTab(next);
-  }
-
-  function handleYaml(text: string) {
-    setYaml(text);
-    try { onChange(parse<AppWidgetConfig>(text)); setYamlErr(null); }
-    catch (e) { setYamlErr(e instanceof Error ? e.message : "Invalid YAML"); }
-  }
 
   return (
     <div className="flex flex-col gap-5">
-      <TabBar tabs={TABS} active={tab} onChange={switchTab} />
+      <TabBar tabs={TABS} active={tab} onChange={setTab} />
 
       {tab === "display" && (
         <div className="flex flex-col gap-4">
@@ -165,18 +154,14 @@ export default function AppWidgetFields({ value, onChange, keyNames = [], permis
             display={`${value.height}px`}
             onChange={(height) => onChange({ ...value, height })}
           />
-          <SliderRow
+          <SpacingFields
             label="Padding"
-            value={value.padding ?? 16}
-            min={0} max={48} step={2}
-            display={`${value.padding ?? 16}px`}
+            value={resolveAppPadding(value.padding)}
             onChange={(padding) => onChange({ ...value, padding })}
           />
-          <SliderRow
+          <SpacingFields
             label="Margin"
-            value={value.margin ?? 0}
-            min={0} max={64} step={2}
-            display={`${value.margin ?? 0}px`}
+            value={resolveSpacing(value.margin, 0)}
             onChange={(margin) => onChange({ ...value, margin })}
           />
           <SliderRow
@@ -343,22 +328,7 @@ export default function AppWidgetFields({ value, onChange, keyNames = [], permis
         </div>
       )}
 
-      {tab === "yaml" && (
-        <div className="flex flex-col gap-2">
-          <textarea
-            value={yaml}
-            onChange={(e) => handleYaml(e.target.value)}
-            spellCheck={false}
-            className="w-full h-56 font-mono text-[11px] leading-relaxed bg-zinc-950 text-zinc-200 rounded-xl p-3 border border-zinc-800 resize-none focus:outline-none focus:ring-1 focus:ring-brand/40"
-          />
-          {yamlErr && (
-            <div className="flex gap-2 px-3 py-2 bg-red-500/10 border border-red-500/30 rounded-lg">
-              <span className="text-red-400 text-xs shrink-0 mt-px">⚠</span>
-              <p className="text-xs text-red-400 font-mono leading-snug break-all">{yamlErr}</p>
-            </div>
-          )}
-        </div>
-      )}
+      {tab === "yaml" && <YamlTab value={value} normalize={normalizeAppConfig} onChange={onChange} />}
 
       {tab === "permissions" && (
         <WidgetPermissionsFields

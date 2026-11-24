@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useRef, useState, type MouseEvent } from "react";
-import type { AppWidgetConfig, AppFeedConfig } from "@/types/app-widget";
+import { resolveAppPadding, type AppWidgetConfig, type AppFeedConfig } from "@/types/app-widget";
+import { resolveSpacing, spacingCss } from "@/types/spacing";
 import { isSafeLink, sanitizeFeedHtml } from "@/lib/feed/sanitize";
 import { useCurrentPage } from "@/lib/page-context";
 
@@ -172,7 +173,8 @@ interface Props {
   /** Saved widget id; lets non-admin viewers load the widget's feed. */
   widgetId?: string;
   onClick: () => void;
-  fillAxis?: "width" | "height";
+  /** Stretch the card to its container on this axis ("both" for carousel slots). */
+  fillAxis?: "width" | "height" | "both";
 }
 
 /** Let links inside the feed open on their own instead of also opening the card's app. */
@@ -189,27 +191,32 @@ export default function AppWidget({ config, widgetId, onClick, fillAxis }: Props
   const { logoView, openUrl } = config;
   const [coverErr, setCoverErr] = useState(false);
 
-  const margin = config.margin ?? 0;
-  const padding = config.padding ?? 16;
+  const margin = resolveSpacing(config.margin, 0);
+  const padding = resolveAppPadding(config.padding);
+  // Older cards saved one padding number; the cover title used it on every side.
+  const coverTop = typeof config.padding === "number" ? config.padding : padding.top;
   const borderRadius = config.borderRadius ?? 16;
   const iconTransform = `scale(${config.iconZoom ?? 1}) translate(${config.iconOffsetX ?? 0}%, ${config.iconOffsetY ?? 0}%)`;
 
   const hasActiveFeed = config.feed && config.feed.method !== "none";
   const feedHeight = config.feed?.height ?? 200;
 
-  const cardW = fillAxis === "width"
-    ? `calc(100% - ${margin * 2}px)`
+  const fillW = fillAxis === "width" || fillAxis === "both";
+  const fillH = fillAxis === "height" || fillAxis === "both";
+
+  const cardW = fillW
+    ? `calc(100% - ${margin.left + margin.right}px)`
     : config.width;
 
-  const cardH = fillAxis === "height"
-    ? `calc(100% - ${margin * 2}px)`
-    : hasActiveFeed ? undefined : config.height;
+  const cardH = fillH
+    ? `calc(100% - ${margin.top + margin.bottom}px)`
+    : hasActiveFeed ? undefined : config.height + padding.top + padding.bottom;
 
   const handleClick = openUrl ? onClick : undefined;
   const cursor = openUrl ? "cursor-pointer" : "cursor-default";
   const tooltip = config.tooltip || undefined;
 
-  const cardStyle = { width: cardW, height: cardH, margin, borderRadius };
+  const cardStyle = { width: cardW, height: cardH, margin: spacingCss(margin), borderRadius, flexShrink: 0 };
 
   // ── Full cover ──────────────────────────────────────────────────────────────
   if (logoView === "full") {
@@ -217,7 +224,7 @@ export default function AppWidget({ config, widgetId, onClick, fillAxis }: Props
       <div
         title={tooltip}
         className={`relative select-none overflow-hidden border border-white/10 shadow-xl shadow-black/40 ${cursor} transition-all duration-150 hover:border-white/20`}
-        style={{ ...cardStyle, height: config.height }}
+        style={{ ...cardStyle, height: fillH ? cardH : config.height }}
         onClick={handleClick}
       >
         {config.logoUrl && !coverErr ? (
@@ -237,7 +244,7 @@ export default function AppWidget({ config, widgetId, onClick, fillAxis }: Props
 
         <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-black/10 to-transparent" />
 
-        <div className="absolute top-0 left-0 right-0" style={{ padding, paddingBottom: 0 }}>
+        <div className="absolute top-0 left-0 right-0" style={{ paddingTop: coverTop, paddingRight: padding.right, paddingLeft: padding.left }}>
           <div className="flex items-center gap-1.5 min-w-0">
             <span className="text-[13px] font-semibold text-white leading-tight truncate drop-shadow">
               {config.title || "Untitled"}
@@ -263,7 +270,14 @@ export default function AppWidget({ config, widgetId, onClick, fillAxis }: Props
       {/* App header row */}
       <div
         className="flex items-center gap-3 shrink-0"
-        style={{ height: config.height, paddingLeft: padding, paddingRight: padding }}
+        style={{
+          height: config.height,
+          boxSizing: "content-box",
+          paddingTop: padding.top,
+          paddingRight: padding.right,
+          paddingBottom: padding.bottom,
+          paddingLeft: padding.left,
+        }}
       >
         {logoView === "icon" && (
           <AppIcon url={config.logoUrl} title={config.title} />

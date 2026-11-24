@@ -1,22 +1,31 @@
 "use client";
 
 import { useState } from "react";
-import type { MenuWidgetConfig, MenuDirection } from "@/types/menu-widget";
-import { Divider, Field, Select, SliderRow, Swatch, TabBar, TextInput } from "@/components/ui";
-import { parse, stringify } from "@/lib/yaml-parser";
+import {
+  DEFAULT_MENU_WIDGET,
+  DEFAULT_VISIBLE_COUNT,
+  type MenuDirection,
+  type MenuType,
+  type MenuWidgetConfig,
+} from "@/types/menu-widget";
+import { Divider, Select, SliderRow, TabBar, TextInput, Toggle } from "@/components/ui";
 import WidgetPermissionsFields from "@/components/widgets/widget-permissions-fields";
+import {
+  CONTAINER_TABS,
+  ContainerVisualsFields,
+  YamlTab,
+  type ContainerTab,
+} from "@/components/widgets/shared-fields";
+import { MAX_VISIBLE } from "@/lib/carousel";
+import { normalizeMenuConfig } from "@/lib/widget-config";
 import type { Permission } from "@/types/permissions";
 
-type Tab = "display" | "visuals" | "yaml" | "permissions";
-
-const TABS: { id: Tab; label: string }[] = [
-  { id: "display",     label: "Display"     },
-  { id: "visuals",     label: "Visuals"     },
-  { id: "yaml",        label: "YAML"        },
-  { id: "permissions", label: "Permissions" },
+const MENU_TYPE_OPTIONS: { label: string; value: MenuType }[] = [
+  { label: "List",     value: "list"     },
+  { label: "Carousel", value: "carousel" },
 ];
 
-const DIRECTION_OPTIONS = [
+const DIRECTION_OPTIONS: { label: string; value: MenuDirection }[] = [
   { label: "Vertical",   value: "vertical"   },
   { label: "Horizontal", value: "horizontal" },
 ];
@@ -29,130 +38,79 @@ interface Props {
   availablePermissions?: Permission[];
 }
 
+function MenuDisplayFields({ value, onChange }: { value: MenuWidgetConfig; onChange: (v: MenuWidgetConfig) => void }) {
+  const type: MenuType = value.type === "carousel" ? "carousel" : "list";
+  const visible = value.visibleCount ?? DEFAULT_VISIBLE_COUNT;
+
+  return (
+    <div className="flex flex-col gap-4">
+      <TextInput
+        label="Label"
+        value={value.label}
+        placeholder="Menu 1"
+        onChange={(label) => onChange({ ...value, label })}
+      />
+      <Toggle
+        label="Show label above the apps"
+        checked={value.showLabel !== false}
+        onChange={(showLabel) => onChange({ ...value, showLabel })}
+      />
+
+      <Divider />
+
+      <Select
+        label="Menu type"
+        value={type}
+        options={MENU_TYPE_OPTIONS}
+        onChange={(t) => onChange({ ...value, type: t as MenuType })}
+      />
+      <Select
+        label="Direction"
+        value={value.direction}
+        options={DIRECTION_OPTIONS}
+        onChange={(direction) => onChange({ ...value, direction: direction as MenuDirection })}
+      />
+
+      {type === "carousel" && (
+        <>
+          <SliderRow
+            label="Apps shown at once"
+            value={visible}
+            min={1} max={MAX_VISIBLE} step={1}
+            display={`${visible}`}
+            onChange={(visibleCount) => onChange({ ...value, visibleCount })}
+          />
+          <Toggle
+            label="Infinite scroll (loop back to the start)"
+            checked={value.infinite ?? false}
+            onChange={(infinite) => onChange({ ...value, infinite })}
+          />
+        </>
+      )}
+    </div>
+  );
+}
+
 export default function MenuWidgetFields({ value, onChange, permissions = [], onPermissionsChange, availablePermissions = [] }: Props) {
-  const [tab, setTab] = useState<Tab>("display");
-  const [yaml, setYaml] = useState(() => stringify(value));
-  const [yamlErr, setYamlErr] = useState<string | null>(null);
-
-  function switchTab(next: Tab) {
-    if (next === "yaml") { setYaml(stringify(value)); setYamlErr(null); }
-    setTab(next);
-  }
-
-  function handleYaml(text: string) {
-    setYaml(text);
-    try { onChange(parse<MenuWidgetConfig>(text)); setYamlErr(null); }
-    catch (e) { setYamlErr(e instanceof Error ? e.message : "Invalid YAML"); }
-  }
+  const [tab, setTab] = useState<ContainerTab>("display");
+  const scrollAxis = value.direction === "horizontal" ? "left & right" : "top & bottom";
 
   return (
     <div className="flex flex-col gap-5">
-      <TabBar tabs={TABS} active={tab} onChange={switchTab} />
+      <TabBar tabs={CONTAINER_TABS} active={tab} onChange={setTab} />
 
-      {tab === "display" && (
-        <div className="flex flex-col gap-4">
-          <TextInput
-            label="Label"
-            value={value.label}
-            placeholder="Menu 1"
-            onChange={(label) => onChange({ ...value, label })}
-          />
-
-          <Divider />
-
-          <Field label="Type">
-            <span className="text-xs text-zinc-400 font-medium">List</span>
-          </Field>
-          <Select
-            label="Direction"
-            value={value.direction}
-            options={DIRECTION_OPTIONS}
-            onChange={(direction) => onChange({ ...value, direction: direction as MenuDirection })}
-          />
-          <SliderRow
-            label="Padding"
-            value={value.padding}
-            min={0} max={64} step={2}
-            display={`${value.padding}px`}
-            onChange={(padding) => onChange({ ...value, padding })}
-          />
-          <SliderRow
-            label="Gap"
-            value={value.gap}
-            min={0} max={64} step={2}
-            display={`${value.gap}px`}
-            onChange={(gap) => onChange({ ...value, gap })}
-          />
-        </div>
-      )}
+      {tab === "display" && <MenuDisplayFields value={value} onChange={onChange} />}
 
       {tab === "visuals" && (
-        <div className="flex flex-col gap-4">
-          <SliderRow
-            label="Margin"
-            value={value.margin ?? 0}
-            min={0} max={128} step={2}
-            display={`${value.margin ?? 0}px`}
-            onChange={(margin) => onChange({ ...value, margin })}
-          />
-          <SliderRow
-            label="Corner radius"
-            value={value.borderRadius}
-            min={0} max={48} step={1}
-            display={`${value.borderRadius}px`}
-            onChange={(borderRadius) => onChange({ ...value, borderRadius })}
-          />
-
-          <Divider />
-
-          <Field label="Background color">
-            <Swatch
-              value={value.bgColor ?? "#ffffff"}
-              onChange={(bgColor) => onChange({ ...value, bgColor })}
-            />
-          </Field>
-          <SliderRow
-            label="Background opacity"
-            value={value.bgOpacity ?? 5}
-            min={0} max={100} step={1}
-            display={`${value.bgOpacity ?? 5}%`}
-            onChange={(bgOpacity) => onChange({ ...value, bgOpacity })}
-          />
-
-          <Divider />
-
-          <Field label="Border color">
-            <Swatch
-              value={value.borderColor ?? "#ffffff"}
-              onChange={(borderColor) => onChange({ ...value, borderColor })}
-            />
-          </Field>
-          <SliderRow
-            label="Border opacity"
-            value={value.borderOpacity ?? 10}
-            min={0} max={100} step={1}
-            display={`${value.borderOpacity ?? 10}%`}
-            onChange={(borderOpacity) => onChange({ ...value, borderOpacity })}
-          />
-        </div>
+        <ContainerVisualsFields
+          value={value}
+          defaults={DEFAULT_MENU_WIDGET}
+          shadowAutoHint={scrollAxis}
+          onChange={onChange}
+        />
       )}
 
-      {tab === "yaml" && (
-        <div className="flex flex-col gap-2">
-          <textarea
-            value={yaml}
-            onChange={(e) => handleYaml(e.target.value)}
-            spellCheck={false}
-            className="w-full h-56 font-mono text-[11px] leading-relaxed bg-zinc-950 text-zinc-200 rounded-xl p-3 border border-zinc-800 resize-none focus:outline-none focus:ring-1 focus:ring-brand/40"
-          />
-          {yamlErr && (
-            <div className="flex gap-2 px-3 py-2 bg-red-500/10 border border-red-500/30 rounded-lg">
-              <span className="text-red-400 text-xs shrink-0 mt-px">⚠</span>
-              <p className="text-xs text-red-400 font-mono leading-snug break-all">{yamlErr}</p>
-            </div>
-          )}
-        </div>
-      )}
+      {tab === "yaml" && <YamlTab value={value} normalize={normalizeMenuConfig} onChange={onChange} />}
 
       {tab === "permissions" && (
         <WidgetPermissionsFields
