@@ -157,13 +157,11 @@ export default function AppWidgetFields({ value, onChange, keyNames = [], permis
           <SpacingFields
             label="Padding"
             value={resolveAppPadding(value.padding)}
-            max={48}
             onChange={(padding) => onChange({ ...value, padding })}
           />
           <SpacingFields
             label="Margin"
             value={resolveSpacing(value.margin, 0)}
-            max={64}
             onChange={(margin) => onChange({ ...value, margin })}
           />
           <SliderRow

@@ -1,5 +1,7 @@
 "use client";
 
+import { useState } from "react";
+
 // ─── Typography ───────────────────────────────────────────────────────────────
 
 export function Label({ children }: { children: React.ReactNode }) {
@@ -56,6 +58,71 @@ export function TextInput({
         onChange={(e) => onChange(e.target.value)}
         className={BASE_INPUT}
       />
+    </Field>
+  );
+}
+
+// ─── Number input ─────────────────────────────────────────────────────────────
+
+/** Parse what's typed into a number in range, or null if it isn't one yet. */
+export function parseNumberInput(text: string, min = 0, max = Number.POSITIVE_INFINITY): number | null {
+  const trimmed = text.trim();
+  if (!/^-?\d*\.?\d+$/.test(trimmed)) return null;
+  const n = Number(trimmed);
+  if (!Number.isFinite(n)) return null;
+  return Math.min(max, Math.max(min, n));
+}
+
+/**
+ * A typed number with a unit, for values with no natural upper limit
+ * (margin, padding, gap). Half-typed text ("", "-") stays in the box without
+ * being sent; leaving the box puts back the last good value.
+ */
+export function NumberInput({
+  label,
+  value,
+  unit = "px",
+  min = 0,
+  max,
+  onChange,
+}: {
+  label: string;
+  value: number;
+  unit?: string;
+  min?: number;
+  max?: number;
+  onChange: (v: number) => void;
+}) {
+  const [text, setText] = useState(String(value));
+  const [synced, setSynced] = useState(value);
+  // Follow changes made elsewhere (Revert, "same on all sides").
+  if (value !== synced) {
+    setSynced(value);
+    if (parseNumberInput(text, min, max) !== value) setText(String(value));
+  }
+
+  return (
+    <Field label={label}>
+      <div className="relative">
+        <input
+          type="text"
+          inputMode="decimal"
+          aria-label={label}
+          value={text}
+          onChange={(e) => {
+            setText(e.target.value);
+            const n = parseNumberInput(e.target.value, min, max);
+            if (n !== null) onChange(n);
+          }}
+          onBlur={() => setText(String(value))}
+          className={`${BASE_INPUT} pr-9 font-mono`}
+        />
+        {unit && (
+          <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[11px] font-mono text-fg-subtle pointer-events-none">
+            {unit}
+          </span>
+        )}
+      </div>
     </Field>
   );
 }

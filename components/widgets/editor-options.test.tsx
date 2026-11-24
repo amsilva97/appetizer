@@ -156,21 +156,22 @@ describe("editor fields", () => {
     fire.click(byText(container, "Visuals")!);
     const margin = container.querySelector('[data-spacing-field="Margin"]') as HTMLElement;
     fire.click(margin.querySelector("button")!);
-    const sliders = margin.querySelectorAll<HTMLInputElement>('input[type="range"]');
-    expect(sliders).toHaveLength(4);
-    fire.change(sliders[3], "10");
-    expect(last!.margin).toEqual({ top: 0, right: 0, bottom: 0, left: 10 });
+    const inputs = margin.querySelectorAll<HTMLInputElement>("input");
+    expect(inputs).toHaveLength(4);
+    fire.change(inputs[3], "1000");
+    expect(last!.margin).toEqual({ top: 0, right: 0, bottom: 0, left: 1000 });
   });
 
   test("turning the edge shadow on reveals its settings", () => {
     let last: MenuWidgetConfig | null = null;
     const { container, rerender } = render(<MenuWidgetFields value={DEFAULT_MENU_WIDGET} onChange={(v) => { last = v; }} />);
     fire.click(byText(container, "Visuals")!);
-    expect(byText(container, "Shadow depth")).toBeNull();
+    expect(byText(container, "Faded out at")).toBeNull();
     fire.click(byText(container, "Edge shadow")!);
     expect(last!.edgeShadow?.enabled).toBe(true);
     rerender(<MenuWidgetFields value={last!} onChange={() => {}} />);
-    expect(byText(container, "Shadow depth")).not.toBeNull();
+    expect(byText(container, "Full strength until")).not.toBeNull();
+    expect(byText(container, "Faded out at")).not.toBeNull();
     expect(byText(container, "Auto (top & bottom)")).not.toBeNull();
   });
 });
@@ -245,5 +246,43 @@ describe("useWidgetDraft", () => {
     act(() => ref.current!.change({ config: { ...DEFAULT_MENU_WIDGET, label: "Live" } }));
     setId(null);
     expect(labelOf(ref.current!.viewWidgets[0])).toBe("Menu");
+  });
+});
+
+describe("number inputs", () => {
+  test("gap takes any size you type, with no slider limit", () => {
+    let last: MenuWidgetConfig | null = null;
+    const { container } = render(<MenuWidgetFields value={DEFAULT_MENU_WIDGET} onChange={(v) => { last = v; }} />);
+    fire.click(byText(container, "Visuals")!);
+    fire.change(byLabel(container, "Gap") as HTMLInputElement, "250");
+    expect(last!.gap).toBe(250);
+  });
+
+  test("half-typed text isn't sent, and negative numbers clamp to 0", () => {
+    const seen: number[] = [];
+    const { container } = render(<MenuWidgetFields value={DEFAULT_MENU_WIDGET} onChange={(v) => { seen.push(v.gap); }} />);
+    fire.click(byText(container, "Visuals")!);
+    const gap = byLabel(container, "Gap") as HTMLInputElement;
+    fire.change(gap, "");
+    fire.change(gap, "-");
+    expect(seen).toEqual([]);
+    fire.change(gap, "-5");
+    expect(seen).toEqual([0]);
+  });
+});
+
+describe("menu label", () => {
+  test("can be hidden from the rendered menu", () => {
+    const shown = render(<MenuWidget config={DEFAULT_MENU_WIDGET} widgetId="m" allWidgets={[]} />);
+    expect(shown.container.querySelector("[data-menu-label]")).not.toBeNull();
+    const hidden = render(<MenuWidget config={{ ...DEFAULT_MENU_WIDGET, showLabel: false }} widgetId="m" allWidgets={[]} />);
+    expect(hidden.container.querySelector("[data-menu-label]")).toBeNull();
+  });
+
+  test("the Display tab toggle turns it off", () => {
+    let last: MenuWidgetConfig | null = null;
+    const { container } = render(<MenuWidgetFields value={DEFAULT_MENU_WIDGET} onChange={(v) => { last = v; }} />);
+    fire.click(byText(container, "Show label above the apps")!);
+    expect(last!.showLabel).toBe(false);
   });
 });
