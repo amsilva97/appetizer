@@ -1,10 +1,10 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { readPermissionsConfig, writePermissionsConfig } from "@/lib/auth/permissions";
+import { isBuiltinPermission, readPermissionsConfig, writePermissionsConfig } from "@/lib/auth/permissions";
 import { readUsers, writeUsers } from "@/lib/auth/users";
 import { actionGuard } from "@/lib/auth/action-guard";
-import { checkDeleteRole, checkEditRoleCapabilities } from "@/lib/auth/grants";
+import { checkDeleteRole, checkEditRoleCapabilities, checkGrantPermissions } from "@/lib/auth/grants";
 import { isCapability, type Capability, type Role } from "@/types/permissions";
 
 export interface PermissionActionState {
@@ -67,6 +67,7 @@ export async function deletePermissionAction(
   const id = formData.get("id") as string;
   const config = readPermissionsConfig();
   if (!config.permissions.some((p) => p.id === id)) return { error: "Permission not found" };
+  if (isBuiltinPermission(id)) return { error: `"${id}" is built in and can't be deleted` };
 
   writePermissionsConfig({
     permissions: config.permissions.filter((p) => p.id !== id),
@@ -164,7 +165,9 @@ export async function saveRoleMatrixAction(
       roles.push(role);
       continue;
     }
-    const denied = checkEditRoleCapabilities(viewer, role.capabilities ?? [], row.capabilities);
+    const denied =
+      checkEditRoleCapabilities(viewer, role.capabilities ?? [], row.capabilities) ??
+      checkGrantPermissions(viewer, role.permissions, row.permissions);
     if (denied) return { error: `${role.label}: ${denied}` };
     const same =
       JSON.stringify([...(role.capabilities ?? [])].sort()) === JSON.stringify([...row.capabilities].sort()) &&

@@ -5,7 +5,7 @@ import bcrypt from "bcryptjs";
 import { addUser, deleteUser, findUser, readUsers, updateUser, type UserRole } from "@/lib/auth/users";
 import { readPermissionsConfig } from "@/lib/auth/permissions";
 import { actionGuard } from "@/lib/auth/action-guard";
-import { checkAssignRoles, checkGrantAdmin, checkTargetUser } from "@/lib/auth/grants";
+import { checkAssignRoles, checkGrantAdmin, checkGrantPermissions, checkTargetUser } from "@/lib/auth/grants";
 
 export interface UserActionState {
   error?: string;
@@ -160,7 +160,9 @@ export async function saveUserAccessAction(
     if (same(before.roles, next.roles) && same(before.permissions, next.permissions)) continue;
 
     const denied =
-      checkTargetUser(viewer, target) ?? checkAssignRoles(viewer, config.roles, before.roles, next.roles);
+      checkTargetUser(viewer, target) ??
+      checkAssignRoles(viewer, config.roles, before.roles, next.roles) ??
+      checkGrantPermissions(viewer, before.permissions, next.permissions);
     if (denied) return { error: `${username}: ${denied}` };
     updates.set(username, next);
   }

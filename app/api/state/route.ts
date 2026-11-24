@@ -9,7 +9,7 @@ import type { ToolbarStyle } from "@/types/toolbar";
 import { DEFAULT_MOBILE, filterMobileConfig, parseMobileConfig } from "@/lib/mobile";
 import { userCanAccess } from "@/lib/auth/permissions";
 import { readSettings } from "@/lib/auth/settings";
-import { can, getViewer, type Viewer } from "@/lib/auth/viewer";
+import { can, getViewer, seesAllPages, type Viewer } from "@/lib/auth/viewer";
 import { mergeEditorChanges } from "@/lib/data/merge-layout";
 import {
   DATA_DIR,
@@ -28,9 +28,9 @@ function writeIndex(index: IndexConfig): void {
   writeFileSync(join(DATA_DIR, "index.yaml"), yaml.dump(index, { indent: 2 }));
 }
 
-/** pages:read (and admin) sees every page and widget regardless of view permissions. */
+/** pages:read, admin and admin-read see every page and widget regardless of view permissions. */
 function seesAll(viewer: Viewer): boolean {
-  return can(viewer, "pages:read");
+  return seesAllPages(viewer);
 }
 
 export async function GET(request: Request) {
