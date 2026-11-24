@@ -57,15 +57,13 @@ describe("MenuCarousel", () => {
     expect(trackTransform(container)).toContain("-1");
   });
 
-  test("edge shadow hides at an end with nothing past it", () => {
+  test("edge shadow shows on both chosen edges, even at the start", () => {
     const { container } = render(
       <MenuCarousel items={items} direction="horizontal" visibleCount={3} gap={0} padding={pad}
         edgeShadow={{ ...DEFAULT_EDGE_SHADOW, enabled: true }} />
     );
-    const left = container.querySelector('[data-edge-shadow="left"]') as HTMLElement;
-    const right = container.querySelector('[data-edge-shadow="right"]') as HTMLElement;
-    expect(left.style.opacity).toBe("0");
-    expect(right.style.opacity).toBe("1");
+    const shown = Array.from(container.querySelectorAll("[data-edge-shadow]")).map((e) => e.getAttribute("data-edge-shadow"));
+    expect(shown).toEqual(["right", "left"]);
   });
 
   test("a wheel tick pages once, then waits out the cooldown", () => {
@@ -107,6 +105,21 @@ describe("MenuWidget", () => {
     const { container } = render(<MenuWidget config={config} widgetId="m" allWidgets={[]} />);
     const box = container.querySelector("[data-menu-widget]") as HTMLElement;
     expect([box.style.top, box.style.right, box.style.bottom, box.style.left]).toEqual(["1px", "2px", "3px", "4px"]);
+  });
+});
+
+describe("MenuWidget edge shadow", () => {
+  test("a short horizontal list still shows its left and right fade", () => {
+    const apps: WidgetInstance[] = [1, 2].map((n) => ({
+      id: `a${n}`, type: "app", parentId: "m", config: { ...DEFAULT_APP_WIDGET, title: `A${n}` }, x: 0, y: 0,
+    }));
+    const config: MenuWidgetConfig = {
+      ...DEFAULT_MENU_WIDGET, direction: "horizontal",
+      edgeShadow: { ...DEFAULT_EDGE_SHADOW, enabled: true, edges: "horizontal" },
+    };
+    const { container } = render(<MenuWidget config={config} widgetId="m" allWidgets={apps} />);
+    const shown = Array.from(container.querySelectorAll("[data-edge-shadow]")).map((e) => e.getAttribute("data-edge-shadow"));
+    expect(shown).toEqual(["right", "left"]);
   });
 });
 

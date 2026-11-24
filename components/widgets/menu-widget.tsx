@@ -1,6 +1,5 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
 import type { MenuWidgetConfig } from "@/types/menu-widget";
 import type { AppWidgetConfig } from "@/types/app-widget";
 import type { WidgetInstance } from "@/types/widget";
@@ -21,35 +20,6 @@ interface Props {
   fit?: "width" | "height";
 }
 
-/** Track which ends of a scrolling list have more content past them. */
-function useScrollEnds(horizontal: boolean) {
-  const ref = useRef<HTMLDivElement | null>(null);
-  const [ends, setEnds] = useState({ start: false, end: false });
-
-  const measure = useCallback(() => {
-    const el = ref.current;
-    if (!el) return;
-    const pos = horizontal ? el.scrollLeft : el.scrollTop;
-    const size = horizontal ? el.scrollWidth : el.scrollHeight;
-    const client = horizontal ? el.clientWidth : el.clientHeight;
-    const next = { start: pos > 1, end: pos + client < size - 1 };
-    setEnds((prev) => (prev.start === next.start && prev.end === next.end ? prev : next));
-  }, [horizontal]);
-
-  useEffect(() => {
-    const el = ref.current;
-    if (!el) return;
-    measure();
-    if (typeof ResizeObserver === "undefined") return;
-    const ro = new ResizeObserver(measure);
-    ro.observe(el);
-    Array.from(el.children).forEach((c) => ro.observe(c));
-    return () => ro.disconnect();
-  });
-
-  return { ref, ends, measure };
-}
-
 function MenuList({
   apps,
   horizontal,
@@ -63,19 +33,11 @@ function MenuList({
   gap: number;
   edgeShadow: EdgeShadowConfig;
 }) {
-  const { ref, ends, measure } = useScrollEnds(horizontal);
   const sides: EdgeSides = resolveEdgeSides(edgeShadow.edges, horizontal ? "horizontal" : "vertical");
-  // Only fade an edge when there's something scrolled past it.
-  // Edges across the scroll direction (edges: "all") always show.
-  const hidden = horizontal
-    ? { left: !ends.start, right: !ends.end }
-    : { top: !ends.start, bottom: !ends.end };
 
   return (
     <div className="relative flex-1 min-h-0 flex">
       <div
-        ref={ref}
-        onScroll={measure}
         className="flex-1 overflow-auto"
         style={{
           display: "flex",
@@ -86,7 +48,7 @@ function MenuList({
       >
         {apps}
       </div>
-      <EdgeShadow config={edgeShadow} sides={sides} hidden={hidden} />
+      <EdgeShadow config={edgeShadow} sides={sides} />
     </div>
   );
 }

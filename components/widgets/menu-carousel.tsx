@@ -102,9 +102,6 @@ export default function MenuCarousel({ items, direction, visibleCount, infinite,
   const sides = resolveEdgeSides(edgeShadow.edges, horizontal ? "horizontal" : "vertical");
   const atStart = !canStep(index, -1, model);
   const atEnd = !canStep(index, 1, model);
-  const hidden = horizontal
-    ? { left: atStart, right: atEnd }
-    : { top: atStart, bottom: atEnd };
 
   const arrowBase =
     "absolute z-10 w-7 h-7 flex items-center justify-center rounded-full bg-black/50 text-white/90 " +
@@ -154,7 +151,7 @@ export default function MenuCarousel({ items, direction, visibleCount, infinite,
         })}
       </div>
 
-      <EdgeShadow config={edgeShadow} sides={sides} hidden={hidden} />
+      <EdgeShadow config={edgeShadow} sides={sides} />
 
       {!atStart && (
         <button type="button" aria-label="Previous" className={arrowBase} style={prevPos} onClick={() => go(-1)}>

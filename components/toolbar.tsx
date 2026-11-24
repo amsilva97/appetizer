@@ -4,106 +4,11 @@ import { useState, useRef, useEffect, useSyncExternalStore } from "react";
 import { createPortal } from "react-dom";
 import Link from "next/link";
 import type { PageMeta, Permission } from "@/types/permissions";
-import { ADMIN_TAB_INFO, type AdminTab } from "@/lib/admin-tabs";
+import type { AdminTab } from "@/lib/admin-tabs";
 import type { ToolbarStyle } from "@/types/toolbar";
 import { TOOLBAR_DEFAULTS } from "@/types/toolbar";
-
-// ─── Icons ────────────────────────────────────────────────────────────────────
-
-function PencilIcon({ size = 15 }: { size?: number }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
-      <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
-    </svg>
-  );
-}
-
-function LogOutIcon({ size = 15 }: { size?: number }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
-      <polyline points="16 17 21 12 16 7" />
-      <line x1="21" y1="12" x2="9" y2="12" />
-    </svg>
-  );
-}
-
-function UsersIcon({ size = 14 }: { size?: number }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
-      <circle cx="9" cy="7" r="4" />
-      <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
-      <path d="M16 3.13a4 4 0 0 1 0 7.75" />
-    </svg>
-  );
-}
-
-function KeyIcon({ size = 14 }: { size?: number }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <circle cx="7.5" cy="15.5" r="5.5" />
-      <path d="M21 2l-9.6 9.6" />
-      <path d="M15.5 7.5l3 3L22 7l-3-3" />
-    </svg>
-  );
-}
-
-function ShieldIcon({ size = 14 }: { size?: number }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
-    </svg>
-  );
-}
-
-function LogInIcon({ size = 15 }: { size?: number }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4" />
-      <polyline points="10 17 15 12 10 7" />
-      <line x1="15" y1="12" x2="3" y2="12" />
-    </svg>
-  );
-}
-
-function PlusIcon({ size = 13 }: { size?: number }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
-      <line x1="12" y1="5" x2="12" y2="19" />
-      <line x1="5" y1="12" x2="19" y2="12" />
-    </svg>
-  );
-}
-
-function GearIcon({ size = 11 }: { size?: number }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <circle cx="12" cy="12" r="3" />
-      <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
-    </svg>
-  );
-}
-
-function DotsIcon({ size = 16 }: { size?: number }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <circle cx="12" cy="5" r="1" fill="currentColor" />
-      <circle cx="12" cy="12" r="1" fill="currentColor" />
-      <circle cx="12" cy="19" r="1" fill="currentColor" />
-    </svg>
-  );
-}
-
-function PhoneIcon({ size = 15 }: { size?: number }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <rect x="5" y="2" width="14" height="20" rx="2" ry="2" />
-      <line x1="12" y1="18" x2="12.01" y2="18" />
-    </svg>
-  );
-}
+import { GearIcon, LogInIcon, PlusIcon } from "@/components/toolbar-icons";
+import ProfileMenu from "@/components/profile-menu";
 
 // ─── ClientPortal ─────────────────────────────────────────────────────────────
 
@@ -352,89 +257,6 @@ function ToolbarStylePanel({ style, onChange, onClose }: ToolbarStylePanelProps)
   );
 }
 
-// ─── Admin menu ───────────────────────────────────────────────────────────────
-
-interface AdminMenuProps {
-  editMode: boolean;
-  /** Undefined when the viewer can't edit layouts. */
-  onToggleEdit?: () => void;
-  links: AdminTab[];
-  btnStyle: React.CSSProperties;
-  btnCls: string;
-}
-
-const LINK_ICONS: Record<AdminTab, (p: { size?: number }) => React.JSX.Element> = {
-  users: UsersIcon,
-  permissions: ShieldIcon,
-  keys: KeyIcon,
-  settings: GearIcon,
-};
-
-function AdminMenu({ editMode, onToggleEdit, links, btnStyle, btnCls }: AdminMenuProps) {
-  const [menuOpen, setMenuOpen] = useState(false);
-  const menuRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    function onDown(e: MouseEvent) {
-      if (menuRef.current && !menuRef.current.contains(e.target as Node)) setMenuOpen(false);
-    }
-    document.addEventListener("mousedown", onDown);
-    return () => document.removeEventListener("mousedown", onDown);
-  }, []);
-
-  const menuItemCls =
-    "flex items-center gap-2.5 w-full px-3 py-2 rounded-lg text-sm transition-colors text-left " +
-    "hover:bg-white/[0.07]";
-
-  return (
-    <div ref={menuRef} className="relative">
-      <button
-        onClick={() => setMenuOpen((o) => !o)}
-        title="Admin"
-        className={`${btnCls} ${menuOpen ? "!bg-white/[0.08] !text-zinc-300" : ""}`}
-        style={btnStyle}
-      >
-        <DotsIcon size={16} />
-        {editMode && (
-          <span className="absolute top-1.5 right-1.5 w-1.5 h-1.5 rounded-full bg-brand" />
-        )}
-      </button>
-
-      {menuOpen && (
-        <div className="absolute right-0 top-full mt-1 z-50 w-48 bg-zinc-900 border border-zinc-800 rounded-xl shadow-2xl shadow-black/60 p-1.5 flex flex-col gap-0.5">
-          {onToggleEdit && (
-            <button
-              onClick={() => { onToggleEdit(); setMenuOpen(false); }}
-              className={`${menuItemCls} ${editMode ? "text-brand" : "text-zinc-300"}`}
-            >
-              <PencilIcon size={14} />
-              <span>{editMode ? "Stop editing" : "Edit layout"}</span>
-              {editMode && <span className="ml-auto w-1.5 h-1.5 rounded-full bg-brand shrink-0" />}
-            </button>
-          )}
-
-          {onToggleEdit && links.length > 0 && <div className="h-px bg-white/[0.06] my-0.5" />}
-
-          {links.map((tab) => {
-            const Icon = LINK_ICONS[tab];
-            return (
-              <Link
-                key={tab}
-                href={ADMIN_TAB_INFO[tab].href}
-                onClick={() => setMenuOpen(false)}
-                className={`${menuItemCls} text-zinc-400 hover:text-zinc-200`}
-              >
-                <Icon size={14} />
-                {ADMIN_TAB_INFO[tab].label}
-              </Link>
-            );
-          })}
-        </div>
-      )}
-    </div>
-  );
-}
-
 // ─── Toolbar ──────────────────────────────────────────────────────────────────
 
 interface ToolbarProps {
@@ -445,6 +267,8 @@ interface ToolbarProps {
   /** Admin areas to link to from the menu. */
   adminLinks?: AdminTab[];
   loggedIn?: boolean;
+  /** Signed-in username, shown on the profile button. */
+  username?: string | null;
   pages?: PageMeta[];
   currentPage?: string;
   onPageChange?: (name: string) => void;
@@ -465,6 +289,7 @@ export default function Toolbar({
   canEdit = false,
   adminLinks = [],
   loggedIn,
+  username,
   pages = [],
   currentPage,
   onPageChange,
@@ -624,34 +449,18 @@ export default function Toolbar({
         {!showTabs && <div className="flex-1" />}
 
         <div className="flex items-center gap-2 shrink-0">
-          {editing && onMobileEditorToggle && (
-            <button
-              onClick={onMobileEditorToggle}
-              title="Mobile layout"
-              className={`${btnCls} ${mobileEditorOpen ? "!bg-white/[0.12] !text-zinc-100" : ""}`}
-              style={btnStyle}
-            >
-              <PhoneIcon size={15} />
-              {mobileEnabled && (
-                <span className="absolute top-1.5 right-1.5 w-1.5 h-1.5 rounded-full bg-emerald-400" />
-              )}
-            </button>
-          )}
-
-          {(canEdit || adminLinks.length > 0) && (
-            <AdminMenu
+          {loggedIn ? (
+            <ProfileMenu
+              username={username ?? ""}
               editMode={editMode}
               onToggleEdit={canEdit ? onToggleEdit : undefined}
               links={adminLinks}
+              mobileEditorOpen={mobileEditorOpen}
+              onMobileEditorToggle={editing ? onMobileEditorToggle : undefined}
+              mobileEnabled={mobileEnabled}
+              onLogout={handleLogout}
               btnStyle={btnStyle}
-              btnCls={btnCls}
             />
-          )}
-
-          {loggedIn ? (
-            <button onClick={handleLogout} title="Sign out" className={btnCls} style={btnStyle}>
-              <LogOutIcon size={15} />
-            </button>
           ) : (
             <Link href="/login" title="Sign in" className={btnCls} style={btnStyle}>
               <LogInIcon size={15} />
