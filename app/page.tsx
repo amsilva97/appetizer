@@ -25,10 +25,27 @@ import type { MobileConfig } from "@/types/mobile";
 import MobileView from "@/components/mobile/mobile-view";
 import MobileEditor from "@/components/mobile/mobile-editor";
 import { DEFAULT_MOBILE, openAppUrl } from "@/lib/mobile";
+import { cellTargetsFromElements, type CellTarget } from "@/lib/cell-targets";
+import { resolveSpacing } from "@/types/spacing";
+import { useWidgetDraft } from "@/lib/use-widget-draft";
 
 interface SceneConfig {
   background: BackgroundConfig;
   widgets: WidgetInstance[];
+}
+
+const TYPE_NAMES: Record<WidgetInstance["type"], string> = {
+  app: "App",
+  layout: "Layout",
+  menu: "Menu",
+};
+
+/** "Sidebar (Layout)": the widget's own name plus what kind of widget it is. */
+function describeWidget(w: WidgetInstance): string {
+  const name = w.type === "app"
+    ? (w.config as AppWidgetConfig).title || "Untitled App"
+    : (w.config as LayoutWidgetConfig | MenuWidgetConfig).label || TYPE_NAMES[w.type];
+  return `${name} (${TYPE_NAMES[w.type]})`;
 }
 
 interface DragState {
@@ -52,7 +69,7 @@ export default function Home() {
   const [menuPos, setMenuPos] = useState<{
     x: number;
     y: number;
-    cellTargets: { widgetId: string; cellIndex: number }[];
+    cellTargets: CellTarget[];
   } | null>(null);
   const [keyNames, setKeyNames] = useState<string[]>([]);
   const [capabilities, setCapabilities] = useState<Capability[]>([]);
@@ -64,6 +81,9 @@ export default function Home() {
   const [mobileConfig, setMobileConfig] = useState<MobileConfig>(DEFAULT_MOBILE);
   const [mobileEnabled, setMobileEnabled] = useState(false);
   const [mobileEditorOpen, setMobileEditorOpen] = useState(false);
+
+  const draft = useWidgetDraft(widgets, editingId, updateWidget);
+  const viewWidgets = draft.viewWidgets;
 
   const [loaded, setLoaded] = useState(false);
   const dragRef = useRef<DragState | null>(null);
@@ -151,7 +171,7 @@ export default function Home() {
         setToolbarStyle({});
         setMobileConfig(DEFAULT_MOBILE);
       }
-      setEditingId(null);
+      openEditor(null);
       setMenuPos(null);
     } finally {
       setLoaded(true);
@@ -224,59 +244,9 @@ export default function Home() {
     dragRef.current = null;
   }, []);
 
-  function detectCellTargets(cx: number, cy: number): { widgetId: string; cellIndex: number }[] {
-    const results: { widgetId: string; cellIndex: number }[] = [];
-
-    function traverse(
-      widgetId: string,
-      containerLeft: number,
-      containerTop: number,
-      containerRight: number,
-      containerBottom: number
-    ) {
-      const w = widgets.find((w) => w.id === widgetId);
-      if (!w) return;
-      const cfg = w.config as LayoutWidgetConfig;
-      const { columns, rows } = cfg.layout;
-      const margin = cfg.margin ?? 0;
-      const padding = cfg.padding ?? 0;
-      const gap = cfg.gap ?? 0;
-
-      const gridLeft   = containerLeft  + margin + padding;
-      const gridTop    = containerTop   + margin + padding;
-      const gridRight  = containerRight  - margin - padding;
-      const gridBottom = containerBottom - margin - padding;
-
-      if (cx < gridLeft || cx > gridRight || cy < gridTop || cy > gridBottom) return;
-
-      const gridW = gridRight - gridLeft;
-      const gridH = gridBottom - gridTop;
-      const cellW = (gridW - (columns - 1) * gap) / columns;
-      const cellH = (gridH - (rows    - 1) * gap) / rows;
-
-      const col = Math.min(columns - 1, Math.floor((cx - gridLeft) / (cellW + gap)));
-      const row = Math.min(rows    - 1, Math.floor((cy - gridTop)  / (cellH + gap)));
-      const cellIndex = row * columns + col;
-
-      results.push({ widgetId, cellIndex });
-
-      const child = widgets.find(
-        (c) => c.type === "layout" && c.parentId === widgetId && c.cellIndex === cellIndex
-      );
-      if (child) {
-        const cellLeft = gridLeft + col * (cellW + gap);
-        const cellTop  = gridTop  + row * (cellH + gap);
-        traverse(child.id, cellLeft, cellTop, cellLeft + cellW, cellTop + cellH);
-      }
-    }
-
-    const TOOLBAR_H = toolbarStyle.height ?? 48;
-    for (const w of widgets) {
-      if (w.type !== "layout" || w.parentId) continue;
-      traverse(w.id, 0, TOOLBAR_H, window.innerWidth, window.innerHeight);
-    }
-
-    return results;
+  /** Layout cells under a point, outermost first, read from what's drawn. */
+  function detectCellTargets(cx: number, cy: number): CellTarget[] {
+    return cellTargetsFromElements(document.elementsFromPoint(cx, cy));
   }
 
   function handleCanvasContextMenu(e: React.MouseEvent) {
@@ -287,6 +257,12 @@ export default function Home() {
     setMenuPos({ x: e.clientX, y: e.clientY, cellTargets });
   }
 
+  /** Open a widget in the editor (or close it with null). Unsaved edits are dropped. */
+  function openEditor(id: string | null) {
+    setEditingId(id);
+    draft.reset();
+  }
+
   function addWidget() {
     const id = nextId();
     setWidgets((prev) => [
@@ -294,7 +270,7 @@ export default function Home() {
       { id, type: "app", config: { ...DEFAULT_APP_WIDGET }, x: 40, y: 100 },
     ]);
     setBgEditorOpen(false);
-    setEditingId(id);
+    openEditor(id);
   }
 
   function nextLayoutLabel(): string {
@@ -313,7 +289,7 @@ export default function Home() {
       { id, type: "layout", config: { ...DEFAULT_LAYOUT_WIDGET, label }, x: 0, y: 0 },
     ]);
     setBgEditorOpen(false);
-    setEditingId(id);
+    openEditor(id);
   }
 
   function addSubLayout(parentWidgetId: string, cellIndex: number, label: string) {
@@ -339,7 +315,7 @@ export default function Home() {
       ...prev,
       { id, type: "menu", parentId: parentWidgetId, cellIndex, config: { ...DEFAULT_MENU_WIDGET, label }, x: 0, y: 0 },
     ]);
-    setEditingId(id);
+    openEditor(id);
   }
 
   function addAppToMenu(menuId: string) {
@@ -349,7 +325,7 @@ export default function Home() {
       { id, type: "app", parentId: menuId, config: { ...DEFAULT_APP_WIDGET }, x: 0, y: 0 },
     ]);
     setBgEditorOpen(false);
-    setEditingId(id);
+    openEditor(id);
   }
 
   function deleteWidget(id: string) {
@@ -363,7 +339,7 @@ export default function Home() {
       }
       return prev.filter((w) => !idsToRemove.has(w.id));
     });
-    if (editingId === id) setEditingId(null);
+    if (editingId === id) openEditor(null);
   }
 
   function updateWidget(id: string, partial: Partial<WidgetInstance>) {
@@ -391,8 +367,6 @@ export default function Home() {
   function handleExport() {
     download<SceneConfig>({ background: bg, widgets }, "scene");
   }
-
-  const editingWidget = widgets.find((w) => w.id === editingId) ?? null;
 
   const isMobileViewport = useSyncExternalStore(
     (cb) => {
@@ -426,7 +400,7 @@ export default function Home() {
           setEditMode((m) => {
             if (m) {
               setBgEditorOpen(false);
-              setEditingId(null);
+              openEditor(null);
               setMenuPos(null);
             }
             return !m;
@@ -450,7 +424,7 @@ export default function Home() {
       />
 
       {/* Layout widgets — only root layouts, fill canvas below toolbar. Hidden while the phone view is showing. */}
-      {!showMobileView && widgets.filter((w) => w.type === "layout" && !w.parentId).map((w) => (
+      {!showMobileView && viewWidgets.filter((w) => w.type === "layout" && !w.parentId).map((w) => (
         <div
           key={w.id}
           className="absolute"
@@ -459,14 +433,14 @@ export default function Home() {
           <LayoutWidget
             config={w.config as LayoutWidgetConfig}
             widgetId={w.id}
-            allWidgets={widgets}
+            allWidgets={viewWidgets}
             editMode={editMode}
           />
         </div>
       ))}
 
       {/* App widgets — freely positioned, draggable (only those not inside a menu) */}
-      {!showMobileView && widgets.filter((w) => w.type === "app" && !w.parentId).map((w) => (
+      {!showMobileView && viewWidgets.filter((w) => w.type === "app" && !w.parentId).map((w) => (
         <div
           key={w.id}
           style={{ position: "absolute", left: w.x, top: w.y, cursor: editMode ? "grab" : "default", userSelect: "none" }}
@@ -488,43 +462,37 @@ export default function Home() {
       {editMode && menuPos && (() => {
         const { cellTargets } = menuPos;
         const stackIds = new Set(cellTargets.map((t) => t.widgetId));
-        const stackLayouts = widgets.filter((w) => stackIds.has(w.id));
+        const stackLayouts = cellTargets
+          .map((t) => viewWidgets.find((w) => w.id === t.widgetId))
+          .filter((w): w is WidgetInstance => w !== undefined && stackIds.has(w.id));
         const stackMenus = cellTargets
-          .map((t) => widgets.find((w) => w.type === "menu" && w.parentId === t.widgetId && w.cellIndex === t.cellIndex))
+          .map((t) => viewWidgets.find((w) => w.type === "menu" && w.parentId === t.widgetId && w.cellIndex === t.cellIndex))
           .filter((w): w is WidgetInstance => w !== undefined);
 
-        const floatingApps = widgets.filter((w) => {
+        const floatingApps = viewWidgets.filter((w) => {
           if (w.type !== "app" || w.parentId) return false;
           const cfg = w.config as AppWidgetConfig;
-          const margin = cfg.margin ?? 0;
-          const left = w.x + margin;
-          const top  = w.y + margin;
+          const margin = resolveSpacing(cfg.margin, 0);
+          const left = w.x + margin.left;
+          const top  = w.y + margin.top;
           return menuPos.x >= left && menuPos.x <= left + cfg.width
               && menuPos.y >= top  && menuPos.y <= top  + cfg.height;
         });
         const groupedApps = stackMenus.flatMap((g) =>
-          widgets.filter((w) => w.type === "app" && w.parentId === g.id)
+          viewWidgets.filter((w) => w.type === "app" && w.parentId === g.id)
         );
         const editGroup: ContextItem[] = [
-          { label: "Edit Background", onClick: () => { setBgEditorOpen(true); setEditingId(null); } },
-          ...stackLayouts.map((w) => ({
-            label: `Edit ${(w.config as LayoutWidgetConfig).label}`,
-            onClick: () => { setBgEditorOpen(false); setEditingId(w.id); },
-          })),
-          ...stackMenus.map((w) => ({
-            label: `Edit ${(w.config as MenuWidgetConfig).label}`,
-            onClick: () => { setBgEditorOpen(false); setEditingId(w.id); },
-          })),
-          ...[...floatingApps, ...groupedApps].map((w) => ({
-            label: `Edit ${(w.config as AppWidgetConfig).title || "App"}`,
-            onClick: () => { setBgEditorOpen(false); setEditingId(w.id); },
+          { label: "Edit Background", onClick: () => { setBgEditorOpen(true); openEditor(null); } },
+          ...[...stackLayouts, ...stackMenus, ...floatingApps, ...groupedApps].map((w) => ({
+            label: `Edit ${describeWidget(w)}`,
+            onClick: () => { setBgEditorOpen(false); openEditor(w.id); },
           })),
         ];
 
         const addGroup: ContextItem[] = cellTargets.flatMap((t) => {
           const parent = stackLayouts.find((w) => w.id === t.widgetId);
           if (!parent) return [];
-          const parentLabel = (parent.config as LayoutWidgetConfig).label;
+          const parentLabel = describeWidget(parent);
           return [
             {
               label: `Add Layout to ${parentLabel}`,
@@ -538,7 +506,7 @@ export default function Home() {
         });
         stackMenus.forEach((w) => {
           addGroup.push({
-            label: `Add App to ${(w.config as MenuWidgetConfig).label}`,
+            label: `Add App to ${describeWidget(w)}`,
             onClick: () => addAppToMenu(w.id),
           });
         });
@@ -563,9 +531,12 @@ export default function Home() {
           onBgChange={setBg}
           bgEditorOpen={bgEditorOpen}
           onBgEditorOpenChange={setBgEditorOpen}
-          editingWidget={editingWidget}
-          onEditingWidgetClose={() => setEditingId(null)}
-          onUpdateWidget={updateWidget}
+          editingWidget={draft.editingWidget}
+          onEditingWidgetClose={() => openEditor(null)}
+          hasChanges={draft.hasChanges}
+          onDraftChange={draft.change}
+          onSaveDraft={draft.save}
+          onRevertDraft={draft.revert}
           onDeleteWidget={deleteWidget}
           onExport={handleExport}
           onImport={handleImport}

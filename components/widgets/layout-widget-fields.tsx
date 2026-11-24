@@ -1,19 +1,42 @@
 "use client";
 
 import { useState } from "react";
-import type { LayoutWidgetConfig } from "@/types/layout-widget";
-import { Divider, Field, SliderRow, Swatch, TabBar, TextInput } from "@/components/ui";
-import { parse, stringify } from "@/lib/yaml-parser";
+import {
+  DEFAULT_LAYOUT_WIDGET,
+  type GutterOrientation,
+  type GutterSides,
+  type GutterSize,
+  type GutterSizeMode,
+  type LayoutType,
+  type LayoutWidgetConfig,
+  type LayoutWidgetLayout,
+} from "@/types/layout-widget";
+import { Divider, Select, SliderRow, TabBar, TextInput } from "@/components/ui";
 import WidgetPermissionsFields from "@/components/widgets/widget-permissions-fields";
+import {
+  CONTAINER_TABS,
+  ContainerVisualsFields,
+  YamlTab,
+  type ContainerTab,
+} from "@/components/widgets/shared-fields";
+import { resolveLayout } from "@/lib/layout-cells";
+import { normalizeLayoutConfig } from "@/lib/widget-config";
 import type { Permission } from "@/types/permissions";
 
-type Tab = "display" | "visuals" | "yaml" | "permissions";
+const LAYOUT_TYPE_OPTIONS: { label: string; value: LayoutType }[] = [
+  { label: "Grid",    value: "grid"    },
+  { label: "Gutters", value: "gutters" },
+];
 
-const TABS: { id: Tab; label: string }[] = [
-  { id: "display",     label: "Display"     },
-  { id: "visuals",     label: "Visuals"     },
-  { id: "yaml",        label: "YAML"        },
-  { id: "permissions", label: "Permissions" },
+const ORIENTATION_OPTIONS: { label: string; value: GutterOrientation }[] = [
+  { label: "Horizontal (gutters left & right)", value: "horizontal" },
+  { label: "Vertical (gutters top & bottom)",   value: "vertical"   },
+];
+
+const SIZE_MODE_OPTIONS: { label: string; value: GutterSizeMode }[] = [
+  { label: "Fixed (px)",                value: "px"          },
+  { label: "Percent of layout (%)",     value: "%"           },
+  { label: "Fit content (min-content)", value: "min-content" },
 ];
 
 interface Props {
@@ -24,147 +47,160 @@ interface Props {
   availablePermissions?: Permission[];
 }
 
-export default function LayoutWidgetFields({ value, onChange, permissions = [], onPermissionsChange, availablePermissions = [] }: Props) {
-  const [tab, setTab] = useState<Tab>("display");
-  const [yaml, setYaml] = useState(() => stringify(value));
-  const [yamlErr, setYamlErr] = useState<string | null>(null);
+function GutterSizeFields({
+  label,
+  axis,
+  value,
+  onChange,
+}: {
+  label: string;
+  axis: "Width" | "Height";
+  value: GutterSize;
+  onChange: (v: GutterSize) => void;
+}) {
+  const isPercent = value.mode === "%";
+  return (
+    <div className="flex flex-col gap-3">
+      <Select
+        label={`${label} ${axis.toLowerCase()}`}
+        value={value.mode}
+        options={SIZE_MODE_OPTIONS}
+        onChange={(mode) => {
+          const m = mode as GutterSizeMode;
+          // Switching between px and % would leave a silly number behind.
+          const v = m === value.mode ? value.value : m === "%" ? 20 : m === "px" ? 240 : value.value;
+          onChange({ mode: m, value: v });
+        }}
+      />
+      {value.mode !== "min-content" ? (
+        <SliderRow
+          label={axis}
+          value={value.value}
+          min={0} max={isPercent ? 100 : 960} step={isPercent ? 1 : 8}
+          display={`${value.value}${isPercent ? "%" : "px"}`}
+          onChange={(v) => onChange({ ...value, value: v })}
+        />
+      ) : (
+        <p className="text-[11px] text-fg-subtle leading-snug">
+          Sizes to the menu placed in this gutter.
+        </p>
+      )}
+    </div>
+  );
+}
 
-  function switchTab(next: Tab) {
-    if (next === "yaml") { setYaml(stringify(value)); setYamlErr(null); }
-    setTab(next);
-  }
+function LayoutDisplayFields({ value, onChange }: { value: LayoutWidgetConfig; onChange: (v: LayoutWidgetConfig) => void }) {
+  const layout = resolveLayout(value.layout);
+  const horizontal = layout.orientation === "horizontal";
+  const startName = horizontal ? "Left gutter" : "Top gutter";
+  const endName = horizontal ? "Right gutter" : "Bottom gutter";
+  const axis = horizontal ? "Width" : "Height";
+  const sideOptions: { label: string; value: GutterSides }[] = [
+    { label: `Both`,              value: "both"  },
+    { label: startName,           value: "start" },
+    { label: endName,             value: "end"   },
+  ];
 
-  function handleYaml(text: string) {
-    setYaml(text);
-    try { onChange(parse<LayoutWidgetConfig>(text)); setYamlErr(null); }
-    catch (e) { setYamlErr(e instanceof Error ? e.message : "Invalid YAML"); }
-  }
-
-  function setGridDimension(key: "columns" | "rows", val: number) {
-    onChange({ ...value, layout: { ...value.layout, [key]: val } });
+  function setLayout(patch: Partial<LayoutWidgetLayout>) {
+    onChange({ ...value, layout: { ...value.layout, ...patch } });
   }
 
   return (
-    <div className="flex flex-col gap-5">
-      <TabBar tabs={TABS} active={tab} onChange={switchTab} />
+    <div className="flex flex-col gap-4">
+      <TextInput
+        label="Label"
+        value={value.label}
+        placeholder="Layout 1"
+        onChange={(label) => onChange({ ...value, label })}
+      />
 
-      {tab === "display" && (
-        <div className="flex flex-col gap-4">
-          <TextInput
-            label="Label"
-            value={value.label}
-            placeholder="Layout 1"
-            onChange={(label) => onChange({ ...value, label })}
-          />
+      <Divider />
 
-          <div className="flex flex-col gap-1">
-            <span className="text-xs font-medium text-zinc-400">Layout type</span>
-            <div className="px-3 py-2 rounded-lg bg-zinc-800 border border-zinc-700 text-sm text-zinc-200">
-              Grid
-            </div>
-          </div>
+      <Select
+        label="Layout type"
+        value={layout.type}
+        options={LAYOUT_TYPE_OPTIONS}
+        onChange={(type) => setLayout(
+          type === "gutters"
+            ? { type: "gutters", orientation: layout.orientation, gutters: layout.gutters, startSize: layout.startSize, endSize: layout.endSize }
+            : { type: "grid" }
+        )}
+      />
 
+      {layout.type === "grid" && (
+        <>
           <SliderRow
             label="Columns (x)"
-            value={value.layout.columns}
+            value={layout.columns}
             min={1} max={12} step={1}
-            display={`${value.layout.columns}`}
-            onChange={(v) => setGridDimension("columns", v)}
+            display={`${layout.columns}`}
+            onChange={(columns) => setLayout({ columns })}
           />
           <SliderRow
             label="Rows (y)"
-            value={value.layout.rows}
+            value={layout.rows}
             min={1} max={12} step={1}
-            display={`${value.layout.rows}`}
-            onChange={(v) => setGridDimension("rows", v)}
+            display={`${layout.rows}`}
+            onChange={(rows) => setLayout({ rows })}
           />
-        </div>
+        </>
       )}
+
+      {layout.type === "gutters" && (
+        <>
+          <Select
+            label="Orientation"
+            value={layout.orientation!}
+            options={ORIENTATION_OPTIONS}
+            onChange={(orientation) => setLayout({ orientation: orientation as GutterOrientation })}
+          />
+          <Select
+            label="Gutters"
+            value={layout.gutters!}
+            options={sideOptions}
+            onChange={(gutters) => setLayout({ gutters: gutters as GutterSides })}
+          />
+          {layout.gutters !== "end" && (
+            <GutterSizeFields
+              label={startName}
+              axis={axis}
+              value={layout.startSize!}
+              onChange={(startSize) => setLayout({ startSize })}
+            />
+          )}
+          {layout.gutters !== "start" && (
+            <GutterSizeFields
+              label={endName}
+              axis={axis}
+              value={layout.endSize!}
+              onChange={(endSize) => setLayout({ endSize })}
+            />
+          )}
+        </>
+      )}
+    </div>
+  );
+}
+
+export default function LayoutWidgetFields({ value, onChange, permissions = [], onPermissionsChange, availablePermissions = [] }: Props) {
+  const [tab, setTab] = useState<ContainerTab>("display");
+
+  return (
+    <div className="flex flex-col gap-5">
+      <TabBar tabs={CONTAINER_TABS} active={tab} onChange={setTab} />
+
+      {tab === "display" && <LayoutDisplayFields value={value} onChange={onChange} />}
 
       {tab === "visuals" && (
-        <div className="flex flex-col gap-4">
-          <SliderRow
-            label="Corner radius"
-            value={value.borderRadius ?? 0}
-            min={0} max={48} step={1}
-            display={`${value.borderRadius ?? 0}px`}
-            onChange={(borderRadius) => onChange({ ...value, borderRadius })}
-          />
-
-          <Divider />
-
-          <SliderRow
-            label="Padding"
-            value={value.padding}
-            min={0} max={64} step={2}
-            display={`${value.padding}px`}
-            onChange={(padding) => onChange({ ...value, padding })}
-          />
-          <SliderRow
-            label="Gap"
-            value={value.gap}
-            min={0} max={64} step={2}
-            display={`${value.gap}px`}
-            onChange={(gap) => onChange({ ...value, gap })}
-          />
-          <SliderRow
-            label="Margin"
-            value={value.margin}
-            min={0} max={128} step={2}
-            display={`${value.margin}px`}
-            onChange={(margin) => onChange({ ...value, margin })}
-          />
-
-          <Divider />
-
-          <Field label="Background color">
-            <Swatch
-              value={value.bgColor ?? "#ffffff"}
-              onChange={(bgColor) => onChange({ ...value, bgColor })}
-            />
-          </Field>
-          <SliderRow
-            label="Background opacity"
-            value={value.bgOpacity ?? 3}
-            min={0} max={100} step={1}
-            display={`${value.bgOpacity ?? 3}%`}
-            onChange={(bgOpacity) => onChange({ ...value, bgOpacity })}
-          />
-
-          <Divider />
-
-          <Field label="Border color">
-            <Swatch
-              value={value.borderColor ?? "#ffffff"}
-              onChange={(borderColor) => onChange({ ...value, borderColor })}
-            />
-          </Field>
-          <SliderRow
-            label="Border opacity"
-            value={value.borderOpacity ?? 6}
-            min={0} max={100} step={1}
-            display={`${value.borderOpacity ?? 6}%`}
-            onChange={(borderOpacity) => onChange({ ...value, borderOpacity })}
-          />
-        </div>
+        <ContainerVisualsFields
+          value={value}
+          defaults={DEFAULT_LAYOUT_WIDGET}
+          shadowAutoHint="all edges"
+          onChange={onChange}
+        />
       )}
 
-      {tab === "yaml" && (
-        <div className="flex flex-col gap-2">
-          <textarea
-            value={yaml}
-            onChange={(e) => handleYaml(e.target.value)}
-            spellCheck={false}
-            className="w-full h-56 font-mono text-[11px] leading-relaxed bg-zinc-950 text-zinc-200 rounded-xl p-3 border border-zinc-800 resize-none focus:outline-none focus:ring-1 focus:ring-brand/40"
-          />
-          {yamlErr && (
-            <div className="flex gap-2 px-3 py-2 bg-red-500/10 border border-red-500/30 rounded-lg">
-              <span className="text-red-400 text-xs shrink-0 mt-px">⚠</span>
-              <p className="text-xs text-red-400 font-mono leading-snug break-all">{yamlErr}</p>
-            </div>
-          )}
-        </div>
-      )}
+      {tab === "yaml" && <YamlTab value={value} normalize={normalizeLayoutConfig} onChange={onChange} />}
 
       {tab === "permissions" && (
         <WidgetPermissionsFields

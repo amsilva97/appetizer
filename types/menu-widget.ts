@@ -1,24 +1,36 @@
-export type MenuType = "list";
+import type { SpacingValue } from "./spacing";
+import type { EdgeShadowConfig } from "./edge-shadow";
+
+export type MenuType = "list" | "carousel";
 export type MenuDirection = "vertical" | "horizontal";
 
 export interface MenuWidgetConfig {
   label: string;
   type: MenuType;
   direction: MenuDirection;
-  margin: number;
+  /** Carousel: how many apps show at once. */
+  visibleCount?: number;
+  /** Carousel: wrap around from the last app back to the first. */
+  infinite?: boolean;
+  margin: SpacingValue;
   borderRadius: number;
-  padding: number;
+  padding: SpacingValue;
   gap: number;
   bgColor: string;
   bgOpacity: number;
   borderColor: string;
   borderOpacity: number;
+  edgeShadow?: EdgeShadowConfig;
 }
+
+export const DEFAULT_VISIBLE_COUNT = 3;
 
 export const DEFAULT_MENU_WIDGET: MenuWidgetConfig = {
   label: "Menu",
   type: "list",
   direction: "vertical",
+  visibleCount: DEFAULT_VISIBLE_COUNT,
+  infinite: false,
   margin: 0,
   borderRadius: 8,
   padding: 12,
