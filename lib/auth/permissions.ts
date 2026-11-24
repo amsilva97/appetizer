@@ -1,7 +1,13 @@
 import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from "fs";
 import { join } from "path";
 import * as yaml from "js-yaml";
-import { isCapability, type Capability, type PermissionsConfig, type Role } from "@/types/permissions";
+import {
+  BUILTIN_PERMISSIONS,
+  isCapability,
+  type Capability,
+  type PermissionsConfig,
+  type Role,
+} from "@/types/permissions";
 import type { AppUser } from "@/lib/auth/users";
 
 const DATA_DIR = join(process.cwd(), "data");
@@ -21,19 +27,29 @@ function parseRole(raw: unknown): Role | null {
   };
 }
 
+/** Built-in permissions always exist, whatever the file says. */
+function withBuiltins(config: PermissionsConfig): PermissionsConfig {
+  const missing = BUILTIN_PERMISSIONS.filter((b) => !config.permissions.some((p) => p.id === b.id));
+  return { ...config, permissions: [...missing, ...config.permissions] };
+}
+
 export function readPermissionsConfig(): PermissionsConfig {
-  if (!existsSync(PERMISSIONS_PATH)) return { permissions: [], roles: [] };
+  if (!existsSync(PERMISSIONS_PATH)) return withBuiltins(EMPTY);
   try {
     const raw = yaml.load(readFileSync(PERMISSIONS_PATH, "utf-8"));
-    if (!raw || typeof raw !== "object") return { ...EMPTY };
+    if (!raw || typeof raw !== "object") return withBuiltins(EMPTY);
     const obj = raw as Record<string, unknown>;
-    return {
+    return withBuiltins({
       permissions: Array.isArray(obj.permissions) ? (obj.permissions as PermissionsConfig["permissions"]) : [],
       roles: Array.isArray(obj.roles) ? obj.roles.map(parseRole).filter((r): r is Role => r !== null) : [],
-    };
+    });
   } catch {
-    return { ...EMPTY };
+    return withBuiltins(EMPTY);
   }
+}
+
+export function isBuiltinPermission(id: string): boolean {
+  return BUILTIN_PERMISSIONS.some((p) => p.id === id);
 }
 
 export function writePermissionsConfig(config: PermissionsConfig): void {
