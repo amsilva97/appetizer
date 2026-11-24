@@ -81,6 +81,17 @@ export function isCapability(value: unknown): value is Capability {
   return typeof value === "string" && (ALL_CAPABILITIES as string[]).includes(value);
 }
 
+/**
+ * Built-in view permission: see every page and widget, with no admin
+ * capabilities (so no editing). Admin accounts fall back to it when the IP
+ * allowlist takes their admin rights away.
+ */
+export const ADMIN_READ_PERMISSION = "admin-read";
+
+export const BUILTIN_PERMISSIONS: Permission[] = [
+  { id: ADMIN_READ_PERMISSION, label: "Admin read-only (see every page)" },
+];
+
 export interface Role {
   id: string;
   label: string;

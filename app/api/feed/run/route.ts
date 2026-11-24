@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { can, getViewer } from "@/lib/auth/viewer";
+import { can, getViewer, seesAllPages } from "@/lib/auth/viewer";
 import { readKeys, referencesKeys } from "@/lib/auth/keys";
 import { substituteHeaders, fetchFeed, runTransform } from "@/lib/feed/runner";
 import { findSavedFeed } from "@/lib/feed/resolve";
@@ -56,7 +56,7 @@ async function resolveJob(body: RunRequest): Promise<FeedJob | NextResponse> {
   if (typeof body.page !== "string" || typeof body.widgetId !== "string") {
     return NextResponse.json({ error: "page and widgetId required" }, { status: 400 });
   }
-  const feed = findSavedFeed(body.page, body.widgetId, viewer.permissions, can(viewer, "pages:read"));
+  const feed = findSavedFeed(body.page, body.widgetId, viewer.permissions, seesAllPages(viewer));
   if (!feed) {
     return NextResponse.json({ error: "Feed not found" }, { status: 404 });
   }

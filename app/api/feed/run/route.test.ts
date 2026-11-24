@@ -11,6 +11,7 @@ const runTransform = vi.fn();
 vi.mock("@/lib/auth/viewer", () => ({
   getViewer: () => viewer(),
   can: (v: Viewer, c: string) => v.capabilities.has(c as never),
+  seesAllPages: (v: Viewer) => v.capabilities.has("pages:read") || v.permissions.has("admin-read"),
 }));
 vi.mock("@/lib/auth/keys", () => ({ readKeys: () => ({}), referencesKeys: () => false }));
 vi.mock("@/lib/feed/resolve", () => ({ findSavedFeed: (...a: unknown[]) => findSavedFeed(...a) }));

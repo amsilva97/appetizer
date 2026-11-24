@@ -17,7 +17,8 @@ vi.mock("@/lib/auth/users", () => ({
   findUser: (name: string) =>
     name === "root" ? { username: "root", role: "admin", disabled: false } :
     name === "viewer" ? { username: "viewer", role: "user", permissions: [] } :
-    name === "media" ? { username: "media", role: "user", permissions: ["media"] } : null,
+    name === "media" ? { username: "media", role: "user", permissions: ["media"] } :
+    name === "reader" ? { username: "reader", role: "user", permissions: ["admin-read"] } : null,
 }));
 vi.mock("@/lib/auth/permissions", async (orig) => ({
   ...(await orig<typeof import("@/lib/auth/permissions")>()),
@@ -70,6 +71,22 @@ describe("GET /api/state hides restricted apps on desktop and phone", () => {
 
   test("admins get everything", async () => {
     session.mockResolvedValue({ loggedIn: true, role: "admin", username: "root" });
+    const { layout } = await state();
+    expect(layout.mobile.slots).toEqual(["open", "locked", "media-only", "in-locked-menu"]);
+  });
+
+  test("an admin outside the IP allowlist still sees everything (admin-read)", async () => {
+    writeFileSync(
+      join(root, "data", "settings.yaml"),
+      yaml.dump({ forceLogin: false, adminIpAllowlist: { enabled: true, entries: ["10.0.0.0/8"] } })
+    );
+    session.mockResolvedValue({ loggedIn: true, role: "admin", username: "root" });
+    const { layout } = await state();
+    expect(layout.mobile.slots).toEqual(["open", "locked", "media-only", "in-locked-menu"]);
+  });
+
+  test("a user granted admin-read sees everything", async () => {
+    session.mockResolvedValue({ loggedIn: true, role: "user", username: "reader" });
     const { layout } = await state();
     expect(layout.mobile.slots).toEqual(["open", "locked", "media-only", "in-locked-menu"]);
   });
