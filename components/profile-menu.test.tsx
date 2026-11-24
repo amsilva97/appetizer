@@ -92,9 +92,15 @@ describe("Toolbar", () => {
     expect(container.querySelector('[title="Admin"]')).toBeNull();
   });
 
-  test("signed out: a sign-in link, no profile", () => {
-    const { container } = render(<Toolbar editMode={false} onToggleEdit={() => {}} />);
-    expect(byLabel(container, "Profile menu")).toBeNull();
+  test("signed out: shown as Guest, and the menu offers Sign in", () => {
+    const { container } = render(<Toolbar editMode={false} onToggleEdit={() => {}} adminLinks={[]} />);
+    const button = byLabel(container, "Profile menu")!;
+    expect(button.textContent).toBe("GU");
+    fire.click(button);
+    expect(byText(container, "Viewing as")).not.toBeNull();
+    expect(byText(container, "Guest")).not.toBeNull();
     expect(container.querySelector('a[href="/login"]')).not.toBeNull();
+    expect(byText(container, "Sign out")).toBeNull();
+    expect(byText(container, "Edit layout")).toBeNull();
   });
 });

@@ -6,6 +6,7 @@ import { ADMIN_TAB_INFO, type AdminTab } from "@/lib/admin-tabs";
 import {
   GearIcon,
   KeyIcon,
+  LogInIcon,
   LogOutIcon,
   PencilIcon,
   PhoneIcon,
@@ -27,7 +28,10 @@ export function profileInitials(username: string): string {
 }
 
 interface ProfileMenuProps {
+  /** The signed-in username, or the guest name when signed out. */
   username: string;
+  /** False for guests: the menu offers Sign in instead of Sign out. */
+  signedIn?: boolean;
   editMode: boolean;
   /** Undefined when the viewer can't edit layouts. */
   onToggleEdit?: () => void;
@@ -47,6 +51,7 @@ interface ProfileMenuProps {
  */
 export default function ProfileMenu({
   username,
+  signedIn = true,
   editMode,
   onToggleEdit,
   links,
@@ -84,7 +89,7 @@ export default function ProfileMenu({
       <button
         type="button"
         onClick={() => setOpen((o) => !o)}
-        title={username ? `Signed in as ${username}` : "Profile"}
+        title={signedIn ? `Signed in as ${username}` : `Viewing as ${username}`}
         aria-label="Profile menu"
         aria-haspopup="menu"
         aria-expanded={open}
@@ -107,7 +112,7 @@ export default function ProfileMenu({
               {profileInitials(username)}
             </span>
             <div className="min-w-0">
-              <p className="text-[11px] text-zinc-500 leading-tight">Signed in as</p>
+              <p className="text-[11px] text-zinc-500 leading-tight">{signedIn ? "Signed in as" : "Viewing as"}</p>
               <p className="text-sm font-medium text-zinc-100 truncate">{username || "unknown"}</p>
             </div>
           </div>
@@ -160,14 +165,26 @@ export default function ProfileMenu({
 
           {divider}
 
-          <button
-            role="menuitem"
-            onClick={() => { close(); onLogout(); }}
-            className={`${itemCls} text-red-400 hover:text-red-300`}
-          >
-            <LogOutIcon size={14} />
-            <span>Sign out</span>
-          </button>
+          {signedIn ? (
+            <button
+              role="menuitem"
+              onClick={() => { close(); onLogout(); }}
+              className={`${itemCls} text-red-400 hover:text-red-300`}
+            >
+              <LogOutIcon size={14} />
+              <span>Sign out</span>
+            </button>
+          ) : (
+            <Link
+              role="menuitem"
+              href="/login"
+              onClick={close}
+              className={`${itemCls} text-zinc-200`}
+            >
+              <LogInIcon size={14} />
+              <span>Sign in</span>
+            </Link>
+          )}
         </div>
       )}
     </div>
