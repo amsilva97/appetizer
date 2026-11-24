@@ -4,7 +4,7 @@ import { join } from "path";
 import * as yaml from "js-yaml";
 import type { PageMeta } from "@/types/permissions";
 import { guard } from "@/lib/auth/guard";
-import { can } from "@/lib/auth/viewer";
+import { seesAllPages } from "@/lib/auth/viewer";
 import { userCanAccess } from "@/lib/auth/permissions";
 
 const DATA_DIR = join(process.cwd(), "data");
@@ -42,7 +42,7 @@ export async function PATCH(
   const { name } = await params;
   const index = readIndex();
   const pageIdx = index.pages.findIndex((p) => p.name === name);
-  const seeAll = can(viewer, "pages:read");
+  const seeAll = seesAllPages(viewer);
   if (pageIdx === -1 || !userCanAccess(index.pages[pageIdx].permissions, viewer.permissions, seeAll)) {
     return NextResponse.json({ error: "Page not found" }, { status: 404 });
   }

@@ -1,6 +1,6 @@
 import type { Viewer } from "@/lib/auth/viewer";
 import type { AppUser } from "@/lib/auth/users";
-import type { Capability, Role } from "@/types/permissions";
+import { ADMIN_READ_PERMISSION, type Capability, type Role } from "@/types/permissions";
 
 /**
  * Rules that stop someone with partial admin rights from handing themselves
@@ -25,6 +25,13 @@ export function checkGrantAdmin(viewer: Viewer): string | null {
   return viewer.isAdmin ? null : "Only admins can make other admins";
 }
 
+const ADMIN_READ_DENIED = `You need pages:read to grant ${ADMIN_READ_PERMISSION}`;
+
+/** admin-read shows every page, so only someone who sees every page may hand it out. */
+function grantsAdminRead(viewer: Viewer, added: string[]): boolean {
+  return added.includes(ADMIN_READ_PERMISSION) && !viewer.capabilities.has("pages:read");
+}
+
 /** Giving someone roles: every capability in a newly added role must be one you hold. */
 export function checkAssignRoles(
   viewer: Viewer,
@@ -39,8 +46,16 @@ export function checkAssignRoles(
     if (!role) return `Unknown role "${id}"`;
     const lacking = missing(viewer, role.capabilities ?? []);
     if (lacking.length) return `You can't grant "${role.label}": it includes ${lacking.join(", ")}`;
+    if (grantsAdminRead(viewer, role.permissions)) return `"${role.label}": ${ADMIN_READ_DENIED}`;
   }
   return null;
+}
+
+/** Giving view permissions directly (to a user or a role). */
+export function checkGrantPermissions(viewer: Viewer, before: string[], after: string[]): string | null {
+  if (viewer.isAdmin) return null;
+  const added = after.filter((id) => !before.includes(id));
+  return grantsAdminRead(viewer, added) ? ADMIN_READ_DENIED : null;
 }
 
 /** Editing a role's capabilities: you can only add or remove ones you hold. */

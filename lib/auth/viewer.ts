@@ -8,7 +8,12 @@ import {
 } from "@/lib/auth/permissions";
 import { allowlistEnforced, readSettings, type AppSettings } from "@/lib/auth/settings";
 import { clientIpFromHeaders, ipMatches } from "@/lib/auth/ip";
-import { ALL_CAPABILITIES, type Capability, type PermissionsConfig } from "@/types/permissions";
+import {
+  ADMIN_READ_PERMISSION,
+  ALL_CAPABILITIES,
+  type Capability,
+  type PermissionsConfig,
+} from "@/types/permissions";
 
 export interface Viewer {
   loggedIn: boolean;
@@ -51,7 +56,8 @@ export interface ViewerInput {
  * Work out what this request may do. The cookie only says who someone is;
  * their role, roles and disabled flag are always read from users.yaml so
  * changes apply on the next request. Admin rights from any source are
- * dropped when the IP allowlist is on and the request comes from elsewhere.
+ * dropped when the IP allowlist is on and the request comes from elsewhere;
+ * admin accounts then keep admin-read (see everything, edit nothing).
  */
 export function resolveViewer({ session, user, config, settings, clientIp, env }: ViewerInput): Viewer {
   if (!session.loggedIn || !user || user.disabled) return { ...ANONYMOUS, clientIp };
@@ -73,9 +79,23 @@ export function resolveViewer({ session, user, config, settings, clientIp, env }
     isAdminAccount,
     ipAllowed,
     clientIp,
-    permissions: isAdmin ? new Set() : resolveUserPermissions(user, config),
+    permissions: isAdmin ? new Set() : viewPermissions(user, config, isAdminAccount),
     capabilities,
   };
+}
+
+/** An admin account kept out by the allowlist still sees everything, read-only. */
+function viewPermissions(user: AppUser, config: PermissionsConfig, isAdminAccount: boolean): Set<string> {
+  const perms = resolveUserPermissions(user, config);
+  return isAdminAccount ? new Set([...perms, ADMIN_READ_PERMISSION]) : perms;
+}
+
+/**
+ * Sees every page and widget regardless of view permissions: full admins and
+ * pages:read holders, plus anyone with admin-read (which grants no editing).
+ */
+export function seesAllPages(viewer: Viewer): boolean {
+  return can(viewer, "pages:read") || viewer.permissions.has(ADMIN_READ_PERMISSION);
 }
 
 /** Who is making this request, and what they may do. */
