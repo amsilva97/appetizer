@@ -8,7 +8,7 @@ import {
   type MenuType,
   type MenuWidgetConfig,
 } from "@/types/menu-widget";
-import { Divider, Select, SliderRow, TabBar, TextInput, Toggle } from "@/components/ui";
+import { Divider, NumberInput, Select, SliderRow, TabBar, TextInput, Toggle } from "@/components/ui";
 import WidgetPermissionsFields from "@/components/widgets/widget-permissions-fields";
 import {
   CONTAINER_TABS,
@@ -85,6 +85,19 @@ function MenuDisplayFields({ value, onChange }: { value: MenuWidgetConfig; onCha
             checked={value.infinite ?? false}
             onChange={(infinite) => onChange({ ...value, infinite })}
           />
+          <Toggle
+            label="Show position dots"
+            checked={value.showDots ?? false}
+            onChange={(showDots) => onChange({ ...value, showDots })}
+          />
+          <NumberInput
+            label="Peek at neighbours"
+            value={value.peek ?? 0}
+            onChange={(peek) => onChange({ ...value, peek })}
+          />
+          <p className="text-[11px] text-fg-subtle leading-snug -mt-2">
+            How much of the apps just out of view shows at each end. 0 shows only whole apps.
+          </p>
         </>
       )}
     </div>

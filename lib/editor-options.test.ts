@@ -1,10 +1,10 @@
 import { describe, expect, test } from "vitest";
 import { resolveSpacing, spacingCss, isUniform } from "@/types/spacing";
 import { resolveAppPadding } from "@/types/app-widget";
-import { DEFAULT_EDGE_SHADOW, edgeShadowStops, resolveEdgeSides, resolveEdgeShadow } from "@/types/edge-shadow";
+import { DEFAULT_EDGE_SHADOW, edgeShadowDepth, edgeShadowStops, resolveEdgeSides, resolveEdgeShadow } from "@/types/edge-shadow";
 import { layoutGeometry, resolveLayout, GUTTER_START_CELL, GUTTER_MAIN_CELL, GUTTER_END_CELL } from "@/lib/layout-cells";
 import { cellTargetsFromElements, CELL_INDEX_ATTR, CELL_LAYOUT_ATTR } from "@/lib/cell-targets";
-import { canStep, carouselModel, itemAt, slotsToRender, stepIndex } from "@/lib/carousel";
+import { activeDot, canStep, carouselModel, dotCount, dotTarget, itemAt, slotGeometry, slotsToRender, stepIndex } from "@/lib/carousel";
 import { normalizeLayoutConfig, normalizeMenuConfig } from "@/lib/widget-config";
 import { applyDraft, draftDiffers } from "@/lib/use-widget-draft";
 import type { WidgetInstance } from "@/types/widget";
@@ -105,9 +105,17 @@ describe("cell targets", () => {
 });
 
 describe("carousel paging", () => {
-  test("never shows more than there are", () => {
+  test("never pages past the items there are", () => {
     expect(carouselModel(2, 5, false).visible).toBe(2);
+    expect(carouselModel(2, 5, false).maxIndex).toBe(0);
     expect(carouselModel(0, 3, true).looping).toBe(false);
+  });
+
+  test("keeps the slot size set by visibleCount when there are fewer items", () => {
+    expect(carouselModel(2, 5, false).slots).toBe(5);
+    expect(carouselModel(8, 5, false).slots).toBe(5);
+    expect(carouselModel(2, 40, false).slots).toBe(12);
+    expect(carouselModel(2, 0, false).slots).toBe(1);
   });
 
   test("a list carousel stops at its ends", () => {
@@ -131,6 +139,46 @@ describe("carousel paging", () => {
 
   test("doesn't loop when everything already fits", () => {
     expect(carouselModel(3, 3, true).looping).toBe(false);
+  });
+
+  test("has one dot per stop, and none when there's nowhere to go", () => {
+    expect(dotCount(carouselModel(5, 3, false))).toBe(3);
+    expect(dotCount(carouselModel(4, 1, true))).toBe(4);
+    expect(dotCount(carouselModel(2, 3, false))).toBe(0);
+  });
+
+  test("the active dot follows the index, wrapping when looping", () => {
+    const loop = carouselModel(4, 1, true);
+    expect(activeDot(-1, loop)).toBe(3);
+    expect(activeDot(5, loop)).toBe(1);
+    expect(activeDot(2, carouselModel(5, 3, false))).toBe(2);
+  });
+
+  test("clicking a dot moves the shortest way round", () => {
+    const loop = carouselModel(5, 1, true);
+    expect(dotTarget(0, 4, loop)).toBe(-1);
+    expect(dotTarget(7, 3, loop)).toBe(8);
+    expect(dotTarget(0, 2, carouselModel(5, 3, false))).toBe(2);
+  });
+});
+
+describe("carousel peek", () => {
+  test("slots shrink to leave the peek at both ends", () => {
+    expect(slotGeometry(3, 10, 0)).toEqual({ size: "calc((100% - 20px) / 3)", step: "((100% + 10px) / 3)", offset: "0px" });
+    expect(slotGeometry(1, 16, 80)).toEqual({ size: "calc((100% - 192px) / 1)", step: "((100% - 176px) / 1)", offset: "96px" });
+  });
+});
+
+describe("edge shadow top & bottom depth", () => {
+  test("top and bottom can fade out sooner than the sides", () => {
+    const shadow = { ...DEFAULT_EDGE_SHADOW, size: 120, solidSize: 10, verticalSize: 40 };
+    expect(edgeShadowDepth(shadow, "left")).toBe(120);
+    expect(edgeShadowDepth(shadow, "bottom")).toBe(40);
+    expect(edgeShadowStops({ ...shadow, size: edgeShadowDepth(shadow, "top") }, "S", "C")).toBe("S 0px, S 10px, C 40px");
+  });
+
+  test("top and bottom use the side depth when unset", () => {
+    expect(edgeShadowDepth({ ...DEFAULT_EDGE_SHADOW, size: 90 }, "top")).toBe(90);
   });
 });
 

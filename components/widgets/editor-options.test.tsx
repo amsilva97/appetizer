@@ -10,7 +10,9 @@ import { byLabel, byText, cleanup, fire, render } from "@/components/widgets/tes
 import { DEFAULT_EDGE_SHADOW } from "@/types/edge-shadow";
 import { DEFAULT_MENU_WIDGET, type MenuWidgetConfig } from "@/types/menu-widget";
 import { DEFAULT_LAYOUT_WIDGET, type LayoutWidgetConfig } from "@/types/layout-widget";
-import { DEFAULT_APP_WIDGET } from "@/types/app-widget";
+import { DEFAULT_APP_WIDGET, type AppWidgetConfig } from "@/types/app-widget";
+import AppWidget from "@/components/widgets/app-widget";
+import AppWidgetFields from "@/components/widgets/app-widget-fields";
 import { normalizeMenuConfig } from "@/lib/widget-config";
 import { useWidgetDraft, type WidgetDraftState } from "@/lib/use-widget-draft";
 import type { WidgetInstance } from "@/types/widget";
@@ -64,6 +66,31 @@ describe("MenuCarousel", () => {
     );
     const shown = Array.from(container.querySelectorAll("[data-edge-shadow]")).map((e) => e.getAttribute("data-edge-shadow"));
     expect(shown).toEqual(["right", "left"]);
+  });
+
+  test("dots show the position and jump to a stop when clicked", () => {
+    const { container } = render(
+      <MenuCarousel items={items} direction="horizontal" visibleCount={3} gap={0} padding={pad} edgeShadow={DEFAULT_EDGE_SHADOW} showDots />
+    );
+    const dots = container.querySelectorAll("[data-carousel-dot]");
+    expect(dots).toHaveLength(3);
+    expect(dots[0].getAttribute("aria-current")).toBe("true");
+    fire.click(dots[2]);
+    expect(trackTransform(container)).toContain("-2");
+    expect(container.querySelectorAll("[data-carousel-dot]")[2].getAttribute("aria-current")).toBe("true");
+  });
+
+  test("no dots unless asked for", () => {
+    const { container } = render(<MenuCarousel items={items} direction="horizontal" visibleCount={3} gap={0} padding={pad} edgeShadow={DEFAULT_EDGE_SHADOW} />);
+    expect(container.querySelector("[data-carousel-dot]")).toBeNull();
+  });
+
+  test("peek offsets the first slot so the neighbours show", () => {
+    const { container } = render(
+      <MenuCarousel items={items} direction="horizontal" visibleCount={1} infinite gap={16} peek={80} padding={pad} edgeShadow={DEFAULT_EDGE_SHADOW} />
+    );
+    const first = container.querySelector('[data-carousel-slot="0"]') as HTMLElement;
+    expect(first.style.left).toContain("96px");
   });
 
   test("a wheel tick pages once, then waits out the cooldown", () => {
@@ -148,6 +175,8 @@ describe("editor fields", () => {
     expect(byText(container, "Apps shown at once")).toBeNull();
     rerender(<MenuWidgetFields value={{ ...DEFAULT_MENU_WIDGET, type: "carousel" }} onChange={() => {}} />);
     expect(byText(container, "Apps shown at once")).not.toBeNull();
+    expect(byText(container, "Show position dots")).not.toBeNull();
+    expect(byLabel(container, "Peek at neighbours")).not.toBeNull();
   });
 
   test("spacing can be split into four sides", () => {
@@ -268,6 +297,49 @@ describe("number inputs", () => {
     expect(seen).toEqual([]);
     fire.change(gap, "-5");
     expect(seen).toEqual([0]);
+  });
+});
+
+describe("cover image fit", () => {
+  const cover = { ...DEFAULT_APP_WIDGET, title: "Jelly", logoView: "full" as const, logoUrl: "https://example.test/b.svg" };
+
+  test("cover is the default: one image that fills and crops", () => {
+    const { container } = render(<AppWidget config={cover} onClick={() => {}} />);
+    const imgs = container.querySelectorAll("img");
+    expect(imgs).toHaveLength(1);
+    expect(imgs[0].className).toContain("object-cover");
+  });
+
+  test("whole image shows all of it over a blurred copy that fills the card", () => {
+    const { container } = render(<AppWidget config={{ ...cover, coverFit: "contain" }} onClick={() => {}} />);
+    const backdrop = container.querySelector("[data-cover-backdrop]") as HTMLImageElement;
+    const main = container.querySelector("[data-cover-image]") as HTMLImageElement;
+    expect(backdrop.className).toContain("object-cover");
+    expect(main.className).toContain("object-contain");
+  });
+
+  test("once loaded, the whole image is sized to its own shape with feathered edges", () => {
+    const { container } = render(<AppWidget config={{ ...cover, coverFit: "contain" }} onClick={() => {}} />);
+    const main = container.querySelector("[data-cover-image]") as HTMLImageElement;
+    Object.defineProperty(main, "naturalWidth", { value: 800 });
+    Object.defineProperty(main, "naturalHeight", { value: 500 });
+    act(() => { main.dispatchEvent(new Event("load")); });
+    const loaded = container.querySelector("[data-cover-image]") as HTMLImageElement;
+    // jsdom can't parse container-query widths, so only the shape and mask are checked here.
+    expect(loaded.style.aspectRatio).toMatch(/^1\.6( \/ 1)?$/);
+    // One ellipse, not crossed linear fades, so the edge has no box shape.
+    expect(loaded.style.maskImage || loaded.style.getPropertyValue("-webkit-mask-image")).toMatch(/^radial-gradient\((ellipse )?closest-side/);
+  });
+
+  test("the editor offers the fit and lets zoom go below 100%", () => {
+    let last: AppWidgetConfig | null = null;
+    const { container } = render(<AppWidgetFields value={cover} onChange={(v) => { last = v; }} />);
+    const fit = byLabel(container, "Image fit") as HTMLSelectElement;
+    expect(fit).not.toBeNull();
+    fire.select(fit, "contain");
+    expect(last!.coverFit).toBe("contain");
+    const zoom = byLabel(container, "Icon zoom") as HTMLInputElement;
+    expect(Number(zoom.min)).toBeLessThan(1);
   });
 });
 

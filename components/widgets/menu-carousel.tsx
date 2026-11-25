@@ -3,10 +3,14 @@
 import { useRef, useState } from "react";
 import EdgeShadow from "@/components/widgets/edge-shadow";
 import {
+  activeDot,
   canStep,
   carouselModel,
   clampIndex,
+  dotCount,
+  dotTarget,
   itemAt,
+  slotGeometry,
   slotsToRender,
   stepIndex,
 } from "@/lib/carousel";
@@ -27,6 +31,10 @@ interface Props {
   gap: number;
   padding: Spacing;
   edgeShadow: EdgeShadowConfig;
+  /** Show a row of position dots. */
+  showDots?: boolean;
+  /** Pixels of the neighbouring apps left showing at each end. */
+  peek?: number;
 }
 
 const SWIPE_PX = 40;
@@ -43,7 +51,29 @@ function Chevron({ dir }: { dir: "left" | "right" | "up" | "down" }) {
   );
 }
 
-export default function MenuCarousel({ items, direction, visibleCount, infinite, gap, padding, edgeShadow }: Props) {
+function Dots({ count, active, horizontal, onSelect }: { count: number; active: number; horizontal: boolean; onSelect: (dot: number) => void }) {
+  const place: React.CSSProperties = horizontal
+    ? { bottom: 6, left: "50%", transform: "translateX(-50%)", flexDirection: "row" }
+    : { right: 6, top: "50%", transform: "translateY(-50%)", flexDirection: "column" };
+  return (
+    <div className="absolute z-10 flex gap-1.5" style={place}>
+      {Array.from({ length: count }, (_, i) => (
+        <button
+          key={i}
+          type="button"
+          data-carousel-dot
+          aria-label={`Go to ${i + 1} of ${count}`}
+          aria-current={i === active ? "true" : undefined}
+          onClick={() => onSelect(i)}
+          className={`rounded-full transition-all ${i === active ? "bg-white" : "bg-white/35 hover:bg-white/60"}`}
+          style={horizontal ? { width: i === active ? 18 : 6, height: 6 } : { width: 6, height: i === active ? 18 : 6 }}
+        />
+      ))}
+    </div>
+  );
+}
+
+export default function MenuCarousel({ items, direction, visibleCount, infinite, gap, padding, edgeShadow, showDots, peek = 0 }: Props) {
   const model = carouselModel(items.length, visibleCount, infinite);
   const horizontal = direction === "horizontal";
   const [rawIndex, setRawIndex] = useState(0);
@@ -96,9 +126,12 @@ export default function MenuCarousel({ items, direction, visibleCount, infinite,
     if (e.key === fwd) { e.preventDefault(); go(1); }
   }
 
-  const n = model.visible;
-  const step = (k: number) => `calc(${k} * (100% + ${gap}px) / ${n})`;
-  const itemSize = `calc((100% - ${gap * (n - 1)}px) / ${n})`;
+  // Size by the requested slot count, so a short row keeps its tile size instead of stretching.
+  const geo = slotGeometry(model.slots, gap, peek);
+  const step = (k: number) => `calc(${k} * ${geo.step})`;
+  const slotPos = (k: number) => `calc(${geo.offset} + ${k} * ${geo.step})`;
+  const itemSize = geo.size;
+  const dots = showDots ? dotCount(model) : 0;
   const sides = resolveEdgeSides(edgeShadow.edges, horizontal ? "horizontal" : "vertical");
   const atStart = !canStep(index, -1, model);
   const atEnd = !canStep(index, 1, model);
@@ -142,8 +175,8 @@ export default function MenuCarousel({ items, direction, visibleCount, infinite,
               data-carousel-slot={slot}
               className="absolute flex"
               style={horizontal
-                ? { left: step(slot), top: 0, width: itemSize, height: "100%" }
-                : { top: step(slot), left: 0, height: itemSize, width: "100%" }}
+                ? { left: slotPos(slot), top: 0, width: itemSize, height: "100%" }
+                : { top: slotPos(slot), left: 0, height: itemSize, width: "100%" }}
             >
               {item.node}
             </div>
@@ -162,6 +195,15 @@ export default function MenuCarousel({ items, direction, visibleCount, infinite,
         <button type="button" aria-label="Next" className={arrowBase} style={nextPos} onClick={() => go(1)}>
           <Chevron dir={horizontal ? "right" : "down"} />
         </button>
+      )}
+
+      {dots > 0 && (
+        <Dots
+          count={dots}
+          active={activeDot(index, model)}
+          horizontal={horizontal}
+          onSelect={(dot) => setRawIndex(dotTarget(index, dot, model))}
+        />
       )}
     </div>
   );

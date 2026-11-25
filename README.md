@@ -292,6 +292,7 @@ Gutter cells keep fixed cell numbers (left/top = 0, main = 1, right/bottom = 2),
   - **Edges** — Auto, Left & right, Top & bottom, or All edges. Auto means the scroll direction for a menu and all edges for a layout.
   - **Full strength until** — how far in from the edge the shadow stays at full strength.
   - **Faded out at** — how far in from the edge it has faded to clear.
+  - **Top & bottom faded out at** — a separate fade-out depth for the top and bottom edges (defaults to the sides' depth).
   - **Shadow color** and **Shadow strength** (0–100%).
 
 Margin, padding and gap are typed in pixels with no upper limit.
@@ -315,8 +316,10 @@ A visible styled container that lives inside a layout cell. Menus hold app widge
   - *List* — every app in a row or column; scrolls when there are more than fit.
   - *Carousel* — shows a set number of apps at a time and pages through the rest with the arrows (on hover), the mouse wheel, swiping, or the arrow keys.
 - **Direction** — Vertical (top to bottom) or Horizontal (side by side).
-- **Apps shown at once** *(carousel)* — 1–12.
+- **Apps shown at once** *(carousel)* — 1–12. This also sets each app's size: a carousel with fewer apps keeps the same size and leaves the rest of the row empty.
 - **Infinite scroll** *(carousel)* — loop from the last app back to the first, both ways.
+- **Show position dots** *(carousel)* — a row of dots showing where you are; click one to jump there.
+- **Peek at neighbours** *(carousel)* — how many pixels of the apps just out of view show at each end, so it's clear there's more to scroll to.
 
 **Visuals tab** — layouts and menus share the same controls, in the same order:
 - **Margin** — space between the widget and its container. One value for all sides, or click **Set sides separately** for top / right / bottom / left.
@@ -329,6 +332,7 @@ A visible styled container that lives inside a layout cell. Menus hold app widge
   - **Edges** — Auto, Left & right, Top & bottom, or All edges. Auto means the scroll direction for a menu and all edges for a layout.
   - **Full strength until** — how far in from the edge the shadow stays at full strength.
   - **Faded out at** — how far in from the edge it has faded to clear.
+  - **Top & bottom faded out at** — a separate fade-out depth for the top and bottom edges (defaults to the sides' depth).
   - **Shadow color** and **Shadow strength** (0–100%).
 
 Margin, padding and gap are typed in pixels with no upper limit.
@@ -352,7 +356,8 @@ An app shortcut card. Apps can be floating (draggable, positioned freely on the 
   - `none` — no icon, just the text.
   - `full` — the logo fills the entire card as a background image, with the title overlaid at the top.
 - **Logo URL** — URL of the image to use as the icon or cover. If the image fails to load or no URL is set, a colored block showing the first two letters of the title is used instead.
-- **Icon zoom** *(full cover only)* — scales the cover image, 100–300%.
+- **Image fit** *(full cover only)* — **Fill the card** crops the image to the card's shape; **Whole image** shows all of it over a blurred copy of itself, so a logo isn't cut off on a wide or tall card.
+- **Icon zoom** *(full cover only)* — scales the cover image, 50–300%.
 - **Offset X** *(full cover only)* — shifts the cover image horizontally, -100 to +100%.
 - **Offset Y** *(full cover only)* — shifts the cover image vertically, -100 to +100%.
 
@@ -565,6 +570,7 @@ edgeShadow:
 | `enabled` | boolean | `false` | Turn the shadow on. |
 | `edges` | `auto` \| `horizontal` \| `vertical` \| `all` | `auto` | Which edges fade. `horizontal` = left and right. `auto` = the scroll direction for a menu, all edges for a layout. |
 | `solidSize` | number | `0` | Distance from the edge the shadow stays at full strength. Capped at `size`. |
+| `verticalSize` | number | `size` | Fade-out distance for the top and bottom edges only, so they can be lighter than the sides. |
 | `size` | number | `48` | Distance from the edge where the shadow has faded to clear. |
 | `color` | hex string | `"#000000"` | Shadow color. |
 | `opacity` | number | `80` | Strength at full strength, 0–100. |
@@ -641,8 +647,10 @@ config:
 | `showLabel` | boolean | `true` | — | Draw the label above the apps. |
 | `type` | `list` \| `carousel` | `list` | — | Scrolling list, or a carousel showing `visibleCount` apps at a time. |
 | `direction` | `vertical` \| `horizontal` | `vertical` | — | Stack direction of child apps. |
-| `visibleCount` | number | `3` | 1–12 | Carousel: apps shown at once. |
+| `visibleCount` | number | `3` | 1–12 | Carousel: apps shown at once. Also sets the slot size, so fewer apps leave empty slots at the end instead of stretching. |
 | `infinite` | boolean | `false` | — | Carousel: loop from the last app back to the first. |
+| `showDots` | boolean | `false` | — | Carousel: show position dots; click one to jump there. |
+| `peek` | number | `0` | 0+ | Carousel: px of the neighbouring apps left showing at each end (plus `gap`). |
 | `padding` | number or sides | `12` | 0+ | Inner padding around the apps. See [Spacing values](#spacing-values). |
 | `gap` | number | `8` | 0+ | Gap between app cards. |
 | `margin` | number or sides | `0` | 0+ | Inset from cell edges. |
@@ -698,7 +706,8 @@ config:
 | `tooltip` | string | `""` | — | Native hover tooltip text. |
 | `logoUrl` | string | `""` | — | Image URL for the icon or cover. Falls back to initials if empty or on load error. |
 | `logoView` | `icon` \| `none` \| `full` | `icon` | — | Icon display mode. `icon` shows a square icon beside the text. `none` hides the icon. `full` fills the card with the image. |
-| `iconZoom` | number | `1` | 1–3 | Scale multiplier for the cover image. Only applies when `logoView: full`. |
+| `coverFit` | `cover` \| `contain` | `cover` | — | `cover` fills the card and crops the image. `contain` shows the whole image over a blurred copy of itself, so a logo isn't cut off on a card with a different shape. Only applies when `logoView: full`. |
+| `iconZoom` | number | `1` | 0.5–3 | Scale multiplier for the cover image. Only applies when `logoView: full`. |
 | `iconOffsetX` | number | `0` | -100–100 | Horizontal offset of the cover image as a percentage of card width. Only applies when `logoView: full`. |
 | `iconOffsetY` | number | `0` | -100–100 | Vertical offset of the cover image as a percentage of card height. Only applies when `logoView: full`. |
 | `url` | string | `""` | — | Destination URL. |

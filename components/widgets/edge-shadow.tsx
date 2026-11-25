@@ -1,7 +1,7 @@
 "use client";
 
 import { toRgba } from "@/lib/color";
-import { edgeShadowStops, type EdgeShadowConfig, type EdgeSides } from "@/types/edge-shadow";
+import { edgeShadowDepth, edgeShadowStops, type EdgeShadowConfig, type EdgeSides } from "@/types/edge-shadow";
 
 interface Props {
   config: EdgeShadowConfig;
@@ -37,6 +37,8 @@ export default function EdgeShadow({ config, sides }: Props) {
       {(Object.keys(DIRECTION) as (keyof EdgeSides)[]).map((side) => {
         if (!sides[side]) return null;
         const vertical = side === "top" || side === "bottom";
+        const depth = edgeShadowDepth(config, side);
+        if (depth <= 0) return null;
         return (
           <div
             key={side}
@@ -45,8 +47,8 @@ export default function EdgeShadow({ config, sides }: Props) {
             className="absolute pointer-events-none z-[5]"
             style={{
               ...PLACEMENT[side],
-              [vertical ? "height" : "width"]: config.size,
-              background: `linear-gradient(${DIRECTION[side]}, ${edgeShadowStops(config, solid, clear)})`,
+              [vertical ? "height" : "width"]: depth,
+              background: `linear-gradient(${DIRECTION[side]}, ${edgeShadowStops({ ...config, size: depth }, solid, clear)})`,
             }}
           />
         );

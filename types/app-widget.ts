@@ -1,6 +1,7 @@
 import { resolveSpacing, type Spacing, type SpacingValue } from "./spacing";
 
 export type LogoView = "icon" | "none" | "full";
+export type CoverFit = "cover" | "contain";
 export type FeedMethod = "none" | "GET";
 
 export interface FeedHeaderRow {
@@ -44,6 +45,11 @@ export interface AppWidgetConfig {
   margin: SpacingValue;
   borderRadius: number;
   iconZoom: number;
+  /**
+   * Full cover only. "cover" fills the card and crops; "contain" shows the whole
+   * image over a blurred copy of itself. Missing means "cover".
+   */
+  coverFit?: CoverFit;
   iconOffsetX: number;
   iconOffsetY: number;
   feed?: AppFeedConfig;

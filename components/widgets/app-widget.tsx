@@ -5,6 +5,7 @@ import { resolveAppPadding, type AppWidgetConfig, type AppFeedConfig } from "@/t
 import { resolveSpacing, spacingCss } from "@/types/spacing";
 import { isSafeLink, sanitizeFeedHtml } from "@/lib/feed/sanitize";
 import { useCurrentPage } from "@/lib/page-context";
+import CoverImage from "@/components/widgets/cover-image";
 
 // ─── Ping hook ────────────────────────────────────────────────────────────────
 
@@ -228,11 +229,10 @@ export default function AppWidget({ config, widgetId, onClick, fillAxis }: Props
         onClick={handleClick}
       >
         {config.logoUrl && !coverErr ? (
-          <img
+          <CoverImage
             src={config.logoUrl}
-            alt=""
-            className="absolute inset-0 w-full h-full object-cover"
-            style={{ transform: iconTransform, transformOrigin: "center" }}
+            fit={config.coverFit ?? "cover"}
+            transform={iconTransform}
             onError={() => setCoverErr(true)}
           />
         ) : (
