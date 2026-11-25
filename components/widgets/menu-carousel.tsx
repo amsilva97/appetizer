@@ -96,7 +96,8 @@ export default function MenuCarousel({ items, direction, visibleCount, infinite,
     if (e.key === fwd) { e.preventDefault(); go(1); }
   }
 
-  const n = model.visible;
+  // Size by the requested slot count, so a short row keeps its tile size instead of stretching.
+  const n = model.slots;
   const step = (k: number) => `calc(${k} * (100% + ${gap}px) / ${n})`;
   const itemSize = `calc((100% - ${gap * (n - 1)}px) / ${n})`;
   const sides = resolveEdgeSides(edgeShadow.edges, horizontal ? "horizontal" : "vertical");

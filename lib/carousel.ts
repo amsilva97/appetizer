@@ -6,6 +6,8 @@
  */
 export interface CarouselModel {
   count: number;
+  /** Slots the view is divided into; sets each item's size. Fewer items leave the end slots empty. */
+  slots: number;
   /** Items in view at once, never more than there are. */
   visible: number;
   looping: boolean;
@@ -16,11 +18,11 @@ export interface CarouselModel {
 export const MAX_VISIBLE = 12;
 
 export function carouselModel(count: number, visibleCount: number | undefined, infinite: boolean | undefined): CarouselModel {
-  const requested = Math.round(visibleCount ?? 3);
-  const visible = Math.max(1, Math.min(MAX_VISIBLE, requested, Math.max(1, count)));
+  const slots = Math.max(1, Math.min(MAX_VISIBLE, Math.round(visibleCount ?? 3)));
+  const visible = Math.min(slots, Math.max(1, count));
   // Looping only makes sense when there's something out of view to loop to.
   const looping = Boolean(infinite) && count > visible;
-  return { count, visible, looping, maxIndex: Math.max(0, count - visible) };
+  return { count, slots, visible, looping, maxIndex: Math.max(0, count - visible) };
 }
 
 /** Pull a saved index back into range after items or settings change. */
