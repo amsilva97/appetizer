@@ -12,13 +12,12 @@ interface Props {
 }
 
 /**
- * Soft edges so the whole image blends into the blurred copy behind it. Wide
- * enough to hide the darker edges and bottom fade many banners have baked in,
- * which a narrow feather leaves showing as a frame.
+ * Fades the whole image into the blurred copy behind it. One ellipse that
+ * touches the image's sides, so there are no straight edges or corners to show
+ * as a box (two crossed linear fades always leave a rounded rectangle), and it
+ * hides the darker edges many banners have baked in.
  */
-const FEATHER =
-  "linear-gradient(to right, transparent, #000 22%, #000 78%, transparent), " +
-  "linear-gradient(to bottom, transparent, #000 16%, #000 80%, transparent)";
+const FEATHER = "radial-gradient(ellipse closest-side at 50% 50%, #000 35%, rgba(0,0,0,.6) 65%, transparent 100%)";
 
 /**
  * A full-cover card's image. "cover" fills the card and crops. "contain"
@@ -59,8 +58,6 @@ export default function CoverImage({ src, fit, transform, onError }: Props) {
         aspectRatio: String(ratio),
         maskImage: FEATHER,
         WebkitMaskImage: FEATHER,
-        maskComposite: "intersect",
-        WebkitMaskComposite: "source-in",
       }
     : { width: "100%", height: "100%", objectFit: "contain" };
 

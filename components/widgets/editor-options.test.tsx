@@ -327,7 +327,8 @@ describe("cover image fit", () => {
     const loaded = container.querySelector("[data-cover-image]") as HTMLImageElement;
     // jsdom can't parse container-query widths, so only the shape and mask are checked here.
     expect(loaded.style.aspectRatio).toMatch(/^1\.6( \/ 1)?$/);
-    expect(loaded.style.maskImage || loaded.style.getPropertyValue("-webkit-mask-image")).toContain("linear-gradient");
+    // One ellipse, not crossed linear fades, so the edge has no box shape.
+    expect(loaded.style.maskImage || loaded.style.getPropertyValue("-webkit-mask-image")).toMatch(/^radial-gradient\((ellipse )?closest-side/);
   });
 
   test("the editor offers the fit and lets zoom go below 100%", () => {
