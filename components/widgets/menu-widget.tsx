@@ -127,6 +127,8 @@ export default function MenuWidget({ config, widgetId, allWidgets, fit }: Props)
           direction={config.direction}
           visibleCount={config.visibleCount}
           infinite={config.infinite}
+          showDots={config.showDots}
+          peek={config.peek}
           gap={gap}
           padding={padding}
           edgeShadow={edgeShadow}
