@@ -315,7 +315,7 @@ A visible styled container that lives inside a layout cell. Menus hold app widge
   - *List* — every app in a row or column; scrolls when there are more than fit.
   - *Carousel* — shows a set number of apps at a time and pages through the rest with the arrows (on hover), the mouse wheel, swiping, or the arrow keys.
 - **Direction** — Vertical (top to bottom) or Horizontal (side by side).
-- **Apps shown at once** *(carousel)* — 1–12.
+- **Apps shown at once** *(carousel)* — 1–12. This also sets each app's size: a carousel with fewer apps keeps the same size and leaves the rest of the row empty.
 - **Infinite scroll** *(carousel)* — loop from the last app back to the first, both ways.
 
 **Visuals tab** — layouts and menus share the same controls, in the same order:
@@ -641,7 +641,7 @@ config:
 | `showLabel` | boolean | `true` | — | Draw the label above the apps. |
 | `type` | `list` \| `carousel` | `list` | — | Scrolling list, or a carousel showing `visibleCount` apps at a time. |
 | `direction` | `vertical` \| `horizontal` | `vertical` | — | Stack direction of child apps. |
-| `visibleCount` | number | `3` | 1–12 | Carousel: apps shown at once. |
+| `visibleCount` | number | `3` | 1–12 | Carousel: apps shown at once. Also sets the slot size, so fewer apps leave empty slots at the end instead of stretching. |
 | `infinite` | boolean | `false` | — | Carousel: loop from the last app back to the first. |
 | `padding` | number or sides | `12` | 0+ | Inner padding around the apps. See [Spacing values](#spacing-values). |
 | `gap` | number | `8` | 0+ | Gap between app cards. |

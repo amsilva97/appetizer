@@ -105,9 +105,17 @@ describe("cell targets", () => {
 });
 
 describe("carousel paging", () => {
-  test("never shows more than there are", () => {
+  test("never pages past the items there are", () => {
     expect(carouselModel(2, 5, false).visible).toBe(2);
+    expect(carouselModel(2, 5, false).maxIndex).toBe(0);
     expect(carouselModel(0, 3, true).looping).toBe(false);
+  });
+
+  test("keeps the slot size set by visibleCount when there are fewer items", () => {
+    expect(carouselModel(2, 5, false).slots).toBe(5);
+    expect(carouselModel(8, 5, false).slots).toBe(5);
+    expect(carouselModel(2, 40, false).slots).toBe(12);
+    expect(carouselModel(2, 0, false).slots).toBe(1);
   });
 
   test("a list carousel stops at its ends", () => {
