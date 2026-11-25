@@ -14,6 +14,10 @@ export interface MenuWidgetConfig {
   visibleCount?: number;
   /** Carousel: wrap around from the last app back to the first. */
   infinite?: boolean;
+  /** Carousel: show a row of position dots. */
+  showDots?: boolean;
+  /** Carousel: px of the neighbouring apps left showing at each end. */
+  peek?: number;
   margin: SpacingValue;
   borderRadius: number;
   padding: SpacingValue;

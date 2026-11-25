@@ -45,6 +45,49 @@ export function itemAt(slot: number, model: CarouselModel): number {
   return ((slot % model.count) + model.count) % model.count;
 }
 
+/** Stops the carousel can rest at; no dots when there's only one. */
+export function dotCount(model: CarouselModel): number {
+  const stops = model.looping ? model.count : model.maxIndex + 1;
+  return stops > 1 ? stops : 0;
+}
+
+export function activeDot(index: number, model: CarouselModel): number {
+  return model.looping ? itemAt(index, model) : clampIndex(index, model);
+}
+
+/** Index to move to for a dot; a looping carousel goes the shortest way round. */
+export function dotTarget(index: number, dot: number, model: CarouselModel): number {
+  if (!model.looping) return clampIndex(dot, model);
+  let delta = dot - itemAt(index, model);
+  if (delta > model.count / 2) delta -= model.count;
+  if (delta < -model.count / 2) delta += model.count;
+  return index + delta;
+}
+
+export interface SlotGeometry {
+  /** CSS size of one slot. */
+  size: string;
+  /** CSS expression for one step (slot plus gap), to multiply by a slot number. */
+  step: string;
+  /** Where slot 0 starts, leaving room for the previous item to peek in. */
+  offset: string;
+}
+
+/**
+ * Slot sizes for `slots` items in view with `gap` between them and `peek` px
+ * of the neighbouring items showing at each end.
+ */
+export function slotGeometry(slots: number, gap: number, peek: number): SlotGeometry {
+  // Each end holds the peeking neighbour plus the gap before the first/last slot in view.
+  const outer = peek > 0 ? peek + gap : 0;
+  const stepAdjust = gap - 2 * outer;
+  return {
+    size: `calc((100% - ${2 * outer + gap * (slots - 1)}px) / ${slots})`,
+    step: `((100% ${stepAdjust < 0 ? "-" : "+"} ${Math.abs(stepAdjust)}px) / ${slots})`,
+    offset: `${outer}px`,
+  };
+}
+
 /** Slots to draw for the current index. */
 export function slotsToRender(index: number, model: CarouselModel): number[] {
   if (model.count === 0) return [];

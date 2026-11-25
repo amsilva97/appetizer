@@ -66,6 +66,31 @@ describe("MenuCarousel", () => {
     expect(shown).toEqual(["right", "left"]);
   });
 
+  test("dots show the position and jump to a stop when clicked", () => {
+    const { container } = render(
+      <MenuCarousel items={items} direction="horizontal" visibleCount={3} gap={0} padding={pad} edgeShadow={DEFAULT_EDGE_SHADOW} showDots />
+    );
+    const dots = container.querySelectorAll("[data-carousel-dot]");
+    expect(dots).toHaveLength(3);
+    expect(dots[0].getAttribute("aria-current")).toBe("true");
+    fire.click(dots[2]);
+    expect(trackTransform(container)).toContain("-2");
+    expect(container.querySelectorAll("[data-carousel-dot]")[2].getAttribute("aria-current")).toBe("true");
+  });
+
+  test("no dots unless asked for", () => {
+    const { container } = render(<MenuCarousel items={items} direction="horizontal" visibleCount={3} gap={0} padding={pad} edgeShadow={DEFAULT_EDGE_SHADOW} />);
+    expect(container.querySelector("[data-carousel-dot]")).toBeNull();
+  });
+
+  test("peek offsets the first slot so the neighbours show", () => {
+    const { container } = render(
+      <MenuCarousel items={items} direction="horizontal" visibleCount={1} infinite gap={16} peek={80} padding={pad} edgeShadow={DEFAULT_EDGE_SHADOW} />
+    );
+    const first = container.querySelector('[data-carousel-slot="0"]') as HTMLElement;
+    expect(first.style.left).toContain("96px");
+  });
+
   test("a wheel tick pages once, then waits out the cooldown", () => {
     const { container } = render(<MenuCarousel items={items} direction="horizontal" visibleCount={2} gap={0} padding={pad} edgeShadow={DEFAULT_EDGE_SHADOW} />);
     const region = container.querySelector('[role="region"]')!;
@@ -148,6 +173,8 @@ describe("editor fields", () => {
     expect(byText(container, "Apps shown at once")).toBeNull();
     rerender(<MenuWidgetFields value={{ ...DEFAULT_MENU_WIDGET, type: "carousel" }} onChange={() => {}} />);
     expect(byText(container, "Apps shown at once")).not.toBeNull();
+    expect(byText(container, "Show position dots")).not.toBeNull();
+    expect(byLabel(container, "Peek at neighbours")).not.toBeNull();
   });
 
   test("spacing can be split into four sides", () => {

@@ -14,6 +14,8 @@ export interface EdgeShadowConfig {
    * to fade, in px. 0 starts fading right at the edge.
    */
   solidSize?: number;
+  /** Fade-out depth for the top and bottom edges only, in px. Missing means `size`. */
+  verticalSize?: number;
   color: string;
   /** 0–100 at the very edge; it fades to nothing at `size`. */
   opacity: number;
@@ -48,6 +50,12 @@ export function resolveEdgeSides(
 
 export function resolveEdgeShadow(value: Partial<EdgeShadowConfig> | undefined): EdgeShadowConfig {
   return { ...DEFAULT_EDGE_SHADOW, ...(value ?? {}) };
+}
+
+/** How deep the shadow reaches on one side: top and bottom can be set apart from the sides. */
+export function edgeShadowDepth(shadow: EdgeShadowConfig, side: keyof EdgeSides): number {
+  const vertical = side === "top" || side === "bottom";
+  return vertical && shadow.verticalSize !== undefined ? shadow.verticalSize : shadow.size;
 }
 
 /**

@@ -292,6 +292,7 @@ Gutter cells keep fixed cell numbers (left/top = 0, main = 1, right/bottom = 2),
   - **Edges** — Auto, Left & right, Top & bottom, or All edges. Auto means the scroll direction for a menu and all edges for a layout.
   - **Full strength until** — how far in from the edge the shadow stays at full strength.
   - **Faded out at** — how far in from the edge it has faded to clear.
+  - **Top & bottom faded out at** — a separate fade-out depth for the top and bottom edges (defaults to the sides' depth).
   - **Shadow color** and **Shadow strength** (0–100%).
 
 Margin, padding and gap are typed in pixels with no upper limit.
@@ -317,6 +318,8 @@ A visible styled container that lives inside a layout cell. Menus hold app widge
 - **Direction** — Vertical (top to bottom) or Horizontal (side by side).
 - **Apps shown at once** *(carousel)* — 1–12. This also sets each app's size: a carousel with fewer apps keeps the same size and leaves the rest of the row empty.
 - **Infinite scroll** *(carousel)* — loop from the last app back to the first, both ways.
+- **Show position dots** *(carousel)* — a row of dots showing where you are; click one to jump there.
+- **Peek at neighbours** *(carousel)* — how many pixels of the apps just out of view show at each end, so it's clear there's more to scroll to.
 
 **Visuals tab** — layouts and menus share the same controls, in the same order:
 - **Margin** — space between the widget and its container. One value for all sides, or click **Set sides separately** for top / right / bottom / left.
@@ -329,6 +332,7 @@ A visible styled container that lives inside a layout cell. Menus hold app widge
   - **Edges** — Auto, Left & right, Top & bottom, or All edges. Auto means the scroll direction for a menu and all edges for a layout.
   - **Full strength until** — how far in from the edge the shadow stays at full strength.
   - **Faded out at** — how far in from the edge it has faded to clear.
+  - **Top & bottom faded out at** — a separate fade-out depth for the top and bottom edges (defaults to the sides' depth).
   - **Shadow color** and **Shadow strength** (0–100%).
 
 Margin, padding and gap are typed in pixels with no upper limit.
@@ -565,6 +569,7 @@ edgeShadow:
 | `enabled` | boolean | `false` | Turn the shadow on. |
 | `edges` | `auto` \| `horizontal` \| `vertical` \| `all` | `auto` | Which edges fade. `horizontal` = left and right. `auto` = the scroll direction for a menu, all edges for a layout. |
 | `solidSize` | number | `0` | Distance from the edge the shadow stays at full strength. Capped at `size`. |
+| `verticalSize` | number | `size` | Fade-out distance for the top and bottom edges only, so they can be lighter than the sides. |
 | `size` | number | `48` | Distance from the edge where the shadow has faded to clear. |
 | `color` | hex string | `"#000000"` | Shadow color. |
 | `opacity` | number | `80` | Strength at full strength, 0–100. |
@@ -643,6 +648,8 @@ config:
 | `direction` | `vertical` \| `horizontal` | `vertical` | — | Stack direction of child apps. |
 | `visibleCount` | number | `3` | 1–12 | Carousel: apps shown at once. Also sets the slot size, so fewer apps leave empty slots at the end instead of stretching. |
 | `infinite` | boolean | `false` | — | Carousel: loop from the last app back to the first. |
+| `showDots` | boolean | `false` | — | Carousel: show position dots; click one to jump there. |
+| `peek` | number | `0` | 0+ | Carousel: px of the neighbouring apps left showing at each end (plus `gap`). |
 | `padding` | number or sides | `12` | 0+ | Inner padding around the apps. See [Spacing values](#spacing-values). |
 | `gap` | number | `8` | 0+ | Gap between app cards. |
 | `margin` | number or sides | `0` | 0+ | Inset from cell edges. |

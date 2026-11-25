@@ -170,6 +170,13 @@ export function EdgeShadowFields({ value, autoHint, onChange }: EdgeShadowFields
           <p className="text-[11px] text-fg-subtle leading-snug -mt-2">
             Measured in from the edge. The shadow is at full strength up to the first depth, then fades to clear by the second.
           </p>
+          {shadow.edges !== "horizontal" && (
+            <NumberInput
+              label="Top & bottom faded out at"
+              value={shadow.verticalSize ?? shadow.size}
+              onChange={(verticalSize) => onChange({ ...shadow, verticalSize })}
+            />
+          )}
           <Field label="Shadow color">
             <Swatch value={shadow.color} onChange={(color) => onChange({ ...shadow, color })} />
           </Field>
