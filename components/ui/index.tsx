@@ -191,6 +191,7 @@ export function Select({
     <div className="relative">
       <select
         value={value}
+        aria-label={label}
         onChange={(e) => onChange(e.target.value)}
         className="w-full h-9 appearance-none pl-3 pr-9 text-sm text-fg bg-surface-2 border border-line rounded-lg cursor-pointer focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand/60 transition-colors"
       >
@@ -247,6 +248,7 @@ export function SliderRow({
         )}
         <input
           type="range"
+          aria-label={label}
           min={min}
           max={max}
           step={step}

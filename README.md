@@ -356,7 +356,8 @@ An app shortcut card. Apps can be floating (draggable, positioned freely on the 
   - `none` — no icon, just the text.
   - `full` — the logo fills the entire card as a background image, with the title overlaid at the top.
 - **Logo URL** — URL of the image to use as the icon or cover. If the image fails to load or no URL is set, a colored block showing the first two letters of the title is used instead.
-- **Icon zoom** *(full cover only)* — scales the cover image, 100–300%.
+- **Image fit** *(full cover only)* — **Fill the card** crops the image to the card's shape; **Whole image** shows all of it over a blurred copy of itself, so a logo isn't cut off on a wide or tall card.
+- **Icon zoom** *(full cover only)* — scales the cover image, 50–300%.
 - **Offset X** *(full cover only)* — shifts the cover image horizontally, -100 to +100%.
 - **Offset Y** *(full cover only)* — shifts the cover image vertically, -100 to +100%.
 
@@ -705,7 +706,8 @@ config:
 | `tooltip` | string | `""` | — | Native hover tooltip text. |
 | `logoUrl` | string | `""` | — | Image URL for the icon or cover. Falls back to initials if empty or on load error. |
 | `logoView` | `icon` \| `none` \| `full` | `icon` | — | Icon display mode. `icon` shows a square icon beside the text. `none` hides the icon. `full` fills the card with the image. |
-| `iconZoom` | number | `1` | 1–3 | Scale multiplier for the cover image. Only applies when `logoView: full`. |
+| `coverFit` | `cover` \| `contain` | `cover` | — | `cover` fills the card and crops the image. `contain` shows the whole image over a blurred copy of itself, so a logo isn't cut off on a card with a different shape. Only applies when `logoView: full`. |
+| `iconZoom` | number | `1` | 0.5–3 | Scale multiplier for the cover image. Only applies when `logoView: full`. |
 | `iconOffsetX` | number | `0` | -100–100 | Horizontal offset of the cover image as a percentage of card width. Only applies when `logoView: full`. |
 | `iconOffsetY` | number | `0` | -100–100 | Vertical offset of the cover image as a percentage of card height. Only applies when `logoView: full`. |
 | `url` | string | `""` | — | Destination URL. |
