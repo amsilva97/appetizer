@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import type { AppWidgetConfig, AppFeedConfig, FeedHeaderRow, FeedMethod } from "@/types/app-widget";
+import type { AppWidgetConfig, AppFeedConfig, CoverFit, FeedHeaderRow, FeedMethod } from "@/types/app-widget";
 import { DEFAULT_FEED_CONFIG, resolveAppPadding } from "@/types/app-widget";
 import { Divider, Select, SliderRow, TabBar, TextInput, Toggle } from "@/components/ui";
 import { SpacingFields, YamlTab } from "@/components/widgets/shared-fields";
@@ -30,6 +30,11 @@ const LOGO_VIEW_OPTIONS = [
   { value: "icon", label: "Icon"       },
   { value: "none", label: "No icon"    },
   { value: "full", label: "Full cover" },
+];
+
+const COVER_FIT_OPTIONS: { value: CoverFit; label: string }[] = [
+  { value: "cover",   label: "Fill the card (crops)"        },
+  { value: "contain", label: "Whole image (blurred edges)" },
 ];
 
 interface Props {
@@ -112,10 +117,16 @@ export default function AppWidgetFields({ value, onChange, keyNames = [], permis
           )}
           {value.logoView === "full" && (
             <>
+              <Select
+                label="Image fit"
+                value={value.coverFit ?? "cover"}
+                options={COVER_FIT_OPTIONS}
+                onChange={(v) => onChange({ ...value, coverFit: v as CoverFit })}
+              />
               <SliderRow
                 label="Icon zoom"
                 value={value.iconZoom ?? 1}
-                min={1} max={3} step={0.05}
+                min={0.5} max={3} step={0.05}
                 display={`${Math.round((value.iconZoom ?? 1) * 100)}%`}
                 onChange={(iconZoom) => onChange({ ...value, iconZoom })}
               />

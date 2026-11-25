@@ -228,13 +228,26 @@ export default function AppWidget({ config, widgetId, onClick, fillAxis }: Props
         onClick={handleClick}
       >
         {config.logoUrl && !coverErr ? (
-          <img
-            src={config.logoUrl}
-            alt=""
-            className="absolute inset-0 w-full h-full object-cover"
-            style={{ transform: iconTransform, transformOrigin: "center" }}
-            onError={() => setCoverErr(true)}
-          />
+          <>
+            {/* "Whole image": a blurred, cropped copy fills the card behind the uncropped image. */}
+            {config.coverFit === "contain" && (
+              <img
+                src={config.logoUrl}
+                alt=""
+                aria-hidden
+                data-cover-backdrop
+                className="absolute inset-0 w-full h-full object-cover scale-110 blur-2xl opacity-70"
+              />
+            )}
+            <img
+              src={config.logoUrl}
+              alt=""
+              data-cover-image
+              className={`absolute inset-0 w-full h-full ${config.coverFit === "contain" ? "object-contain" : "object-cover"}`}
+              style={{ transform: iconTransform, transformOrigin: "center" }}
+              onError={() => setCoverErr(true)}
+            />
+          </>
         ) : (
           <div
             className="absolute inset-0"

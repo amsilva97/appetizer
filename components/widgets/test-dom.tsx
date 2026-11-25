@@ -47,6 +47,11 @@ export const fire = {
     Object.getOwnPropertyDescriptor(proto, "value")!.set!.call(el, value);
     dispatch(el, new Event("input", { bubbles: true }));
   },
+  /** Pick an option in a <select>, so React's onChange runs. */
+  select: (el: HTMLSelectElement, value: string) => {
+    Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, "value")!.set!.call(el, value);
+    dispatch(el, new Event("change", { bubbles: true }));
+  },
 };
 
 export function byLabel(root: ParentNode, label: string): HTMLElement | null {

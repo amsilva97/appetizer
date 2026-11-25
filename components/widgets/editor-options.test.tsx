@@ -10,7 +10,9 @@ import { byLabel, byText, cleanup, fire, render } from "@/components/widgets/tes
 import { DEFAULT_EDGE_SHADOW } from "@/types/edge-shadow";
 import { DEFAULT_MENU_WIDGET, type MenuWidgetConfig } from "@/types/menu-widget";
 import { DEFAULT_LAYOUT_WIDGET, type LayoutWidgetConfig } from "@/types/layout-widget";
-import { DEFAULT_APP_WIDGET } from "@/types/app-widget";
+import { DEFAULT_APP_WIDGET, type AppWidgetConfig } from "@/types/app-widget";
+import AppWidget from "@/components/widgets/app-widget";
+import AppWidgetFields from "@/components/widgets/app-widget-fields";
 import { normalizeMenuConfig } from "@/lib/widget-config";
 import { useWidgetDraft, type WidgetDraftState } from "@/lib/use-widget-draft";
 import type { WidgetInstance } from "@/types/widget";
@@ -295,6 +297,36 @@ describe("number inputs", () => {
     expect(seen).toEqual([]);
     fire.change(gap, "-5");
     expect(seen).toEqual([0]);
+  });
+});
+
+describe("cover image fit", () => {
+  const cover = { ...DEFAULT_APP_WIDGET, title: "Jelly", logoView: "full" as const, logoUrl: "https://example.test/b.svg" };
+
+  test("cover is the default: one image that fills and crops", () => {
+    const { container } = render(<AppWidget config={cover} onClick={() => {}} />);
+    const imgs = container.querySelectorAll("img");
+    expect(imgs).toHaveLength(1);
+    expect(imgs[0].className).toContain("object-cover");
+  });
+
+  test("whole image shows all of it over a blurred copy that fills the card", () => {
+    const { container } = render(<AppWidget config={{ ...cover, coverFit: "contain" }} onClick={() => {}} />);
+    const backdrop = container.querySelector("[data-cover-backdrop]") as HTMLImageElement;
+    const main = container.querySelector("[data-cover-image]") as HTMLImageElement;
+    expect(backdrop.className).toContain("object-cover");
+    expect(main.className).toContain("object-contain");
+  });
+
+  test("the editor offers the fit and lets zoom go below 100%", () => {
+    let last: AppWidgetConfig | null = null;
+    const { container } = render(<AppWidgetFields value={cover} onChange={(v) => { last = v; }} />);
+    const fit = byLabel(container, "Image fit") as HTMLSelectElement;
+    expect(fit).not.toBeNull();
+    fire.select(fit, "contain");
+    expect(last!.coverFit).toBe("contain");
+    const zoom = byLabel(container, "Icon zoom") as HTMLInputElement;
+    expect(Number(zoom.min)).toBeLessThan(1);
   });
 });
 
