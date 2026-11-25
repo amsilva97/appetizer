@@ -304,6 +304,24 @@ export default function AppWidgetFields({ value, onChange, keyNames = [], permis
               <Divider />
 
               <div className="flex flex-col gap-2">
+                <span className="text-xs font-medium text-zinc-400">Lookups</span>
+                <p className="text-[10px] text-zinc-600 leading-snug">
+                  Optional. JS expression that receives <span className="font-mono text-zinc-500">body</span> and returns up to 25 URLs on the
+                  feed&apos;s host to fetch too. The transform gets their responses as <span className="font-mono text-zinc-500">lookups</span>.
+                </p>
+                <textarea
+                  value={feed.lookups ?? ""}
+                  onChange={(e) => setFeed({ lookups: e.target.value })}
+                  placeholder={"// e.g. fetch details for each item\nbody.results.map(r => `/api/v1/movie/${r.id}`)"}
+                  spellCheck={false}
+                  rows={3}
+                  className="w-full font-mono text-[11px] leading-relaxed bg-zinc-950 text-zinc-200 rounded-xl p-3 border border-zinc-800 resize-none focus:outline-none focus:ring-1 focus:ring-brand/40"
+                />
+              </div>
+
+              <Divider />
+
+              <div className="flex flex-col gap-2">
                 <span className="text-xs font-medium text-zinc-400">Transform</span>
                 <p className="text-[10px] text-zinc-600 leading-snug">
                   JS expression that receives <span className="font-mono text-zinc-500">body</span> and must return an array.

@@ -80,6 +80,7 @@ function useFeed(feed: AppFeedConfig | undefined, { page, widgetId }: FeedRef) {
               feed!.headers.filter((h) => h.key.trim()).map((h) => [h.key, h.value])
             ),
             transform: feed!.transform || undefined,
+            lookups: feed!.lookups || undefined,
           }),
           signal: ctrl.signal,
         });

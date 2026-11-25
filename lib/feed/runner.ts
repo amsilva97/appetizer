@@ -25,11 +25,12 @@ const MAX_ERROR_CHARS = 500;
  * timeout. It hands back a plain JSON string: {"value": ...} or {"error": "..."}.
  * Built-ins are captured before the transform runs so it can't swap them out.
  */
-const WRAPPER = new vm.Script(`(function (src, input) {
+const WRAPPER = new vm.Script(`(function (src, input, lookupsInput) {
   "use strict";
   var parse = JSON.parse, stringify = JSON.stringify, toStr = String;
   var FAIL = '{"error":"Transform error"}';
   globalThis.body = parse(input);
+  globalThis.lookups = parse(lookupsInput);
   var value, failed = false, msg;
   try {
     value = (0, eval)(src);
@@ -43,7 +44,7 @@ const WRAPPER = new vm.Script(`(function (src, input) {
   } catch (_) {
     return FAIL;
   }
-})(__src, __input)`);
+})(__src, __input, __lookups)`);
 
 /**
  * Run a feed transform in its own JS realm.
@@ -54,8 +55,11 @@ const WRAPPER = new vm.Script(`(function (src, input) {
  * as JSON, and the result comes back as a JSON string. The host never reads a
  * property of, or assigns into, anything the transform could have touched.
  * Only admins can author transforms.
+ *
+ * `lookups` holds the parsed responses of the feed's follow-up requests, in
+ * order (null for one that failed); the transform sees it as `lookups`.
  */
-export function runTransform(body: unknown, transformCode: string): unknown {
+export function runTransform(body: unknown, transformCode: string, lookups: readonly unknown[] = []): unknown {
   const context = vm.createContext(Object.create(null), {
     codeGeneration: { strings: true, wasm: false },
     microtaskMode: "afterEvaluate",
@@ -63,6 +67,7 @@ export function runTransform(body: unknown, transformCode: string): unknown {
   // Set before any transform code exists in this realm, so no setter can intercept them.
   context.__src = transformCode;
   context.__input = JSON.stringify(body ?? null);
+  context.__lookups = JSON.stringify(lookups);
 
   let out: unknown;
   try {
@@ -114,4 +119,31 @@ export async function fetchFeed(
   } finally {
     clearTimeout(timer);
   }
+}
+
+/**
+ * Fetch a feed's follow-up URLs in parallel with the feed's headers. One that
+ * fails, returns an error status or isn't JSON comes back as null, so a single
+ * missing item doesn't blank the whole feed. Results keep the order of `urls`.
+ */
+export async function fetchLookups(
+  urls: readonly string[],
+  headers: Record<string, string>
+): Promise<unknown[]> {
+  return Promise.all(
+    urls.map(async (url) => {
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
+      try {
+        const res = await fetch(url, { headers, signal: controller.signal });
+        if (!res.ok) return null;
+        const text = await res.text();
+        return text.length > MAX_BODY_BYTES ? null : (JSON.parse(text) as unknown);
+      } catch {
+        return null;
+      } finally {
+        clearTimeout(timer);
+      }
+    })
+  );
 }

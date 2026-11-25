@@ -14,6 +14,12 @@ export interface AppFeedConfig {
   url: string;
   headers: FeedHeaderRow[];
   transform: string;
+  /**
+   * Optional JS expression receiving `body` that returns follow-up URLs (paths
+   * or absolute URLs on the feed's host). Their parsed responses reach the
+   * transform as `lookups`, in order, with null for any that failed.
+   */
+  lookups?: string;
   pollInterval: number;
   height: number;
 }
