@@ -318,6 +318,18 @@ describe("cover image fit", () => {
     expect(main.className).toContain("object-contain");
   });
 
+  test("once loaded, the whole image is sized to its own shape with feathered edges", () => {
+    const { container } = render(<AppWidget config={{ ...cover, coverFit: "contain" }} onClick={() => {}} />);
+    const main = container.querySelector("[data-cover-image]") as HTMLImageElement;
+    Object.defineProperty(main, "naturalWidth", { value: 800 });
+    Object.defineProperty(main, "naturalHeight", { value: 500 });
+    act(() => { main.dispatchEvent(new Event("load")); });
+    const loaded = container.querySelector("[data-cover-image]") as HTMLImageElement;
+    // jsdom can't parse container-query widths, so only the shape and mask are checked here.
+    expect(loaded.style.aspectRatio).toMatch(/^1\.6( \/ 1)?$/);
+    expect(loaded.style.maskImage || loaded.style.getPropertyValue("-webkit-mask-image")).toContain("linear-gradient");
+  });
+
   test("the editor offers the fit and lets zoom go below 100%", () => {
     let last: AppWidgetConfig | null = null;
     const { container } = render(<AppWidgetFields value={cover} onChange={(v) => { last = v; }} />);

@@ -5,6 +5,7 @@ import { resolveAppPadding, type AppWidgetConfig, type AppFeedConfig } from "@/t
 import { resolveSpacing, spacingCss } from "@/types/spacing";
 import { isSafeLink, sanitizeFeedHtml } from "@/lib/feed/sanitize";
 import { useCurrentPage } from "@/lib/page-context";
+import CoverImage from "@/components/widgets/cover-image";
 
 // ─── Ping hook ────────────────────────────────────────────────────────────────
 
@@ -228,26 +229,12 @@ export default function AppWidget({ config, widgetId, onClick, fillAxis }: Props
         onClick={handleClick}
       >
         {config.logoUrl && !coverErr ? (
-          <>
-            {/* "Whole image": a blurred, cropped copy fills the card behind the uncropped image. */}
-            {config.coverFit === "contain" && (
-              <img
-                src={config.logoUrl}
-                alt=""
-                aria-hidden
-                data-cover-backdrop
-                className="absolute inset-0 w-full h-full object-cover scale-110 blur-2xl opacity-70"
-              />
-            )}
-            <img
-              src={config.logoUrl}
-              alt=""
-              data-cover-image
-              className={`absolute inset-0 w-full h-full ${config.coverFit === "contain" ? "object-contain" : "object-cover"}`}
-              style={{ transform: iconTransform, transformOrigin: "center" }}
-              onError={() => setCoverErr(true)}
-            />
-          </>
+          <CoverImage
+            src={config.logoUrl}
+            fit={config.coverFit ?? "cover"}
+            transform={iconTransform}
+            onError={() => setCoverErr(true)}
+          />
         ) : (
           <div
             className="absolute inset-0"
