@@ -11,10 +11,14 @@ interface Props {
   onError: () => void;
 }
 
-/** Soft edges so the whole image blends into the blurred copy behind it. */
+/**
+ * Soft edges so the whole image blends into the blurred copy behind it. Wide
+ * enough to hide the darker edges and bottom fade many banners have baked in,
+ * which a narrow feather leaves showing as a frame.
+ */
 const FEATHER =
-  "linear-gradient(to right, transparent, #000 7%, #000 93%, transparent), " +
-  "linear-gradient(to bottom, transparent, #000 5%, #000 95%, transparent)";
+  "linear-gradient(to right, transparent, #000 22%, #000 78%, transparent), " +
+  "linear-gradient(to bottom, transparent, #000 16%, #000 80%, transparent)";
 
 /**
  * A full-cover card's image. "cover" fills the card and crops. "contain"
@@ -68,7 +72,7 @@ export default function CoverImage({ src, fit, transform, onError }: Props) {
         alt=""
         aria-hidden
         data-cover-backdrop
-        className="absolute inset-0 w-full h-full object-cover scale-110 blur-2xl opacity-70"
+        className="absolute inset-0 w-full h-full object-cover scale-110 blur-2xl"
       />
       <div className="absolute inset-0 flex items-center justify-center" style={{ containerType: "size" }}>
         {/* eslint-disable-next-line @next/next/no-img-element -- logo URLs are arbitrary external images */}
