@@ -14,10 +14,20 @@ interface Props {
 /**
  * Fades the whole image into the blurred copy behind it. One ellipse that
  * touches the image's sides, so there are no straight edges or corners to show
- * as a box (two crossed linear fades always leave a rounded rectangle), and it
- * hides the darker edges many banners have baked in.
+ * as a box (two crossed linear fades always leave a rounded rectangle). The
+ * stops ease out instead of falling in a straight line, which would leave a
+ * visible ring where the fade starts and stops. Only the middle (the logo)
+ * stays fully sharp.
  */
-const FEATHER = "radial-gradient(ellipse closest-side at 50% 50%, #000 35%, rgba(0,0,0,.6) 65%, transparent 100%)";
+const FEATHER =
+  "radial-gradient(ellipse closest-side at 50% 50%, #000 0%, #000 28%, rgba(0,0,0,.88) 42%, " +
+  "rgba(0,0,0,.66) 55%, rgba(0,0,0,.42) 67%, rgba(0,0,0,.22) 78%, rgba(0,0,0,.08) 89%, transparent 100%)";
+
+/**
+ * The blurred copy that fills the card. Heavily blurred and enlarged, so the
+ * logo in it spreads into a soft glow rather than a blob with edges.
+ */
+const BACKDROP_STYLE: React.CSSProperties = { filter: "blur(72px) saturate(1.15)", transform: "scale(1.35)" };
 
 /**
  * A full-cover card's image. "cover" fills the card and crops. "contain"
@@ -69,7 +79,8 @@ export default function CoverImage({ src, fit, transform, onError }: Props) {
         alt=""
         aria-hidden
         data-cover-backdrop
-        className="absolute inset-0 w-full h-full object-cover scale-110 blur-2xl"
+        className="absolute inset-0 w-full h-full object-cover"
+        style={BACKDROP_STYLE}
       />
       <div className="absolute inset-0 flex items-center justify-center" style={{ containerType: "size" }}>
         {/* eslint-disable-next-line @next/next/no-img-element -- logo URLs are arbitrary external images */}
