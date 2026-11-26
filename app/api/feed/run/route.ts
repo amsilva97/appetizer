@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
 import { can, getViewer, seesAllPages } from "@/lib/auth/viewer";
 import { readKeys, referencesKeys } from "@/lib/auth/keys";
-import { substituteHeaders, fetchFeed, runTransform } from "@/lib/feed/runner";
+import { substituteHeaders, fetchFeed, fetchLookups, runTransform } from "@/lib/feed/runner";
+import { resolveLookupUrls } from "@/lib/feed/lookups";
 import { findSavedFeed } from "@/lib/feed/resolve";
 
 interface RunRequest {
@@ -12,12 +13,15 @@ interface RunRequest {
   url?: string;
   headers?: Record<string, string>;
   transform?: string;
+  lookups?: string;
 }
 
 interface FeedJob {
   url: string;
   headers: Record<string, string>;
   transform?: string;
+  /** Expression returning follow-up URLs on the feed's host. */
+  lookups?: string;
 }
 
 const MAX_TRANSFORM_CHARS = 4096;
@@ -49,7 +53,7 @@ async function resolveJob(body: RunRequest): Promise<FeedJob | NextResponse> {
     // Editors without keys:read fall through to the saved feed, so keyed feeds
     // still load for them; they just can't preview changes to one.
     if (!Object.values(headers).some(referencesKeys) || can(viewer, "keys:read")) {
-      return { url: body.url, headers, transform: body.transform };
+      return { url: body.url, headers, transform: body.transform, lookups: body.lookups };
     }
   }
 
@@ -66,6 +70,7 @@ async function resolveJob(body: RunRequest): Promise<FeedJob | NextResponse> {
       (feed.headers ?? []).filter((h) => h.key.trim()).map((h) => [h.key, h.value])
     ),
     transform: feed.transform || undefined,
+    lookups: feed.lookups || undefined,
   };
 }
 
@@ -82,13 +87,16 @@ export async function POST(request: Request) {
 
   const job = await resolveJob(body);
   if (job instanceof NextResponse) return job;
-  const { url, headers, transform } = job;
+  const { url, headers, transform, lookups } = job;
 
   if (!isValidUrl(url)) {
     return NextResponse.json({ error: "Invalid or missing URL" }, { status: 400 });
   }
   if (typeof transform === "string" && transform.length > MAX_TRANSFORM_CHARS) {
     return NextResponse.json({ error: `Transform too long (max ${MAX_TRANSFORM_CHARS} chars)` }, { status: 400 });
+  }
+  if (lookups !== undefined && (typeof lookups !== "string" || lookups.length > MAX_TRANSFORM_CHARS)) {
+    return NextResponse.json({ error: `Lookups must be an expression of at most ${MAX_TRANSFORM_CHARS} chars` }, { status: 400 });
   }
 
   const resolvedHeaders = substituteHeaders(headers, readKeys());
@@ -106,9 +114,21 @@ export async function POST(request: Request) {
     return NextResponse.json({ data: responseBody });
   }
 
+  let lookupResults: unknown[] = [];
+  if (lookups) {
+    let lookupUrls: string[];
+    try {
+      lookupUrls = resolveLookupUrls(runTransform(responseBody, lookups), url);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Lookups error";
+      return NextResponse.json({ error: `Lookups failed: ${msg}` }, { status: 422 });
+    }
+    lookupResults = await fetchLookups(lookupUrls, resolvedHeaders);
+  }
+
   let result: unknown;
   try {
-    result = runTransform(responseBody, transform);
+    result = runTransform(responseBody, transform, lookupResults);
   } catch (err) {
     const msg = err instanceof Error ? err.message : "Transform error";
     return NextResponse.json({ error: `Transform failed: ${msg}` }, { status: 422 });

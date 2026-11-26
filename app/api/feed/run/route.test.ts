@@ -7,6 +7,7 @@ const viewer = vi.fn<() => Promise<Viewer>>();
 const findSavedFeed = vi.fn();
 const fetchFeed = vi.fn();
 const runTransform = vi.fn();
+const fetchLookups = vi.fn();
 
 vi.mock("@/lib/auth/viewer", () => ({
   getViewer: () => viewer(),
@@ -19,6 +20,7 @@ vi.mock("@/lib/feed/runner", () => ({
   substituteHeaders: (h: Record<string, string>) => h,
   fetchFeed: (...a: unknown[]) => fetchFeed(...a),
   runTransform: (...a: unknown[]) => runTransform(...a),
+  fetchLookups: (...a: unknown[]) => fetchLookups(...a),
 }));
 
 const { POST } = await import("./route");
@@ -85,7 +87,7 @@ describe("POST /api/feed/run", () => {
     expect(res.status).toBe(200);
     expect(findSavedFeed).toHaveBeenCalledWith("home", "w", USER.permissions, false);
     expect(fetchFeed).toHaveBeenCalledWith(SAVED.url, { "X-Api-Key": "{{key}}" });
-    expect(runTransform).toHaveBeenCalledWith({ items: [1] }, SAVED.transform);
+    expect(runTransform).toHaveBeenCalledWith({ items: [1] }, SAVED.transform, []);
   });
 
   test("non-admins get 404 for widgets they can't see", async () => {
@@ -116,5 +118,45 @@ describe("POST /api/feed/run", () => {
     const res = await call({ url: "file:///etc/passwd" });
     expect(res.status).toBe(400);
     expect(fetchFeed).not.toHaveBeenCalled();
+  });
+
+  describe("lookups", () => {
+    test("runs the saved lookups and hands their results to the transform", async () => {
+      viewer.mockResolvedValue(USER);
+      findSavedFeed.mockReturnValue({ ...SAVED, lookups: "body.ids.map(i => '/item/' + i)" });
+      fetchFeed.mockResolvedValue({ ids: [1, 2] });
+      runTransform.mockImplementation((_b: unknown, code: string) =>
+        code.startsWith("body.ids") ? ["/item/1", "/item/2"] : ["done"]
+      );
+      fetchLookups.mockResolvedValue([{ name: "one" }, null]);
+
+      // A non-admin's own lookups are ignored like the rest of their config.
+      const res = await call({ page: "home", widgetId: "w", lookups: "['http://10.0.1.1/']" });
+
+      expect(res.status).toBe(200);
+      expect(fetchLookups).toHaveBeenCalledWith(
+        ["https://saved.test/item/1", "https://saved.test/item/2"],
+        { "X-Api-Key": "{{key}}" }
+      );
+      expect(runTransform).toHaveBeenLastCalledWith({ ids: [1, 2] }, SAVED.transform, [{ name: "one" }, null]);
+      expect(await res.json()).toEqual({ data: ["done"] });
+    });
+
+    test("refuses lookups that leave the feed's host", async () => {
+      viewer.mockResolvedValue(ADMIN);
+      runTransform.mockReturnValue(["http://elsewhere.test/x"]);
+      const res = await call({ url: "https://draft.test/api", lookups: "L", transform: "body" });
+      expect(res.status).toBe(422);
+      expect(fetchLookups).not.toHaveBeenCalled();
+    });
+
+    test("admins can preview unsaved lookups", async () => {
+      viewer.mockResolvedValue(ADMIN);
+      runTransform.mockImplementation((_b: unknown, code: string) => (code === "L" ? ["/a"] : []));
+      fetchLookups.mockResolvedValue([{}]);
+      const res = await call({ url: "https://draft.test/api", lookups: "L", transform: "T" });
+      expect(res.status).toBe(200);
+      expect(fetchLookups).toHaveBeenCalledWith(["https://draft.test/a"], {});
+    });
   });
 });

@@ -417,6 +417,16 @@ Only admins can run feed config sent from the browser (the editor needs this to 
   </div>`
   ```
 
+- **Lookups** *(optional)* — a JavaScript expression that receives `body` and returns up to 25 more URLs to fetch, for APIs whose list endpoint only gives IDs. Each entry can be a path (`/api/v1/movie/603`) or a full URL, and must be on the same host and port as the feed URL, since lookups are sent with the feed's headers (secret keys included). They're fetched in parallel, and the transform receives their parsed responses as `lookups`, in the same order; a lookup that fails or returns an error is `null`.
+
+  ```js
+  // Lookups: one details request per Jellyseerr request
+  body.results.map(r => `/api/v1/${r.type}/${r.media.tmdbId}`)
+
+  // Transform: titles come from the lookups
+  body.results.map((r, i) => ({ title: lookups[i]?.title ?? lookups[i]?.name, subtitle: r.status === 1 ? "pending" : "approved" }))
+  ```
+
 - **Poll every** — how often to re-fetch, in seconds, 10–300. Polling pauses automatically when the tab is hidden.
 - **Feed height** — height of the feed panel in pixels, 80–600. The panel clips content at this height; scrolling is opt-in via your HTML.
 
@@ -723,7 +733,8 @@ config:
 | `feed.method` | `none` \| `GET` | `none` | — | `none` shows no feed; `GET` fetches and displays data below the header row. |
 | `feed.url` | string | `""` | — | Endpoint URL. Must be `http://` or `https://`. |
 | `feed.headers` | array | `[]` | — | List of `{ key, value }` pairs. Use `{KEY_NAME}` in values to inject secrets server-side. |
-| `feed.transform` | string | `""` | — | JS expression receiving `body` (parsed JSON). Must return an array or an HTML string. 2-second execution timeout. |
+| `feed.transform` | string | `""` | — | JS expression receiving `body` (parsed JSON) and `lookups`. Must return an array or an HTML string. 2-second execution timeout. |
+| `feed.lookups` | string | `""` | — | Optional JS expression receiving `body` that returns up to 25 follow-up URLs on the feed's host. Their parsed responses reach the transform as `lookups` (`null` for any that failed). |
 | `feed.pollInterval` | number | `30` | 10–300 | Seconds between polls. Pauses when the tab is hidden. |
 | `feed.height` | number | `200` | 80–600 | Height of the feed panel in pixels. Content is clipped; add `overflow-y:auto` in your HTML to scroll. |
 
