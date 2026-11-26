@@ -159,7 +159,10 @@ function rowLinkProps(href: string | null) {
     role: "link",
     tabIndex: 0,
     "data-row-link": href,
-    className: "cursor-pointer hover:bg-white/[0.06] focus-visible:outline focus-visible:outline-1 focus-visible:outline-sky-400/60",
+    // An inset shadow tints the row on hover even when a row style sets a
+    // background. Table rows put it on their cells (tr shadows don't render).
+    className:
+      "cursor-pointer [&:not(tr)]:hover:shadow-[inset_0_0_0_9999px_rgba(255,255,255,0.08)] [&:hover>td]:shadow-[inset_0_0_0_9999px_rgba(255,255,255,0.08)] focus-visible:outline focus-visible:outline-1 focus-visible:outline-sky-400/60",
     onClick: (e: MouseEvent<HTMLElement>) => {
       if ((e.target as HTMLElement).closest("a")) return;
       if (window.getSelection()?.toString()) return;
