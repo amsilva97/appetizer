@@ -1,37 +1,11 @@
 import { resolveSpacing, type Spacing, type SpacingValue } from "./spacing";
+import type { AppFeedConfig } from "./feed";
 
 export type LogoView = "icon" | "none" | "full";
 export type CoverFit = "cover" | "contain";
-export type FeedMethod = "none" | "GET";
 
-export interface FeedHeaderRow {
-  key: string;
-  value: string;
-}
-
-export interface AppFeedConfig {
-  method: FeedMethod;
-  url: string;
-  headers: FeedHeaderRow[];
-  transform: string;
-  /**
-   * Optional JS expression receiving `body` that returns follow-up URLs (paths
-   * or absolute URLs on the feed's host). Their parsed responses reach the
-   * transform as `lookups`, in order, with null for any that failed.
-   */
-  lookups?: string;
-  pollInterval: number;
-  height: number;
-}
-
-export const DEFAULT_FEED_CONFIG: AppFeedConfig = {
-  method: "none",
-  url: "",
-  headers: [],
-  transform: "",
-  pollInterval: 30,
-  height: 200,
-};
+export type { AppFeedConfig, FeedHeaderRow, FeedMethod } from "./feed";
+export { DEFAULT_FEED_CONFIG } from "./feed";
 
 export interface AppWidgetConfig {
   title: string;
