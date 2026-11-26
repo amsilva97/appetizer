@@ -1,5 +1,6 @@
 import type { WidgetInstance } from "@/types/widget";
 import type { AppWidgetConfig } from "@/types/app-widget";
+import type { MobileSlot } from "@/types/mobile";
 import { referencesKeys } from "@/lib/auth/keys";
 import { filterWidgets } from "@/lib/data/layouts";
 
@@ -13,7 +14,7 @@ export interface EditorScope {
 }
 
 export type MergeResult =
-  | { ok: true; widgets: WidgetInstance[]; mobileSlots: string[] | undefined }
+  | { ok: true; widgets: WidgetInstance[]; mobileSlots: MobileSlot[] | undefined }
   | { ok: false; error: string };
 
 function feedOf(w: WidgetInstance | undefined): AppWidgetConfig["feed"] | undefined {
@@ -30,11 +31,11 @@ function sameFeedTarget(a: AppWidgetConfig["feed"], b: AppWidgetConfig["feed"]):
   return a.url === b.url && JSON.stringify(a.headers ?? []) === JSON.stringify(b.headers ?? []);
 }
 
-/** Put ids back at the positions they had before, around the editor's order. */
-function reinsert(slots: string[], previous: string[], keep: Set<string>): string[] {
-  const out = slots.filter((id) => !keep.has(id));
-  previous.forEach((id, i) => {
-    if (keep.has(id)) out.splice(Math.min(i, out.length), 0, id);
+/** Put kept slots back at the positions they had before, around the editor's order. */
+function reinsert(slots: MobileSlot[], previous: MobileSlot[], keep: Set<string>): MobileSlot[] {
+  const out = slots.filter((s) => !keep.has(s.id));
+  previous.forEach((s, i) => {
+    if (keep.has(s.id)) out.splice(Math.min(i, out.length), 0, s);
   });
   return out;
 }
@@ -50,8 +51,8 @@ function reinsert(slots: string[], previous: string[], keep: Set<string>): strin
  * with keys:read; otherwise an editor could send a key to their own server.
  */
 export function mergeEditorChanges(
-  saved: { widgets?: WidgetInstance[]; mobileSlots?: string[] },
-  submitted: { widgets: WidgetInstance[]; mobileSlots?: string[] },
+  saved: { widgets?: WidgetInstance[]; mobileSlots?: MobileSlot[] },
+  submitted: { widgets: WidgetInstance[]; mobileSlots?: MobileSlot[] },
   scope: EditorScope
 ): MergeResult {
   const savedWidgets = saved.widgets ?? [];

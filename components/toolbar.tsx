@@ -9,6 +9,7 @@ import { TOOLBAR_DEFAULTS } from "@/types/toolbar";
 import { GearIcon, PlusIcon } from "@/components/toolbar-icons";
 import { GUEST_NAME, signOut } from "@/lib/auth/client";
 import ProfileMenu from "@/components/profile-menu";
+import PagePicker from "@/components/mobile/page-picker";
 
 // ─── ClientPortal ─────────────────────────────────────────────────────────────
 
@@ -281,6 +282,8 @@ interface ToolbarProps {
   mobileEditorOpen?: boolean;
   onMobileEditorToggle?: () => void;
   mobileEnabled?: boolean;
+  /** Phone view: show only the current page's name (tap to pick another) instead of tabs. */
+  phone?: boolean;
 }
 
 export default function Toolbar({
@@ -302,9 +305,10 @@ export default function Toolbar({
   mobileEditorOpen,
   onMobileEditorToggle,
   mobileEnabled,
+  phone = false,
 }: ToolbarProps) {
   const editing = canEdit && editMode;
-  const showTabs = pages.length > 1 || (editing && pages.length >= 1);
+  const showTabs = !phone && (pages.length > 1 || (editing && pages.length >= 1));
 
   const [settingsPage, setSettingsPage] = useState<string | null>(null);
   const [settingsAnchor, setSettingsAnchor] = useState<{ x: number; y: number } | null>(null);
@@ -361,7 +365,7 @@ export default function Toolbar({
   return (
     <>
       <div
-        className="absolute top-0 left-0 right-0 z-20 border-b border-white/[0.06] flex items-center px-6 gap-4"
+        className={`absolute top-0 left-0 right-0 z-20 border-b border-white/[0.06] flex items-center gap-4 ${phone ? "px-4" : "px-6"}`}
         style={{
           backgroundColor: bgColor,
           backdropFilter: `blur(${blur}px)`,
@@ -438,7 +442,13 @@ export default function Toolbar({
           </div>
         )}
 
-        {!showTabs && <div className="flex-1" />}
+        {phone && (
+          <div className="flex-1 min-w-0 flex justify-center">
+            <PagePicker pages={pages} currentPage={currentPage} onPick={(name) => onPageChange?.(name)} color={tabColor} activeColor={activeTabColor} />
+          </div>
+        )}
+
+        {!showTabs && !phone && <div className="flex-1" />}
 
         <div className="flex items-center gap-2 shrink-0">
           <ProfileMenu

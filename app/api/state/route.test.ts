@@ -54,8 +54,13 @@ afterAll(() => rmSync(root, { recursive: true, force: true }));
 
 async function state() {
   const res = await GET(new Request("http://localhost/api/state"));
-  return (await res.json()) as { layout: { widgets: { id: string }[]; mobile: { slots: string[] } } };
+  return (await res.json()) as {
+    pages: { name: string; phone?: boolean }[];
+    layout: { widgets: { id: string }[]; mobile: { slots: { id: string }[] } };
+  };
 }
+
+const slotIds = (layout: { mobile: { slots: { id: string }[] } }) => layout.mobile.slots.map((s) => s.id);
 
 describe("GET /api/state hides restricted apps on desktop and phone", () => {
   test.each([
@@ -66,13 +71,13 @@ describe("GET /api/state hides restricted apps on desktop and phone", () => {
     session.mockResolvedValue(s);
     const { layout } = await state();
     expect(layout.widgets.filter((w) => w.id !== "tools").map((w) => w.id)).toEqual(expected);
-    expect(layout.mobile.slots).toEqual(expected);
+    expect(slotIds(layout)).toEqual(expected);
   });
 
   test("admins get everything", async () => {
     session.mockResolvedValue({ loggedIn: true, role: "admin", username: "root" });
     const { layout } = await state();
-    expect(layout.mobile.slots).toEqual(["open", "locked", "media-only", "in-locked-menu"]);
+    expect(slotIds(layout)).toEqual(["open", "locked", "media-only", "in-locked-menu"]);
   });
 
   test("an admin outside the IP allowlist still sees everything (admin-read)", async () => {
@@ -82,12 +87,53 @@ describe("GET /api/state hides restricted apps on desktop and phone", () => {
     );
     session.mockResolvedValue({ loggedIn: true, role: "admin", username: "root" });
     const { layout } = await state();
-    expect(layout.mobile.slots).toEqual(["open", "locked", "media-only", "in-locked-menu"]);
+    expect(slotIds(layout)).toEqual(["open", "locked", "media-only", "in-locked-menu"]);
   });
 
   test("a user granted admin-read sees everything", async () => {
     session.mockResolvedValue({ loggedIn: true, role: "user", username: "reader" });
     const { layout } = await state();
-    expect(layout.mobile.slots).toEqual(["open", "locked", "media-only", "in-locked-menu"]);
+    expect(slotIds(layout)).toEqual(["open", "locked", "media-only", "in-locked-menu"]);
+  });
+});
+
+describe("GET /api/state marks which pages have a phone version", () => {
+  beforeEach(() => {
+    writeFileSync(
+      join(root, "data", "index.yaml"),
+      yaml.dump({
+        active: "home",
+        mobileEnabled: true,
+        pages: [
+          { name: "home", label: "Home", permissions: [] },
+          { name: "empty", label: "Empty", permissions: [] },
+          { name: "secret", label: "Secret", permissions: [] },
+        ],
+      })
+    );
+    writeFileSync(join(root, "data", "empty.yaml"), yaml.dump({ name: "empty", widgets: [app("a")] }));
+    writeFileSync(
+      join(root, "data", "secret.yaml"),
+      yaml.dump({ name: "secret", widgets: [app("s", { permissions: ["admin"] })], mobile: { slots: [{ id: "s", span: "half" }] } })
+    );
+  });
+
+  test("a page counts only if the viewer would see a card on it", async () => {
+    session.mockResolvedValue({ loggedIn: false });
+    const { pages } = await state();
+    expect(pages.map((p) => [p.name, p.phone])).toEqual([["home", true], ["empty", false], ["secret", false]]);
+  });
+
+  test("admins see the restricted card, so that page counts for them", async () => {
+    session.mockResolvedValue({ loggedIn: true, role: "admin", username: "root" });
+    const { pages } = await state();
+    expect(pages.find((p) => p.name === "secret")?.phone).toBe(true);
+  });
+
+  test("pages aren't checked while the phone view is off", async () => {
+    writeFileSync(join(root, "data", "index.yaml"), yaml.dump({ active: "home", pages: [{ name: "home", label: "Home", permissions: [] }] }));
+    session.mockResolvedValue({ loggedIn: false });
+    const { pages } = await state();
+    expect(pages[0].phone).toBeUndefined();
   });
 });

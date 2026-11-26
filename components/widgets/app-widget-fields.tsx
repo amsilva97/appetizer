@@ -27,6 +27,7 @@ const LOGO_VIEW_OPTIONS = [
   { value: "icon", label: "Icon"       },
   { value: "none", label: "No icon"    },
   { value: "full", label: "Full cover" },
+  { value: "compact", label: "Compact" },
 ];
 
 const COVER_FIT_OPTIONS: { value: CoverFit; label: string }[] = [

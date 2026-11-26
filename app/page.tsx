@@ -29,6 +29,20 @@ import { cellTargetsFromElements, type CellTarget } from "@/lib/cell-targets";
 import { resolveSpacing } from "@/types/spacing";
 import { useWidgetDraft } from "@/lib/use-widget-draft";
 import { redirectIfSignInRequired } from "@/lib/auth/client";
+import { readLastPage, saveLastPage } from "@/lib/last-page";
+
+/** What GET /api/state sends back. */
+interface StateResponse {
+  pages?: PageMeta[];
+  activePage?: string | null;
+  layout?: {
+    background?: BackgroundConfig;
+    widgets?: WidgetInstance[];
+    toolbarStyle?: ToolbarStyle;
+    mobile?: MobileConfig;
+  } | null;
+  mobileEnabled?: boolean;
+}
 
 interface SceneConfig {
   background: BackgroundConfig;
@@ -99,25 +113,33 @@ export default function Home() {
   const canDeletePage = caps.has("pages:delete");
   const adminLinks = adminTabsFor(caps);
 
+  /** Show a page as /api/state returned it. */
+  function applyState(data: StateResponse, fallbackName: string) {
+    setPages(data.pages ?? []);
+    const name = data.activePage ?? fallbackName;
+    setCurrentPage(name);
+    currentPageRef.current = name;
+    if (typeof data.mobileEnabled === "boolean") setMobileEnabled(data.mobileEnabled);
+    const layout = data.layout;
+    setBg(layout?.background ?? BACKGROUND_PRESETS["Ocean Dusk"]);
+    setWidgets(Array.isArray(layout?.widgets) ? layout.widgets : []);
+    setToolbarStyle(layout?.toolbarStyle ?? {});
+    setMobileConfig(layout?.mobile ?? DEFAULT_MOBILE);
+  }
+
+  /** Fetch a page's state; null when the visitor is being sent to sign in. */
+  async function fetchState(pageName: string | null): Promise<StateResponse | null> {
+    const res = await fetch(`/api/state${pageName ? `?page=${encodeURIComponent(pageName)}` : ""}`);
+    // Guest viewing is off and this visitor isn't signed in: go sign in.
+    if (redirectIfSignInRequired(res)) return null;
+    return (await res.json()) as StateResponse;
+  }
+
   useEffect(() => {
-    fetch("/api/state")
-      // Guest viewing is off and this visitor isn't signed in: go sign in.
-      .then((r) => (redirectIfSignInRequired(r) ? null : r.json()))
-      .then((data) => {
-        if (!data) return;
-        const { pages: pg, activePage, layout, mobileEnabled: me } = data;
-        const pageList: PageMeta[] = pg ?? [];
-        setPages(pageList);
-        setCurrentPage(activePage ?? "");
-        currentPageRef.current = activePage ?? "";
-        setMobileEnabled(me ?? false);
-        if (layout) {
-          if (layout.background) setBg(layout.background);
-          if (Array.isArray(layout.widgets)) setWidgets(layout.widgets);
-          setToolbarStyle(layout.toolbarStyle ?? {});
-          setMobileConfig(layout.mobile ?? DEFAULT_MOBILE);
-        }
-      })
+    // Open on the page this browser was last on; the server falls back to the default page if it's gone.
+    fetchState(readLastPage())
+      .then((data) => { if (data) applyState(data, ""); })
+      .catch(() => {})
       .finally(() => setLoaded(true));
 
     fetch("/api/me")
@@ -161,30 +183,29 @@ export default function Home() {
     if (pageName === currentPageRef.current) return;
     setLoaded(false);
     try {
-      const res = await fetch(`/api/state?page=${encodeURIComponent(pageName)}`);
-      if (redirectIfSignInRequired(res)) return;
-      const data = await res.json();
-      const pageList: PageMeta[] = data.pages ?? [];
-      setPages(pageList);
-      setCurrentPage(data.activePage ?? pageName);
-      currentPageRef.current = data.activePage ?? pageName;
-      if (data.layout) {
-        setBg(data.layout.background ?? BACKGROUND_PRESETS["Ocean Dusk"]);
-        setWidgets(data.layout.widgets ?? []);
-        setToolbarStyle(data.layout.toolbarStyle ?? {});
-        setMobileConfig(data.layout.mobile ?? DEFAULT_MOBILE);
-      } else {
-        setBg(BACKGROUND_PRESETS["Ocean Dusk"]);
-        setWidgets([]);
-        setToolbarStyle({});
-        setMobileConfig(DEFAULT_MOBILE);
-      }
+      const data = await fetchState(pageName);
+      if (!data) return;
+      applyState(data, pageName);
       openEditor(null);
       setMenuPos(null);
     } finally {
       setLoaded(true);
     }
   }
+
+  /** Load the current page again, for the phone's pull to refresh. */
+  async function refreshPage() {
+    try {
+      const data = await fetchState(currentPageRef.current || null);
+      if (data) applyState(data, currentPageRef.current);
+    } catch {
+      // offline or the server didn't answer: keep showing what's there
+    }
+  }
+
+  useEffect(() => {
+    if (currentPage) saveLastPage(currentPage);
+  }, [currentPage]);
 
   async function handleCreatePage() {
     const label = prompt("New page name:");
@@ -385,6 +406,23 @@ export default function Home() {
     () => false
   );
   const showMobileView = mobileEnabled && isMobileViewport && !editMode;
+  // The phone only offers pages that have a phone version.
+  const phonePages = pages.filter((p) => p.phone);
+  const onPhonePage = phonePages.some((p) => p.name === currentPage);
+
+  // The page the phone last tried to move to, so a failed load isn't retried in a loop.
+  const phoneRedirectRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    // Landed on a page with nothing for the phone (the default page, say): go to the first one that has something.
+    if (!loaded || !showMobileView || onPhonePage || phonePages.length === 0) return;
+    const target = phonePages[0].name;
+    if (phoneRedirectRef.current === target) return;
+    phoneRedirectRef.current = target;
+    switchPage(target).catch(() => {});
+    // switchPage is recreated every render; the page, not the function, is what this reacts to.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loaded, showMobileView, onPhonePage, phonePages[0]?.name]);
 
   return (
     <PageContext.Provider value={currentPage}>
@@ -396,7 +434,15 @@ export default function Home() {
       onContextMenu={handleCanvasContextMenu}
     >
       {showMobileView && (
-        <MobileView config={mobileConfig} widgets={widgets} background={bg} />
+        <MobileView
+          config={mobileConfig}
+          widgets={widgets}
+          background={bg}
+          pages={phonePages}
+          currentPage={currentPage}
+          onPageChange={switchPage}
+          onRefresh={refreshPage}
+        />
       )}
 
       {!showMobileView && <BackgroundRenderer config={bg} />}
@@ -418,9 +464,10 @@ export default function Home() {
         adminLinks={adminLinks}
         loggedIn={loggedIn}
         username={username}
-        pages={pages}
+        pages={showMobileView ? phonePages : pages}
         currentPage={currentPage}
         onPageChange={switchPage}
+        phone={showMobileView}
         onCreatePage={canCreatePage ? handleCreatePage : undefined}
         onUpdatePage={canEdit ? handleUpdatePage : undefined}
         onDeletePage={canDeletePage ? handleDeletePage : undefined}

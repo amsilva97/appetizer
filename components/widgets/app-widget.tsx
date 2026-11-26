@@ -159,6 +159,8 @@ function AppIcon({ url, title, size = 36 }: { url?: string; title: string; size?
   );
 }
 
+const COMPACT_ICON_SIZE = 40;
+
 // ─── Widget ───────────────────────────────────────────────────────────────────
 
 interface Props {
@@ -179,10 +181,12 @@ export default function AppWidget({ config, widgetId, onClick, fillAxis }: Props
   const page = useCurrentPage();
   const pingUrl = config.ping ? (config.pingUrl || config.url) || undefined : undefined;
   const ping = usePing(pingUrl, config.pingInterval);
-  const feed = useMemo(() => (config.feed ? normalizeFeed(config.feed) : null), [config.feed]);
+  const { logoView, openUrl } = config;
+  // Full cover and compact cards have no room for a feed, so they don't poll one either.
+  const drawsFeed = logoView === "icon" || logoView === "none";
+  const feed = useMemo(() => (config.feed && drawsFeed ? normalizeFeed(config.feed) : null), [config.feed, drawsFeed]);
   const { data: feedData, status: feedStatus, hasLoaded: feedHasLoaded, error: feedError } = useFeed(feed, { page, widgetId });
 
-  const { logoView, openUrl } = config;
   const [coverErr, setCoverErr] = useState(false);
 
   const margin = resolveSpacing(config.margin, 0);
@@ -247,6 +251,33 @@ export default function AppWidget({ config, widgetId, onClick, fillAxis }: Props
           {config.subtitle && (
             <p className="text-[11px] text-white/65 truncate mt-0.5 drop-shadow">{config.subtitle}</p>
           )}
+        </div>
+      </div>
+    );
+  }
+
+  // ── Compact: icon above the name, like a phone home screen ─────────────────
+  if (logoView === "compact") {
+    return (
+      <div
+        title={tooltip}
+        className={`relative select-none overflow-hidden border border-white/10 bg-white/[0.07] backdrop-blur-xl shadow-xl shadow-black/30 flex flex-col items-center justify-center gap-1.5 ${cursor} transition-all duration-150 hover:bg-white/[0.11] hover:border-white/18`}
+        style={{
+          ...cardStyle,
+          height: fillH ? cardH : config.height + padding.top + padding.bottom,
+          paddingTop: padding.top,
+          paddingRight: padding.right,
+          paddingBottom: padding.bottom,
+          paddingLeft: padding.left,
+        }}
+        onClick={handleClick}
+      >
+        <AppIcon url={config.logoUrl} title={config.title} size={COMPACT_ICON_SIZE} />
+        <div className="flex items-center justify-center gap-1 min-w-0 max-w-full">
+          <span className="text-[12px] font-semibold text-white leading-tight truncate">
+            {config.title || "Untitled"}
+          </span>
+          {ping !== null && <Dot status={ping} />}
         </div>
       </div>
     );
