@@ -16,6 +16,18 @@ const rows = [
 const rowTexts = (c: HTMLElement) => [...c.querySelectorAll("tbody tr")].map((tr) => tr.querySelector("td")!.textContent);
 
 describe("FeedView", () => {
+  test("a beside sub value can wrap below instead of being cut off, and its full text shows on hover", () => {
+    const { container } = render(
+      <FeedView
+        feed={feed({ columns: [{ label: "Status", type: "badge", key: "state", subKey: "note", subDirection: "beside" }] })}
+        rows={[rows[0]]}
+      />
+    );
+    const wrap = container.querySelector('[data-sub="beside"]')!;
+    expect(wrap.className).toContain("flex-wrap");
+    expect(container.querySelector('[title="awaiting approval"]')?.textContent).toBe("awaiting approval");
+  });
+
   test("shows a header per column and each row's values", () => {
     const { container } = render(
       <FeedView

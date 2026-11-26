@@ -85,14 +85,16 @@ function Cell({ column, row }: { column: FeedColumn; row: unknown }) {
   const sub = column.subKey ? toText(getPath(row, column.subKey)) : "";
   const subStyle = css(resolveStyle(column.subStyle, row));
   const beside = column.subDirection === "beside";
+  // Beside: the sub value sits next to the main one when it fits and wraps
+  // below it when it doesn't, so neither gets cut off.
   return (
     <td className="px-1.5 py-[5px] border-t border-white/[0.08] overflow-hidden text-ellipsis whitespace-nowrap align-middle">
-      <div className={beside ? "flex items-center gap-1.5 min-w-0" : "min-w-0"}>
-        <div className="min-w-0 overflow-hidden text-ellipsis whitespace-nowrap">
+      <div className={beside ? "flex flex-wrap items-center gap-x-1.5 gap-y-0.5 min-w-0" : "min-w-0"} data-sub={beside ? "beside" : "below"}>
+        <div className="min-w-0 max-w-full overflow-hidden text-ellipsis whitespace-nowrap">
           <MainValue column={column} row={row} />
         </div>
         {sub && (
-          <div className="min-w-0 overflow-hidden text-ellipsis whitespace-nowrap text-[10px] text-zinc-400" style={subStyle}>
+          <div className="min-w-0 max-w-full overflow-hidden text-ellipsis whitespace-nowrap text-[10px] text-zinc-400" style={subStyle} title={sub}>
             {sub}
           </div>
         )}
