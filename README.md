@@ -377,58 +377,63 @@ An app shortcut card. Apps can be floating (draggable, positioned freely on the 
 
 **Feed tab:**
 
-Embeds a live scrollable data list directly below the app card header. The feed is part of the app widget — no separate widget type is needed.
+Shows a live list below the app card header. A feed is a list: the server fetches one URL, runs your steps over the response, and the browser shows the rows as columns.
 
-The feed runs as a server-side proxy: the browser asks `/api/feed/run` for a widget's feed, the server fetches the upstream URL, applies the transform, and returns the data. Secrets in headers are substituted server-side and never sent to the browser.
+```
+Get(url).transform(f).map(f).filter(f) ...
+```
 
-Only admins can run feed config sent from the browser (the editor needs this to preview unsaved changes). For every other user the server ignores any URL, headers or transform in the request and runs only the feed saved on that widget, and only if the user can see the page and widget. So non-admin users can't make the server fetch other URLs, run their own transform code, or inject links.
+The browser asks `/api/feed/run` for a widget's feed; the server does the fetching and runs the steps, so secret keys never reach the browser. Only layout editors can run feed config sent from the browser (the editor needs this to preview unsaved changes). Everyone else gets only the feed saved on that widget, and only if they can see the page and widget, so viewers can't make the server fetch other URLs or run their own code.
 
-- **Method** — `None` (no feed) or `GET` (fetch and display data below the header row).
-- **URL** — the endpoint to fetch. Must be `http://` or `https://`.
-- **Headers** — key/value pairs sent with every request. Use `{KEY_NAME}` in a value to inject a secret from the [Keys page](#secret-keys). The substitution happens server-side; the actual value is never exposed in the browser.
-- **Transform** — a JavaScript expression evaluated in a sandboxed `vm` context (2-second timeout, 10MB response cap). The variable `body` holds the parsed JSON response. The expression must return **either an array** (renders as a plain list) **or an HTML string** (renders as a sanitized rich panel).
+Values from the source app are always shown as **plain text** (or, for link and image columns, as a checked `http(s)` URL), never as HTML. A request title like `<img src=x onerror=…>` shows up as those characters, so data typed by other people can't inject markup or scripts into the dashboard.
 
-  ```js
-  // Array — rendered as a list of rows; add url (or link) to make the title a link
-  body.records.map(r => ({ title: r.title, subtitle: r.status, url: r.link }))
+- **Method** — `None` (no feed) or `GET`.
+- **URL** — the endpoint to fetch. Must be `http://` or `https://`. The response must be JSON.
+- **Headers** — key/value pairs sent with the request. Use `{KEY_NAME}` in a value to inject a secret from the [Keys page](#secret-keys). The substitution happens server-side.
+- **Steps** — run in the order listed; reorder them with the arrows. Each step's code evaluates to a function (helpers can be declared above it), run in a sandbox with a 2-second limit:
+  - **Transform** — gets the previous output (the response body for the first step) and returns a list. If the response is already a list you can skip it.
+  - **Map** — runs for each row and returns the new row.
+  - **Filter** — runs for each row and keeps it when it returns something truthy.
 
-  // HTML string — rendered as a rich panel (scripts stripped, links allowed)
-  `<h2>Queue</h2><table>${body.records.map(r =>
-    `<tr><td>${r.title}</td><td>${r.status}</td></tr>`
-  ).join("")}</table>`
-  ```
-
-  HTML is cleaned with DOMPurify's standard HTML profile, so links, images, tables and other normal markup work, and `style` attributes are allowed for inline CSS. Scripts, event handlers, `<style>` tags and form controls (`<form>`, `<input>`, `<button>`, …) are always removed.
-
-  Links must be absolute `http://`, `https://` or `mailto:` URLs; anything else (`javascript:`, relative paths) loses its `href`. Every link opens in a new tab with `rel="noopener noreferrer nofollow"`, and clicking one doesn't also open the app card's own URL. In array mode a row's `url` or `link` field follows the same rules.
-
-  Values from the upstream app land in your HTML as-is. If that data can be typed by other people (request titles, torrent names, …), anyone who can write it can add a link to your feed, so escape such values in the transform.
-
-  The feed container is `overflow: hidden` — it clips its content rather than scrolling itself. If you want the content to scroll, add an `overflow-y: auto` wrapper in your HTML. Because the container has an explicit pixel height, `height: 100%` and `width: 100%` resolve correctly inside it:
+  Inside any step, `get(path)` fetches a path on the **URL's host** with the **same headers** and returns the parsed JSON, or `null` if it fails. It can't reach any other host, so a key in the headers can't be sent elsewhere. Steps aren't async: `get()` returns the data directly. Requests from all rows go out together (8 at a time), and the whole run has a 10-second limit.
 
   ```js
-  `<div style="width:100%;height:100%;overflow-y:auto;padding:12px">
-    <table style="width:100%;border-collapse:collapse">
-      ${body.records.map(r =>
-        `<tr><td style="padding:4px 8px">${r.title}</td>
-             <td style="padding:4px 8px;color:#a1a1aa">${r.status}</td></tr>`
-      ).join("")}
-    </table>
-  </div>`
+  // 1. Transform: Jellyseerr wraps its list
+  body => body.results
+  // 2. Filter: hide fully available requests
+  r => r.media.status !== 5
+  // 3. Map: the list only has TMDB ids, so fetch each title
+  r => ({ ...r, title: get(`/api/v1/${r.type}/${r.media.tmdbId}`)?.title })
   ```
 
-- **Lookups** *(optional)* — a JavaScript expression that receives `body` and returns up to 25 more URLs to fetch, for APIs whose list endpoint only gives IDs. Each entry can be a path (`/api/v1/movie/603`) or a full URL, and must be on the same host and port as the feed URL, since lookups are sent with the feed's headers (secret keys included). They're fetched in parallel, and the transform receives their parsed responses as `lookups`, in the same order; a lookup that fails or returns an error is `null`.
+- **Columns** — each column has a **Label** (header text), a **Type**, a **Key** (the row path to read, e.g. `title` or `media.status`; empty means the row itself), an optional **Sub key** with a **Sub position**, and a **Width** (any CSS width, e.g. `30%` or `48px`). **Below** stacks the sub value under the main one; **Beside** puts it next to the main value and wraps it underneath when the column is too narrow, so neither is cut off (hover a sub value to see all of it). Types:
+  - `text` — the value as text.
+  - `link` — the value as text, linking to the URL at **Link URL key** (http/https only; opens in a new tab and doesn't also open the card's URL).
+  - `badge` — the value as a small pill, tinted by its `color`.
+  - `progress` — a bar for a number 0–100 (`–` when it isn't a number). The main style applies to the bar's fill.
+  - `image` — an image from the URL in the value (http/https only).
+
+  The main value and the sub value each have their own **style**: inline CSS, plus an optional **switch** on a row key with cases, e.g. "when `state` is `pending`, add `color: #fbbf24`". Data never goes into CSS; only the CSS you write does, and only on that element.
+- **Row link** — a URL template that makes each row open its own page in a new tab, e.g. `http://sonarr.example.com/series/{titleSlug}`. Put row keys in braces; `{key}` and `{{key}}` both work, and dotted keys like `{media.tmdbId}` too. Values are URL-encoded; a template that is only one placeholder (`{url}`) uses the value as the whole URL. A row is clickable only when every key has a value and the result is an http(s) URL. Rows with a link get a hover highlight (shown even over a row style's background) and a pointer cursor, and can be opened with Enter from the keyboard. Links inside a row still open on their own, and finishing a text selection doesn't open the row. These are row values, filled in the browser: `{SONARR_KEY}`-style secret keys only work in headers.
+
+  A step can build the link when the source doesn't have one. For example, a port list whose rows only have `host:port`:
 
   ```js
-  // Lookups: one details request per Jellyseerr request
-  body.results.map(r => `/api/v1/${r.type}/${r.media.tmdbId}`)
-
-  // Transform: titles come from the lookups
-  body.results.map((r, i) => ({ title: lookups[i]?.title ?? lookups[i]?.name, subtitle: r.status === 1 ? "pending" : "approved" }))
+  // Map: https for the ports that serve it, http otherwise; no link when down
+  r => ({ ...r, url: r.up ? (["8443", "50014"].includes(r.target.split(":").pop()) ? "https://" : "http://") + r.target + "/" : "" })
+  // Row link: {url}
   ```
 
-- **Poll every** — how often to re-fetch, in seconds, 10–300. Polling pauses automatically when the tab is hidden.
-- **Feed height** — height of the feed panel in pixels, 80–600. The panel clips content at this height; scrolling is opt-in via your HTML.
+- **Filter buttons** — shown above the list. Each matches rows whose **Key** equals **Equals**, optionally with a count ("2 pending"). Click toggles a button; with several on, rows matching any of them show. Double-click shows only that one (double-click it again to clear).
+- **Feed styles** — CSS for the panel, the filter bar and the header row, and a style (with switch) for each row.
+- **Poll every** — how often to re-fetch, in seconds, 10–300. Polling pauses when the tab is hidden.
+- **Feed height** — the panel height: a number of pixels, or any CSS length such as `calc(100% - 73px)`.
+
+**Limits and errors:** up to 20 steps of up to 20,000 characters each; 2 seconds per step, 5 seconds per request (the Get and each `get()`), 10 seconds per run; the first 1000 rows are shown. Only the fields the display uses (column keys, sub keys, link keys, switch keys, filter button keys and row link keys) are sent to the browser. If the source can't be reached the feed shows `Failed to load feed: …`, and a step that throws names itself, e.g. `Step 2 (map): row 3: Cannot read properties of undefined`. There is no limit on how many `get()` calls a run makes, so keep per-row lookups to endpoints that can take them.
+
+A feed with no columns shows a simple list using each row's `title` (or `name`/`label`), `subtitle` (or `status`/`description`) and `url` (or `link`). A row link works there too.
+
+Feeds saved before steps existed, with a single `transform` expression, still run: it becomes the first transform step. It must now return a list; HTML output is no longer supported.
 
 **YAML tab** — directly edit the config as YAML.
 
@@ -704,7 +709,16 @@ config:
     headers:
       - key: X-Api-Key
         value: "{SONARR_KEY}"
-    transform: "body.records.map(r => ({ title: r.title, subtitle: r.status }))"
+    steps:
+      - kind: map
+        code: "r => ({ title: r.series.title, slug: r.series.titleSlug, status: r.trackedDownloadState })"
+    columns:
+      - { label: Name, type: text, key: title }
+      - { label: Status, type: badge, key: status, width: 30% }
+    filterButtons:
+      - { label: downloading, key: status, equals: downloading, showCount: true }
+    styles: {}
+    rowLink: "https://sonarr.example.com/series/{slug}"
     pollInterval: 30
     height: 200
 ```
@@ -733,10 +747,14 @@ config:
 | `feed.method` | `none` \| `GET` | `none` | — | `none` shows no feed; `GET` fetches and displays data below the header row. |
 | `feed.url` | string | `""` | — | Endpoint URL. Must be `http://` or `https://`. |
 | `feed.headers` | array | `[]` | — | List of `{ key, value }` pairs. Use `{KEY_NAME}` in values to inject secrets server-side. |
-| `feed.transform` | string | `""` | — | JS expression receiving `body` (parsed JSON) and `lookups`. Must return an array or an HTML string. 2-second execution timeout. |
-| `feed.lookups` | string | `""` | — | Optional JS expression receiving `body` that returns up to 25 follow-up URLs on the feed's host. Their parsed responses reach the transform as `lookups` (`null` for any that failed). |
+| `feed.steps` | array | `[]` | — | `{ kind, code }` entries run in order. `kind` is `transform`, `map` or `filter`; `code` evaluates to a function and may call `get(path)`. |
+| `feed.columns` | array | `[]` | — | `{ label, type, key, subKey?, subDirection?, hrefKey?, width?, style?, subStyle? }`. `type` is `text`, `link`, `badge`, `progress` or `image`; `subDirection` is `below` or `beside`. |
+| `feed.filterButtons` | array | `[]` | — | `{ label, key, equals, showCount?, style? }` toggles shown above the list. |
+| `feed.styles` | object | `{}` | — | `{ panel?, filterBar?, header?, row? }`. `row` is a style rule. |
+| style rules | object | — | — | `{ base, switchKey?, cases?: [{ equals, style }] }`: `base` CSS plus the first case whose `equals` matches the row's value at `switchKey`. |
+| `feed.rowLink` | string | `""` | — | URL template opened when a row is clicked, e.g. `https://host/item/{id}` (`{{id}}` also works). Empty = rows aren't clickable. |
 | `feed.pollInterval` | number | `30` | 10–300 | Seconds between polls. Pauses when the tab is hidden. |
-| `feed.height` | number | `200` | 80–600 | Height of the feed panel in pixels. Content is clipped; add `overflow-y:auto` in your HTML to scroll. |
+| `feed.height` | number or string | `200` | — | Panel height: pixels, or a CSS length such as `calc(100% - 73px)`. |
 
 ---
 
@@ -1045,7 +1063,9 @@ widgets:
         headers:
           - key: X-Api-Key
             value: "{SONARR_KEY}"
-        transform: "body.records.map(r => ({ title: r.title, subtitle: r.status }))"
+        steps:
+          - kind: map
+            code: "r => ({ title: r.series.title, subtitle: r.trackedDownloadState })"
         pollInterval: 30
         height: 200
 

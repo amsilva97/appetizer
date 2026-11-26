@@ -1,9 +1,10 @@
 "use client";
 
-import { useEffect, useRef, useState, type MouseEvent } from "react";
+import { useEffect, useMemo, useRef, useState, type MouseEvent } from "react";
 import { resolveAppPadding, type AppWidgetConfig, type AppFeedConfig } from "@/types/app-widget";
 import { resolveSpacing, spacingCss } from "@/types/spacing";
-import { isSafeLink, sanitizeFeedHtml } from "@/lib/feed/sanitize";
+import { normalizeFeed } from "@/lib/feed/normalize";
+import FeedView from "@/components/widgets/feed-view";
 import { useCurrentPage } from "@/lib/page-context";
 import CoverImage from "@/components/widgets/cover-image";
 
@@ -51,9 +52,10 @@ interface FeedRef {
   widgetId?: string;
 }
 
-function useFeed(feed: AppFeedConfig | undefined, { page, widgetId }: FeedRef) {
-  const [data, setData] = useState<unknown[] | string>([]);
+function useFeed(feed: AppFeedConfig | null, { page, widgetId }: FeedRef) {
+  const [data, setData] = useState<unknown[]>([]);
   const [status, setStatus] = useState<FeedStatus>("idle");
+  const [error, setError] = useState("");
   const [hasLoaded, setHasLoaded] = useState(false);
   const abortRef = useRef<AbortController | null>(null);
 
@@ -72,28 +74,24 @@ function useFeed(feed: AppFeedConfig | undefined, { page, widgetId }: FeedRef) {
           headers: { "Content-Type": "application/json" },
           // Viewers get the feed saved on page/widgetId; the server only uses
           // the live config below for layout editors (pages:update).
-          body: JSON.stringify({
-            page,
-            widgetId,
-            url: feed!.url,
-            headers: Object.fromEntries(
-              feed!.headers.filter((h) => h.key.trim()).map((h) => [h.key, h.value])
-            ),
-            transform: feed!.transform || undefined,
-            lookups: feed!.lookups || undefined,
-          }),
+          body: JSON.stringify({ page, widgetId, feed }),
           signal: ctrl.signal,
         });
         const json = (await res.json()) as { data?: unknown[]; error?: string };
         if (!res.ok || json.error) {
+          setError(json.error ?? `HTTP ${res.status}`);
           setStatus("error");
         } else {
           setHasLoaded(true);
-          setData(json.data ?? []);
+          setData(Array.isArray(json.data) ? json.data : []);
+          setError("");
           setStatus("ok");
         }
       } catch (err) {
-        if ((err as Error).name !== "AbortError") setStatus("error");
+        if ((err as Error).name !== "AbortError") {
+          setError("Couldn't reach Appetizer");
+          setStatus("error");
+        }
       }
     }
 
@@ -107,7 +105,7 @@ function useFeed(feed: AppFeedConfig | undefined, { page, widgetId }: FeedRef) {
     };
   }, [feed, page, widgetId]);
 
-  return { data, status, hasLoaded };
+  return { data, status, hasLoaded, error };
 }
 
 // ─── Shared atoms ─────────────────────────────────────────────────────────────
@@ -134,13 +132,6 @@ function SpinnerIcon() {
       <path d="M21 12a9 9 0 1 1-6.219-8.56" />
     </svg>
   );
-}
-
-function renderValue(v: unknown): string {
-  if (v === null || v === undefined) return "";
-  if (typeof v === "string") return v;
-  if (typeof v === "number" || typeof v === "boolean") return String(v);
-  return JSON.stringify(v);
 }
 
 // ─── Icon atom ────────────────────────────────────────────────────────────────
@@ -188,7 +179,8 @@ export default function AppWidget({ config, widgetId, onClick, fillAxis }: Props
   const page = useCurrentPage();
   const pingUrl = config.ping ? (config.pingUrl || config.url) || undefined : undefined;
   const ping = usePing(pingUrl, config.pingInterval);
-  const { data: feedData, status: feedStatus, hasLoaded: feedHasLoaded } = useFeed(config.feed, { page, widgetId });
+  const feed = useMemo(() => (config.feed ? normalizeFeed(config.feed) : null), [config.feed]);
+  const { data: feedData, status: feedStatus, hasLoaded: feedHasLoaded, error: feedError } = useFeed(feed, { page, widgetId });
 
   const { logoView, openUrl } = config;
   const [coverErr, setCoverErr] = useState(false);
@@ -200,8 +192,8 @@ export default function AppWidget({ config, widgetId, onClick, fillAxis }: Props
   const borderRadius = config.borderRadius ?? 16;
   const iconTransform = `scale(${config.iconZoom ?? 1}) translate(${config.iconOffsetX ?? 0}%, ${config.iconOffsetY ?? 0}%)`;
 
-  const hasActiveFeed = config.feed && config.feed.method !== "none";
-  const feedHeight = config.feed?.height ?? 200;
+  const hasActiveFeed = feed?.method === "GET";
+  const feedHeight = feed?.height ?? 200;
 
   const fillW = fillAxis === "width" || fillAxis === "both";
   const fillH = fillAxis === "height" || fillAxis === "both";
@@ -309,53 +301,10 @@ export default function AppWidget({ config, widgetId, onClick, fillAxis }: Props
           onClick={stopLinkClicks}
         >
           {feedStatus === "error" && (
-            <p className="p-3 text-xs text-red-400">Failed to load feed.</p>
+            <p className="p-3 text-xs text-red-400 break-words">Failed to load feed{feedError ? `: ${feedError}` : "."}</p>
           )}
-          {(feedStatus === "ok" || (feedStatus === "loading" && feedHasLoaded)) && typeof feedData === "string" && (
-            <div
-              className="w-full h-full text-xs text-zinc-200 leading-relaxed
-                [&_h1]:text-sm [&_h1]:font-bold [&_h1]:text-zinc-100 [&_h1]:mb-1
-                [&_h2]:text-xs [&_h2]:font-semibold [&_h2]:text-zinc-200 [&_h2]:mb-1
-                [&_h3]:text-xs [&_h3]:font-semibold [&_h3]:text-zinc-300
-                [&_p]:mb-1 [&_ul]:list-disc [&_ul]:pl-4 [&_ol]:list-decimal [&_ol]:pl-4
-                [&_li]:mb-0.5 [&_table]:w-full [&_table]:text-left
-                [&_th]:text-zinc-400 [&_th]:font-medium [&_th]:pb-1
-                [&_td]:py-0.5 [&_td]:pr-3
-                [&_hr]:border-white/10 [&_hr]:my-2
-                [&_code]:bg-white/[0.06] [&_code]:px-1 [&_code]:rounded
-                [&_pre]:bg-white/[0.06] [&_pre]:p-2 [&_pre]:rounded [&_pre]:overflow-x-auto
-                [&_strong]:text-zinc-100 [&_mark]:bg-yellow-400/20 [&_mark]:text-yellow-200
-                [&_a]:text-sky-300 [&_a]:underline [&_a:hover]:text-sky-200 [&_img]:max-w-full"
-              dangerouslySetInnerHTML={{ __html: sanitizeFeedHtml(feedData) }}
-            />
-          )}
-          {(feedStatus === "ok" || (feedStatus === "loading" && feedHasLoaded)) && Array.isArray(feedData) && feedData.length === 0 && (
-            <p className="p-3 text-xs text-zinc-600">No items.</p>
-          )}
-          {(feedStatus === "ok" || (feedStatus === "loading" && feedHasLoaded)) && Array.isArray(feedData) && feedData.length > 0 && (
-            <div className="w-full h-full overflow-y-auto">
-              <ul className="divide-y divide-white/[0.04]">
-                {feedData.map((item, i) => {
-                  const obj = item && typeof item === "object" ? (item as Record<string, unknown>) : null;
-                  const title = obj ? renderValue(obj.title ?? obj.name ?? obj.label) : renderValue(item);
-                  const subtitle = obj ? renderValue(obj.subtitle ?? obj.status ?? obj.description ?? "") : "";
-                  const href = obj ? obj.url ?? obj.link : undefined;
-                  const label = title || JSON.stringify(item);
-                  return (
-                    <li key={i} className="px-3 py-2">
-                      <p className="text-xs text-zinc-200 truncate">
-                        {isSafeLink(href) ? (
-                          <a href={href} target="_blank" rel="noopener noreferrer nofollow" className="hover:underline hover:text-sky-200">
-                            {label}
-                          </a>
-                        ) : label}
-                      </p>
-                      {subtitle && <p className="text-[10px] text-zinc-500 truncate mt-0.5">{subtitle}</p>}
-                    </li>
-                  );
-                })}
-              </ul>
-            </div>
+          {feed && (feedStatus === "ok" || (feedStatus === "loading" && feedHasLoaded)) && (
+            <FeedView feed={feed} rows={feedData} />
           )}
         </div>
       )}

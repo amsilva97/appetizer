@@ -37,6 +37,7 @@ function dispatch(el: Element, event: Event): void {
 
 export const fire = {
   click: (el: Element) => dispatch(el, new MouseEvent("click", { bubbles: true, cancelable: true })),
+  dblClick: (el: Element) => dispatch(el, new MouseEvent("dblclick", { bubbles: true, cancelable: true })),
   keyDown: (el: Element, key: string) => dispatch(el, new KeyboardEvent("keydown", { key, bubbles: true, cancelable: true })),
   wheel: (el: Element, deltaY: number) => dispatch(el, new WheelEvent("wheel", { deltaY, bubbles: true })),
   pointer: (el: Element, type: "pointerdown" | "pointerup", clientX: number, clientY = 0) =>
