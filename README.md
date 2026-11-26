@@ -406,7 +406,7 @@ Values from the source app are always shown as **plain text** (or, for link and 
   r => ({ ...r, title: get(`/api/v1/${r.type}/${r.media.tmdbId}`)?.title })
   ```
 
-- **Columns** — each column has a **Label** (header text), a **Type**, a **Key** (the row path to read, e.g. `title` or `media.status`; empty means the row itself), an optional **Sub key** shown below or beside the main value, and a **Width**. Types:
+- **Columns** — each column has a **Label** (header text), a **Type**, a **Key** (the row path to read, e.g. `title` or `media.status`; empty means the row itself), an optional **Sub key** with a **Sub position**, and a **Width** (any CSS width, e.g. `30%` or `48px`). **Below** stacks the sub value under the main one; **Beside** puts it next to the main value and wraps it underneath when the column is too narrow, so neither is cut off (hover a sub value to see all of it). Types:
   - `text` — the value as text.
   - `link` — the value as text, linking to the URL at **Link URL key** (http/https only; opens in a new tab and doesn't also open the card's URL).
   - `badge` — the value as a small pill, tinted by its `color`.
@@ -414,13 +414,24 @@ Values from the source app are always shown as **plain text** (or, for link and 
   - `image` — an image from the URL in the value (http/https only).
 
   The main value and the sub value each have their own **style**: inline CSS, plus an optional **switch** on a row key with cases, e.g. "when `state` is `pending`, add `color: #fbbf24`". Data never goes into CSS; only the CSS you write does, and only on that element.
-- **Row link** — a URL template that makes each row open its own page in a new tab, e.g. `http://sonarr.example.com/series/{titleSlug}`. Put row keys in braces; `{key}` and `{{key}}` both work, and dotted keys like `{media.tmdbId}` too. Values are URL-encoded; a template that is only one placeholder (`{url}`) uses the value as the whole URL. A row is clickable only when every key has a value and the result is an http(s) URL. Links inside a row still open on their own. These are row values, filled in the browser: `{SONARR_KEY}`-style secret keys only work in headers.
+- **Row link** — a URL template that makes each row open its own page in a new tab, e.g. `http://sonarr.example.com/series/{titleSlug}`. Put row keys in braces; `{key}` and `{{key}}` both work, and dotted keys like `{media.tmdbId}` too. Values are URL-encoded; a template that is only one placeholder (`{url}`) uses the value as the whole URL. A row is clickable only when every key has a value and the result is an http(s) URL. Rows with a link get a hover highlight (shown even over a row style's background) and a pointer cursor, and can be opened with Enter from the keyboard. Links inside a row still open on their own, and finishing a text selection doesn't open the row. These are row values, filled in the browser: `{SONARR_KEY}`-style secret keys only work in headers.
+
+  A step can build the link when the source doesn't have one. For example, a port list whose rows only have `host:port`:
+
+  ```js
+  // Map: https for the ports that serve it, http otherwise; no link when down
+  r => ({ ...r, url: r.up ? (["8443", "50014"].includes(r.target.split(":").pop()) ? "https://" : "http://") + r.target + "/" : "" })
+  // Row link: {url}
+  ```
+
 - **Filter buttons** — shown above the list. Each matches rows whose **Key** equals **Equals**, optionally with a count ("2 pending"). Click toggles a button; with several on, rows matching any of them show. Double-click shows only that one (double-click it again to clear).
 - **Feed styles** — CSS for the panel, the filter bar and the header row, and a style (with switch) for each row.
 - **Poll every** — how often to re-fetch, in seconds, 10–300. Polling pauses when the tab is hidden.
 - **Feed height** — the panel height: a number of pixels, or any CSS length such as `calc(100% - 73px)`.
 
-A feed with no columns shows a simple list using each row's `title` (or `name`/`label`), `subtitle` (or `status`/`description`) and `url` (or `link`).
+**Limits and errors:** up to 20 steps of up to 20,000 characters each; 2 seconds per step, 5 seconds per request (the Get and each `get()`), 10 seconds per run; the first 1000 rows are shown. Only the fields the display uses (column keys, sub keys, link keys, switch keys, filter button keys and row link keys) are sent to the browser. If the source can't be reached the feed shows `Failed to load feed: …`, and a step that throws names itself, e.g. `Step 2 (map): row 3: Cannot read properties of undefined`. There is no limit on how many `get()` calls a run makes, so keep per-row lookups to endpoints that can take them.
+
+A feed with no columns shows a simple list using each row's `title` (or `name`/`label`), `subtitle` (or `status`/`description`) and `url` (or `link`). A row link works there too.
 
 Feeds saved before steps existed, with a single `transform` expression, still run: it becomes the first transform step. It must now return a list; HTML output is no longer supported.
 
