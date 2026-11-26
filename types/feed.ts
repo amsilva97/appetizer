@@ -101,6 +101,12 @@ export interface AppFeedConfig {
   pollInterval: number;
   /** Panel height in px, or any CSS length such as `calc(100% - 73px)`. */
   height: number | string;
+  /**
+   * URL template that makes each row open its own page, e.g.
+   * `http://sonarr.test/series/{titleSlug}`. `{key}` and `{{key}}` both work.
+   * Empty = rows are not clickable.
+   */
+  rowLink: string;
 }
 
 export const DEFAULT_FEED_CONFIG: AppFeedConfig = {
@@ -113,4 +119,5 @@ export const DEFAULT_FEED_CONFIG: AppFeedConfig = {
   styles: {},
   pollInterval: 30,
   height: 200,
+  rowLink: "",
 };

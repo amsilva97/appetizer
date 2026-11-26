@@ -78,5 +78,6 @@ export function normalizeFeed(value: unknown): AppFeedConfig {
       .map(normalizeButton)
       .filter((b): b is FeedFilterButton => b !== null),
     styles: isRecord(value.styles) ? (value.styles as FeedStyles) : {},
+    rowLink: str(value.rowLink),
   } as AppFeedConfig;
 }

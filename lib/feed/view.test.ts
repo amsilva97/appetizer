@@ -2,12 +2,14 @@ import { describe, expect, test } from "vitest";
 import {
   buttonId,
   countMatches,
+  fillTemplate,
   focusFilter,
   getPath,
   parseCss,
   pickPaths,
   resolveStyle,
   toggleFilter,
+  templateKeys,
   toText,
   usedPaths,
   visibleRows,
@@ -114,6 +116,39 @@ describe("filter buttons", () => {
 
   test("a selected button that no longer exists is ignored", () => {
     expect(visibleRows(rows, buttons, new Set(["gone"]))).toEqual(rows);
+  });
+});
+
+describe("row link templates", () => {
+  const row = { id: 603, slug: "the matrix/1999", media: { tmdbId: 7 }, url: "https://seerr.test/movie/603?x=1", empty: "" };
+
+  test("fills {key} and {{key}}, including dotted keys", () => {
+    expect(fillTemplate("http://a.test/movie/{id}", row)).toBe("http://a.test/movie/603");
+    expect(fillTemplate("http://a.test/m/{{ media.tmdbId }}?r={id}", row)).toBe("http://a.test/m/7?r=603");
+    expect(templateKeys("http://a.test/{a}/{{b.c}}")).toEqual(["a", "b.c"]);
+  });
+
+  test("values are URL-encoded, so a value can't change the rest of the URL", () => {
+    expect(fillTemplate("http://a.test/s/{slug}", row)).toBe("http://a.test/s/the%20matrix%2F1999");
+  });
+
+  test("a template that is just one placeholder uses the value as the URL", () => {
+    expect(fillTemplate("{url}", row)).toBe("https://seerr.test/movie/603?x=1");
+    expect(fillTemplate("{{url}}", row)).toBe("https://seerr.test/movie/603?x=1");
+  });
+
+  test("no link when a value is missing, the template is empty, or the URL isn't http(s)", () => {
+    expect(fillTemplate("http://a.test/{missing}", row)).toBeNull();
+    expect(fillTemplate("http://a.test/{empty}", row)).toBeNull();
+    expect(fillTemplate("", row)).toBeNull();
+    expect(fillTemplate("{slug}", row)).toBeNull();
+    expect(fillTemplate("javascript:alert({id})", row)).toBeNull();
+  });
+
+  test("the keys a row link reads are kept when trimming rows", () => {
+    const feed = { ...DEFAULT_FEED_CONFIG, columns: [{ label: "T", type: "text" as const, key: "title" }], rowLink: "http://a.test/{media.tmdbId}" };
+    expect(usedPaths(feed).has("media.tmdbId")).toBe(true);
+    expect(usedPaths({ ...feed, columns: [] }).has("media.tmdbId")).toBe(true);
   });
 });
 

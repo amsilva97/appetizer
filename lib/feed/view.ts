@@ -1,4 +1,5 @@
 import type { AppFeedConfig, FeedFilterButton, StyleRule } from "@/types/feed";
+import { isWebUrl } from "@/lib/feed/links";
 
 /** Fields the simple list (a feed with no columns) shows. */
 export const SIMPLE_LIST_KEYS = ["title", "name", "label", "subtitle", "status", "description", "url", "link"];
@@ -112,13 +113,38 @@ export function visibleRows<T>(
 
 // ─── Trimming rows before they leave the server ───────────────────────────────
 
+// {{key}} or {key}; keys are row paths like `id` or `media.tmdbId`.
+const PLACEHOLDER = /\{\{\s*([^{}\s]+)\s*\}\}|\{\s*([^{}\s]+)\s*\}/g;
+
+/** The row paths a URL template reads. */
+export function templateKeys(template: string | undefined): string[] {
+  return [...(template ?? "").matchAll(PLACEHOLDER)].map((m) => m[1] ?? m[2]);
+}
+
+/**
+ * Fill a URL template from a row. Values are URL-encoded, except when the
+ * template is a single placeholder (`{url}`), where the value is the URL.
+ * Returns null when a key has no value or the result isn't an http(s) URL.
+ */
+export function fillTemplate(template: string | undefined, row: unknown): string | null {
+  const t = (template ?? "").trim();
+  if (!t) return null;
+  const keys = templateKeys(t);
+  const values = keys.map((k) => toText(getPath(row, k)));
+  if (values.some((v) => v === "")) return null;
+  const whole = keys.length === 1 && t.replace(PLACEHOLDER, "") === "";
+  let i = 0;
+  const url = whole ? values[0] : t.replace(PLACEHOLDER, () => encodeURIComponent(values[i++]));
+  return isWebUrl(url) ? url : null;
+}
+
 function ruleKeys(rule: StyleRule | undefined): string[] {
   return rule?.switchKey ? [rule.switchKey] : [];
 }
 
 /** Every row path the display reads, so the server can send only those. */
 export function usedPaths(feed: AppFeedConfig): Set<string> {
-  if (feed.columns.length === 0) return new Set(SIMPLE_LIST_KEYS);
+  if (feed.columns.length === 0) return new Set([...SIMPLE_LIST_KEYS, ...templateKeys(feed.rowLink)]);
   const paths = [
     ...feed.columns.flatMap((c) => [
       c.key,
@@ -129,6 +155,7 @@ export function usedPaths(feed: AppFeedConfig): Set<string> {
     ]),
     ...feed.filterButtons.map((b) => b.key),
     ...ruleKeys(feed.styles.row),
+    ...templateKeys(feed.rowLink),
   ];
   // An empty key means "the whole row"; keep it only when a column asks for that.
   const wholeRow = feed.columns.some((c) => c.key === "" || c.subKey === "");

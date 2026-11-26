@@ -108,6 +108,16 @@ export default function FeedDisplayFields({ feed, onChange }: {
 
       <div className="flex flex-col gap-2">
         <SectionHeader
+          title="Row link"
+          hint={<>Makes each row open its own page in a new tab. Put row keys in braces: <span className="font-mono">{"http://host/series/{titleSlug}"}</span>; <span className="font-mono">{"{{key}}"}</span> works too. Rows with a missing value aren&apos;t clickable.</>}
+        />
+        <SmallInput label="URL template" value={feed.rowLink} placeholder="optional" onChange={(rowLink) => onChange({ rowLink })} />
+      </div>
+
+      <Divider />
+
+      <div className="flex flex-col gap-2">
+        <SectionHeader
           title="Filter buttons"
           hint="Shown above the list. Click toggles one on or off; several on show rows matching any of them. Double-click shows only that one."
           onAdd={() => onChange({ filterButtons: [...filterButtons, { ...NEW_BUTTON }] })}

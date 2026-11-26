@@ -414,6 +414,7 @@ Values from the source app are always shown as **plain text** (or, for link and 
   - `image` — an image from the URL in the value (http/https only).
 
   The main value and the sub value each have their own **style**: inline CSS, plus an optional **switch** on a row key with cases, e.g. "when `state` is `pending`, add `color: #fbbf24`". Data never goes into CSS; only the CSS you write does, and only on that element.
+- **Row link** — a URL template that makes each row open its own page in a new tab, e.g. `http://sonarr.example.com/series/{titleSlug}`. Put row keys in braces; `{key}` and `{{key}}` both work, and dotted keys like `{media.tmdbId}` too. Values are URL-encoded; a template that is only one placeholder (`{url}`) uses the value as the whole URL. A row is clickable only when every key has a value and the result is an http(s) URL. Links inside a row still open on their own. These are row values, filled in the browser: `{SONARR_KEY}`-style secret keys only work in headers.
 - **Filter buttons** — shown above the list. Each matches rows whose **Key** equals **Equals**, optionally with a count ("2 pending"). Click toggles a button; with several on, rows matching any of them show. Double-click shows only that one (double-click it again to clear).
 - **Feed styles** — CSS for the panel, the filter bar and the header row, and a style (with switch) for each row.
 - **Poll every** — how often to re-fetch, in seconds, 10–300. Polling pauses when the tab is hidden.
@@ -699,13 +700,14 @@ config:
         value: "{SONARR_KEY}"
     steps:
       - kind: map
-        code: "r => ({ title: r.series.title, status: r.trackedDownloadState })"
+        code: "r => ({ title: r.series.title, slug: r.series.titleSlug, status: r.trackedDownloadState })"
     columns:
       - { label: Name, type: text, key: title }
       - { label: Status, type: badge, key: status, width: 30% }
     filterButtons:
       - { label: downloading, key: status, equals: downloading, showCount: true }
     styles: {}
+    rowLink: "https://sonarr.example.com/series/{slug}"
     pollInterval: 30
     height: 200
 ```
@@ -739,6 +741,7 @@ config:
 | `feed.filterButtons` | array | `[]` | — | `{ label, key, equals, showCount?, style? }` toggles shown above the list. |
 | `feed.styles` | object | `{}` | — | `{ panel?, filterBar?, header?, row? }`. `row` is a style rule. |
 | style rules | object | — | — | `{ base, switchKey?, cases?: [{ equals, style }] }`: `base` CSS plus the first case whose `equals` matches the row's value at `switchKey`. |
+| `feed.rowLink` | string | `""` | — | URL template opened when a row is clicked, e.g. `https://host/item/{id}` (`{{id}}` also works). Empty = rows aren't clickable. |
 | `feed.pollInterval` | number | `30` | 10–300 | Seconds between polls. Pauses when the tab is hidden. |
 | `feed.height` | number or string | `200` | — | Panel height: pixels, or a CSS length such as `calc(100% - 73px)`. |
 

@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, test } from "vitest";
+import { afterEach, describe, expect, test, vi } from "vitest";
 import FeedView from "@/components/widgets/feed-view";
 import { cleanup, fire, render } from "@/components/widgets/test-dom";
 import { DEFAULT_FEED_CONFIG, type AppFeedConfig } from "@/types/feed";
@@ -16,6 +16,30 @@ const rows = [
 const rowTexts = (c: HTMLElement) => [...c.querySelectorAll("tbody tr")].map((tr) => tr.querySelector("td")!.textContent);
 
 describe("FeedView", () => {
+  test("a row link opens that row's own URL; rows missing a value aren't clickable; inner links still work alone", () => {
+    const open = vi.spyOn(window, "open").mockImplementation(() => null);
+    const { container } = render(
+      <FeedView
+        feed={feed({
+          columns: [{ label: "Request", type: "link", key: "title", hrefKey: "url" }],
+          rowLink: "https://seerr.test/request/{pct}",
+        })}
+        rows={rows}
+      />
+    );
+    const trs = container.querySelectorAll("tbody tr");
+    expect(trs[0].getAttribute("data-row-link")).toBe("https://seerr.test/request/40");
+    fire.click(trs[0].querySelector("td")!);
+    expect(open).toHaveBeenCalledWith("https://seerr.test/request/40", "_blank", "noopener,noreferrer");
+
+    open.mockClear();
+    fire.click(trs[0].querySelector("a")!);
+    expect(open).not.toHaveBeenCalled();
+
+    expect(trs[2].getAttribute("data-row-link")).toBe("https://seerr.test/request/x");
+    open.mockRestore();
+  });
+
   test("a beside sub value can wrap below instead of being cut off, and its full text shows on hover", () => {
     const { container } = render(
       <FeedView

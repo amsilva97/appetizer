@@ -1,11 +1,12 @@
 "use client";
 
-import { useState, type CSSProperties, type MouseEvent } from "react";
+import { useState, type CSSProperties, type KeyboardEvent, type MouseEvent } from "react";
 import type { AppFeedConfig, FeedColumn, FeedFilterButton } from "@/types/feed";
 import { isSafeLink, isWebUrl } from "@/lib/feed/links";
 import {
   buttonId,
   countMatches,
+  fillTemplate,
   focusFilter,
   getPath,
   parseCss,
@@ -147,7 +148,30 @@ function FilterBar({ buttons, rows, active, onToggle, onFocus, style }: FilterBa
   );
 }
 
-function SimpleList({ rows }: { rows: readonly unknown[] }) {
+/**
+ * Click/Enter on a row opens its row link in a new tab. Clicks on a link
+ * inside the row, or that end a text selection, are left alone.
+ */
+function rowLinkProps(href: string | null) {
+  if (!href) return {};
+  const open = () => window.open(href, "_blank", "noopener,noreferrer");
+  return {
+    role: "link",
+    tabIndex: 0,
+    "data-row-link": href,
+    className: "cursor-pointer hover:bg-white/[0.06] focus-visible:outline focus-visible:outline-1 focus-visible:outline-sky-400/60",
+    onClick: (e: MouseEvent<HTMLElement>) => {
+      if ((e.target as HTMLElement).closest("a")) return;
+      if (window.getSelection()?.toString()) return;
+      open();
+    },
+    onKeyDown: (e: KeyboardEvent<HTMLElement>) => {
+      if (e.key === "Enter" && e.target === e.currentTarget) open();
+    },
+  };
+}
+
+function SimpleList({ rows, rowLink }: { rows: readonly unknown[]; rowLink: string }) {
   return (
     <ul className="divide-y divide-white/[0.04]">
       {rows.map((item, i) => {
@@ -155,13 +179,15 @@ function SimpleList({ rows }: { rows: readonly unknown[] }) {
         const subtitle = toText(getPath(item, "subtitle") ?? getPath(item, "status") ?? getPath(item, "description"));
         const href = getPath(item, "url") ?? getPath(item, "link");
         return (
-          <li key={i} className="px-3 py-2">
+          <li key={i} {...rowLinkProps(fillTemplate(rowLink, item))}>
+            <div className="px-3 py-2">
             <p className="text-xs text-zinc-200 truncate">
               {isSafeLink(href) ? (
                 <a href={href} target="_blank" rel={LINK_REL} className="hover:underline hover:text-sky-200">{title}</a>
               ) : title}
             </p>
             {subtitle && <p className="text-[10px] text-zinc-500 truncate mt-0.5">{subtitle}</p>}
+            </div>
           </li>
         );
       })}
@@ -176,7 +202,7 @@ interface Props {
 
 export default function FeedView({ feed, rows }: Props) {
   const [active, setActive] = useState<ReadonlySet<string>>(() => new Set());
-  const { columns, filterButtons, styles } = feed;
+  const { columns, filterButtons, styles, rowLink } = feed;
   const shown = visibleRows(rows, filterButtons, active);
 
   return (
@@ -197,7 +223,7 @@ export default function FeedView({ feed, rows }: Props) {
         ) : shown.length === 0 ? (
           <p className="p-3 text-xs text-zinc-500">Nothing matches the selected filters.</p>
         ) : columns.length === 0 ? (
-          <SimpleList rows={shown} />
+          <SimpleList rows={shown} rowLink={rowLink} />
         ) : (
           <table className="w-full border-collapse table-fixed">
             <thead>
@@ -215,7 +241,7 @@ export default function FeedView({ feed, rows }: Props) {
             </thead>
             <tbody>
               {shown.map((row, r) => (
-                <tr key={r} style={css(resolveStyle(styles.row, row))}>
+                <tr key={r} style={css(resolveStyle(styles.row, row))} {...rowLinkProps(fillTemplate(rowLink, row))}>
                   {columns.map((c, i) => <Cell key={i} column={c} row={row} />)}
                 </tr>
               ))}

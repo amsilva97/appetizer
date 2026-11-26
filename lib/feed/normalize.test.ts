@@ -3,6 +3,12 @@ import { normalizeFeed } from "./normalize";
 import { DEFAULT_FEED_CONFIG } from "@/types/feed";
 
 describe("normalizeFeed", () => {
+  test("keeps a row link and defaults it to empty", () => {
+    expect(normalizeFeed({ rowLink: "http://a.test/{id}" }).rowLink).toBe("http://a.test/{id}");
+    expect(normalizeFeed({ rowLink: null }).rowLink).toBe("");
+    expect(normalizeFeed({}).rowLink).toBe("");
+  });
+
   test("anything that isn't an object becomes the empty feed", () => {
     expect(normalizeFeed(undefined)).toEqual(DEFAULT_FEED_CONFIG);
     expect(normalizeFeed("x")).toEqual(DEFAULT_FEED_CONFIG);
