@@ -110,4 +110,6 @@ export interface PageMeta {
   name: string;
   label: string;
   permissions: string[];
+  /** Only in /api/state, and only while the phone view is on: the viewer sees cards on this page's phone version. */
+  phone?: boolean;
 }

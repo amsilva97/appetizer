@@ -1,11 +1,23 @@
 "use client";
 
 import { useRef, useState } from "react";
-import type { MobileConfig } from "@/types/mobile";
+import type { MobileConfig, MobileSlot } from "@/types/mobile";
 import type { WidgetInstance } from "@/types/widget";
 import type { AppWidgetConfig } from "@/types/app-widget";
 import type { MenuWidgetConfig } from "@/types/menu-widget";
-import { resolveMobileSlots, trayWidgets as pickTrayWidgets } from "@/lib/mobile";
+import {
+  PHONE_GRID_COLUMNS,
+  insertSlot,
+  moveSlot,
+  phoneAppConfig,
+  phoneColumns,
+  removeSlot,
+  resolveMobileSlots,
+  showsFeed,
+  trayWidgets as pickTrayWidgets,
+  updateSlot,
+} from "@/lib/mobile";
+import { CardSettings, PhoneSlot } from "./phone-slot";
 
 // ─── Icons ────────────────────────────────────────────────────────────────────
 
@@ -69,41 +81,6 @@ function TrayItem({ widget, parentLabel, inUse, onAdd }: TrayItemProps) {
   );
 }
 
-// ─── Phone slot ───────────────────────────────────────────────────────────────
-
-interface PhoneSlotProps {
-  widget: WidgetInstance;
-  isDragOver: boolean;
-  onRemove: () => void;
-  onDragStart: () => void;
-}
-
-function PhoneSlot({ widget, isDragOver, onRemove, onDragStart }: PhoneSlotProps) {
-  return (
-    <div
-      draggable
-      onDragStart={(e) => {
-        e.dataTransfer.setData("slot", widget.id);
-        e.dataTransfer.effectAllowed = "move";
-        onDragStart();
-      }}
-      className={`flex items-center gap-2 px-3 py-2 rounded-xl border transition-all select-none cursor-grab active:cursor-grabbing ${
-        isDragOver ? "border-brand/60 bg-brand/[0.1]" : "border-white/[0.08] bg-white/[0.05]"
-      }`}
-    >
-      <GripIcon size={12} />
-      <p className="flex-1 text-xs text-zinc-300 truncate">{cardTitle(widget)}</p>
-      <button
-        onClick={onRemove}
-        title="Remove from phone"
-        className="shrink-0 w-5 h-5 flex items-center justify-center rounded-md text-zinc-600 hover:text-red-400 hover:bg-red-900/20 transition-colors"
-      >
-        <XIcon size={11} />
-      </button>
-    </div>
-  );
-}
-
 // ─── Editor ───────────────────────────────────────────────────────────────────
 
 interface Props {
@@ -121,32 +98,28 @@ export default function MobileEditor({ pageLabel, mobile, widgets, mobileEnabled
   const dragFromRef = useRef<number | null>(null);
   const [dragOverIdx, setDragOverIdx] = useState<number | null>(null);
   const [overEnd, setOverEnd] = useState(false);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
 
   // Only cards that are on this page, each at most once.
   const placed = resolveMobileSlots(mobile.slots ?? [], widgets);
-  const placedIds = new Set(placed.map((w) => w.id));
+  const slots = placed.map((c) => c.slot);
+  const placedIds = new Set(slots.map((s) => s.id));
   const tray = pickTrayWidgets(widgets);
+  const selected = placed.find((c) => c.widget.id === selectedId);
   const menuLabel = (id: string | undefined) => {
     const parent = widgets.find((w) => w.id === id && w.type === "menu");
     return parent ? (parent.config as MenuWidgetConfig).label : undefined;
   };
 
-  const setSlots = (slots: string[]) => onMobileChange({ ...mobile, slots });
+  const setSlots = (next: MobileSlot[]) => onMobileChange({ ...mobile, slots: next });
 
   function insertAt(id: string, at: number) {
     if (placedIds.has(id) || !tray.some((w) => w.id === id)) return;
-    const ids = placed.map((w) => w.id);
-    ids.splice(at, 0, id);
-    setSlots(ids);
+    setSlots(insertSlot(slots, id, at));
+    setSelectedId(id);
   }
 
-  function moveTo(from: number, to: number) {
-    if (from === to) return;
-    const ids = placed.map((w) => w.id);
-    const [moved] = ids.splice(from, 1);
-    ids.splice(to > from ? to - 1 : to, 0, moved);
-    setSlots(ids);
-  }
+  const moveTo = (from: number, to: number) => setSlots(moveSlot(slots, from, to));
 
   /** Drop on a slot (index) or the end zone (placed.length): reorder a phone card or add a tray card there. */
   function handleDrop(e: React.DragEvent, at: number) {
@@ -215,50 +188,73 @@ export default function MobileEditor({ pageLabel, mobile, widgets, mobileEnabled
           </div>
         </div>
 
-        {/* phone */}
-        <div className="flex-1 overflow-auto flex flex-col items-center py-8 gap-4">
-          <div
-            className="relative rounded-[36px] border-[3px] border-zinc-700 bg-zinc-900 shadow-2xl shadow-black/70 flex flex-col overflow-hidden"
-            style={{ width: 320, minHeight: 580, maxHeight: 680 }}
-          >
-            <div className="shrink-0 flex justify-center pt-3 pb-2">
-              <div className="w-24 h-5 rounded-full bg-zinc-800" />
-            </div>
-
-            <div className="flex-1 overflow-y-auto px-3 pb-3 flex flex-col gap-2">
-              {placed.map((w, i) => (
-                <div
-                  key={w.id}
-                  onDragOver={(e) => { e.preventDefault(); setDragOverIdx(i); }}
-                  onDragLeave={() => setDragOverIdx(null)}
-                  onDrop={(e) => handleDrop(e, i)}
-                >
-                  <PhoneSlot
-                    widget={w}
-                    isDragOver={dragOverIdx === i}
-                    onRemove={() => setSlots(placed.filter((p) => p.id !== w.id).map((p) => p.id))}
-                    onDragStart={() => { dragFromRef.current = i; }}
-                  />
-                </div>
-              ))}
+        {/* phone + the selected card's settings */}
+        <div className="flex-1 overflow-auto flex items-start justify-center py-8 px-6 gap-6">
+          <div className="flex flex-col items-center gap-4">
+            <div
+              className="relative rounded-[36px] border-[3px] border-zinc-700 bg-zinc-900 shadow-2xl shadow-black/70 flex flex-col overflow-hidden"
+              style={{ width: 320, minHeight: 580, maxHeight: 680 }}
+            >
+              <div className="shrink-0 flex justify-center pt-3 pb-2">
+                <div className="w-24 h-5 rounded-full bg-zinc-800" />
+              </div>
 
               <div
-                onDragOver={(e) => { e.preventDefault(); setOverEnd(true); }}
-                onDragLeave={() => setOverEnd(false)}
-                onDrop={(e) => handleDrop(e, placed.length)}
-                className={`flex items-center justify-center h-12 shrink-0 rounded-xl border-2 border-dashed transition-colors text-xs ${
-                  overEnd ? "border-brand/60 bg-brand/[0.08] text-brand" : "border-white/10 text-zinc-600"
-                }`}
+                className="flex-1 overflow-y-auto px-3 pb-3 grid gap-2 content-start"
+                style={{ gridTemplateColumns: `repeat(${PHONE_GRID_COLUMNS}, minmax(0, 1fr))` }}
+                onClick={(e) => { if (e.target === e.currentTarget) setSelectedId(null); }}
               >
-                {overEnd ? "Drop here" : "+ Drag a card here"}
+                {placed.map(({ widget, slot }, i) => (
+                  <div
+                    key={widget.id}
+                    className="min-w-0"
+                    style={{ gridColumn: `span ${phoneColumns(slot.span, showsFeed(phoneAppConfig(widget.config as AppWidgetConfig, slot)))}` }}
+                    onDragOver={(e) => { e.preventDefault(); setDragOverIdx(i); }}
+                    onDragLeave={() => setDragOverIdx(null)}
+                    onDrop={(e) => handleDrop(e, i)}
+                  >
+                    <PhoneSlot
+                      widget={widget}
+                      slot={slot}
+                      selected={selectedId === widget.id}
+                      isDragOver={dragOverIdx === i}
+                      onSelect={() => setSelectedId(widget.id)}
+                      onDragStart={() => { dragFromRef.current = i; }}
+                    />
+                  </div>
+                ))}
+
+                <div
+                  onDragOver={(e) => { e.preventDefault(); setOverEnd(true); }}
+                  onDragLeave={() => setOverEnd(false)}
+                  onDrop={(e) => handleDrop(e, placed.length)}
+                  className={`col-span-full flex items-center justify-center h-12 rounded-xl border-2 border-dashed transition-colors text-xs ${
+                    overEnd ? "border-brand/60 bg-brand/[0.08] text-brand" : "border-white/10 text-zinc-600"
+                  }`}
+                >
+                  {overEnd ? "Drop here" : "+ Drag a card here"}
+                </div>
+              </div>
+
+              <div className="shrink-0 flex justify-center py-2">
+                <div className="w-24 h-1 rounded-full bg-zinc-700" />
               </div>
             </div>
-
-            <div className="shrink-0 flex justify-center py-2">
-              <div className="w-24 h-1 rounded-full bg-zinc-700" />
-            </div>
+            <p className="text-[10px] text-zinc-600">Click a card to set its width and logo view · drag to reorder</p>
           </div>
-          <p className="text-[10px] text-zinc-600">Drag cards on the phone to reorder them</p>
+
+          {selected ? (
+            <CardSettings
+              widget={selected.widget}
+              slot={selected.slot}
+              onChange={(patch) => setSlots(updateSlot(slots, selected.widget.id, patch))}
+              onRemove={() => { setSlots(removeSlot(slots, selected.widget.id)); setSelectedId(null); }}
+            />
+          ) : (
+            <div className="w-64 shrink-0 p-4 text-xs text-zinc-600 border border-dashed border-white/[0.08] rounded-2xl">
+              Click a card on the phone to set how wide it is and how its logo shows there.
+            </div>
+          )}
         </div>
       </div>
     </div>

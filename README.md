@@ -154,7 +154,7 @@ Reveals the structure of the canvas. Layouts show their cells with a subtle back
 
 The dashboard supports multiple pages. Each page has its own background, widget layout, and toolbar style. Users see only the pages their permissions allow.
 
-The toolbar shows a tab strip when two or more pages exist, or when an admin is in edit mode with at least one page.
+The toolbar shows a tab strip when two or more pages exist, or when an admin is in edit mode with at least one page. On a phone the tabs are replaced by the page name, page dots and swiping; see [Phone View](#phone-view).
 
 ### Managing pages (admin, edit mode only)
 
@@ -197,6 +197,42 @@ toolbarStyle:
 ```
 
 ---
+
+## Phone View
+
+When the phone view is on, screens narrower than 768px get each page's phone version instead of the desktop canvas. Edit mode always shows the desktop canvas.
+
+- **Turning it on** — open the profile menu while editing and choose **Phone layout**, then flip **Phone view** in the editor's header. The switch applies to every page.
+- **Which pages show** — only pages whose phone version has at least one card the viewer can see. Pages with nothing for the phone are left out of the toolbar, the dots and swipes. If the phone opens on a page like that, it moves to the first page that has a phone version.
+- **Toolbar** — shows the logo, the current page's name and the profile button. With more than one page, tap the page name to pick a page from a list.
+- **Page dots** — a dot for each page sits at the bottom; the current page's dot is wider. Tap a dot to go to that page.
+- **Swiping** — swipe left for the next page and right for the previous one. A swipe has to be mostly sideways and at least 60px long. Touches that start within 20px of either side of the screen are left to the phone's own back gesture, and a swipe on anything that scrolls sideways (a wide feed table, say) scrolls it instead of changing page. Swiping stops at the first and last pages.
+- **Pull to refresh** — at the top of the list, pull down and let go to load the page again. Every card's feed and online status is fetched afresh.
+- **Last page** — each browser remembers the page it was last on and opens there next time. If that page is gone or hidden, it opens the default page.
+
+### Editing the phone version
+
+While editing, open the profile menu and choose **Phone layout**. The left side lists every app card on the page, including cards inside menus. Drag a card onto the phone or double-click it to add it. Drag cards on the phone to reorder them.
+
+Click a card on the phone to set, for the phone only:
+
+- **Width** — **Full**, **Half** or **Third** of a row. Cards fill rows in order. A card that shows its feed always takes the full row, so it stays readable; give it the **Compact** or **Full cover** logo view to make it narrower.
+- **Logo view on the phone** — **Same as desktop**, or any logo view. This lets a card be an icon card on desktop and a **Compact** tile on the phone, for example.
+- **Remove from phone** — takes the card off the phone version. It stays on the desktop page.
+
+Each page's phone version is stored in its own page file under `mobile`:
+
+```yaml
+mobile:
+  slots:
+    - id: jellyfin            # the app widget's id on this page
+      span: full              # full | half | third
+    - id: sonarr
+      span: third
+      logoView: compact       # optional; missing means the card's own logo view
+```
+
+Older files that list bare ids (`slots: [jellyfin, sonarr]`) still load, as full-width cards with their own logo view.
 
 ## Context Menu
 
@@ -355,6 +391,7 @@ An app shortcut card. Apps can be floating (draggable, positioned freely on the 
   - `icon` — a square icon sits to the left of the title/subtitle.
   - `none` — no icon, just the text.
   - `full` — the logo fills the entire card as a background image, with the title overlaid at the top.
+  - `compact` — the icon sits above the title, centred, like an app on a phone's home screen. The subtitle and feed are hidden.
 - **Logo URL** — URL of the image to use as the icon or cover. If the image fails to load or no URL is set, a colored block showing the first two letters of the title is used instead.
 - **Image fit** *(full cover only)* — **Fill the card** crops the image to the card's shape; **Whole image** shows all of it over a blurred copy of itself, so a logo isn't cut off on a wide or tall card.
 - **Icon zoom** *(full cover only)* — scales the cover image, 50–300%.
@@ -377,7 +414,7 @@ An app shortcut card. Apps can be floating (draggable, positioned freely on the 
 
 **Feed tab:**
 
-Shows a live list below the app card header. A feed is a list: the server fetches one URL, runs your steps over the response, and the browser shows the rows as columns.
+Shows a live list below the app card header. A feed is a list: the server fetches one URL, runs your steps over the response, and the browser shows the rows as columns. Feeds show on **Icon** and **No icon** cards only; **Full cover** and **Compact** cards have no room for one, so they don't fetch it either.
 
 ```
 Get(url).transform(f).map(f).filter(f) ...
@@ -484,6 +521,38 @@ Appetizer stores its persistent state in the `data/` directory (created automati
 Do not commit the `data/` directory. It contains credentials and secrets.
 
 ---
+
+## Using the Appetizer Marks
+
+The logo files in `public/` can be linked from other projects, either from GitHub or from your own Appetizer server. Image files are served without signing in, even when **Force Login** is on.
+
+| File | Size | What it is |
+|------|------|------------|
+| `mark.png` | 248×248 | Colour mark (also the toolbar logo) |
+| `mono-dark-mark.png` | 248×248 | One-colour mark, dark |
+| `mono-light-mark.png` | 248×248 | One-colour mark, light |
+| `dark-lockup.png` | 466×261 | Mark with wordmark, for dark backgrounds |
+| `light-lockup.png` | 466×261 | Mark with wordmark, for light backgrounds |
+| `mono-dark-lockup.png` | 466×261 | One-colour lockup, dark |
+| `mono-light-lockup.svg` | 466×261 | One-colour lockup, light (vector) |
+
+**From GitHub** — use a release tag so the image doesn't change under you:
+
+```
+https://raw.githubusercontent.com/amsilva97/appetizer/v1.0.0/public/mark.png
+```
+
+Swap `v1.0.0` for `main` to always get the latest version.
+
+**From your Appetizer server** — each file is at the root of the site:
+
+```
+https://appetizer.example.com/mark.png
+```
+
+```html
+<img src="https://appetizer.example.com/mark.png" alt="Appetizer" width="32" height="32">
+```
 
 ## YAML Schema Reference
 
@@ -729,7 +798,7 @@ config:
 | `subtitle` | string | `""` | — | Secondary label below the title. |
 | `tooltip` | string | `""` | — | Native hover tooltip text. |
 | `logoUrl` | string | `""` | — | Image URL for the icon or cover. Falls back to initials if empty or on load error. |
-| `logoView` | `icon` \| `none` \| `full` | `icon` | — | Icon display mode. `icon` shows a square icon beside the text. `none` hides the icon. `full` fills the card with the image. |
+| `logoView` | `icon` \| `none` \| `full` \| `compact` | `icon` | — | Icon display mode. `icon` shows a square icon beside the text. `none` hides the icon. `full` fills the card with the image. `compact` puts the icon above the title and hides the subtitle and feed. A phone slot can set its own `logoView` for the phone version. |
 | `coverFit` | `cover` \| `contain` | `cover` | — | `cover` fills the card and crops the image. `contain` shows the whole image over a blurred copy of itself, so a logo isn't cut off on a card with a different shape. Only applies when `logoView: full`. |
 | `iconZoom` | number | `1` | 0.5–3 | Scale multiplier for the cover image. Only applies when `logoView: full`. |
 | `iconOffsetX` | number | `0` | -100–100 | Horizontal offset of the cover image as a percentage of card width. Only applies when `logoView: full`. |

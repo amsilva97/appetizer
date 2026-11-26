@@ -100,3 +100,19 @@
     transform: translate(-44%, -58%) scale(1.15) rotate(-5deg);
   }
 }
+
+/* Phone view: the new page slides in from the side it was swiped from. */
+@keyframes phone-enter-right {
+  from { opacity: 0; transform: translateX(24px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+@keyframes phone-enter-left {
+  from { opacity: 0; transform: translateX(-24px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+.phone-enter-right { animation: phone-enter-right 180ms ease-out; }
+.phone-enter-left  { animation: phone-enter-left 180ms ease-out; }
+
+@media (prefers-reduced-motion: reduce) {
+  .phone-enter-right, .phone-enter-left { animation: none; }
+}

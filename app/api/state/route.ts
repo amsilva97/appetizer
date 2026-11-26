@@ -6,7 +6,7 @@ import type { BackgroundConfig } from "@/types/background";
 import type { WidgetInstance } from "@/types/widget";
 import type { PageMeta } from "@/types/permissions";
 import type { ToolbarStyle } from "@/types/toolbar";
-import { DEFAULT_MOBILE, filterMobileConfig, parseMobileConfig } from "@/lib/mobile";
+import { DEFAULT_MOBILE, filterMobileConfig, parseMobileConfig, resolveMobileSlots } from "@/lib/mobile";
 import { userCanAccess } from "@/lib/auth/permissions";
 import { readSettings } from "@/lib/auth/settings";
 import { can, getViewer, seesAllPages, type Viewer } from "@/lib/auth/viewer";
@@ -33,6 +33,15 @@ function seesAll(viewer: Viewer): boolean {
   return seesAllPages(viewer);
 }
 
+/** Whether this viewer would see at least one card on the page's phone version. */
+function hasPhoneVersion(pageName: string, permissions: Set<string>, seeAll: boolean): boolean {
+  const layout = readLayout(pageName);
+  const mobile = parseMobileConfig(layout?.mobile);
+  if (!layout || !mobile) return false;
+  const visible = filterWidgets(layout.widgets ?? [], permissions, seeAll);
+  return resolveMobileSlots(mobile.slots, visible).length > 0;
+}
+
 export async function GET(request: Request) {
   ensureDir();
 
@@ -52,18 +61,30 @@ export async function GET(request: Request) {
     userCanAccess(page.permissions, viewer.permissions, seeAll)
   );
 
+  // The phone only offers pages that have a phone version; that's only worth working out when the phone view is on.
+  const mobileEnabled = index.mobileEnabled ?? false;
+  const pageList = visiblePages.map(({ name, label }) => ({
+    name,
+    label,
+    ...(mobileEnabled ? { phone: hasPhoneVersion(name, viewer.permissions, seeAll) } : {}),
+  }));
+
   const { searchParams } = new URL(request.url);
   const requestedPage = searchParams.get("page");
-  const activeName = requestedPage ?? index.active;
 
-  const activePage = visiblePages.find((p) => p.name === activeName) ?? visiblePages[0] ?? null;
+  // A page this browser remembered may be gone or hidden now; fall back to the default page, then the first.
+  const activePage =
+    visiblePages.find((p) => p.name === requestedPage) ??
+    visiblePages.find((p) => p.name === index.active) ??
+    visiblePages[0] ??
+    null;
 
   if (!activePage) {
     return NextResponse.json({
-      pages: visiblePages.map(({ name, label }) => ({ name, label })),
+      pages: pageList,
       activePage: null,
       layout: null,
-      mobileEnabled: index.mobileEnabled ?? false,
+      mobileEnabled,
     });
   }
 
@@ -81,10 +102,10 @@ export async function GET(request: Request) {
     : null;
 
   return NextResponse.json({
-    pages: visiblePages.map(({ name, label }) => ({ name, label })),
+    pages: pageList,
     activePage: activePage.name,
     layout: filteredLayout,
-    mobileEnabled: index.mobileEnabled ?? false,
+    mobileEnabled,
   });
 }
 

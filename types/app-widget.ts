@@ -1,7 +1,9 @@
 import { resolveSpacing, type Spacing, type SpacingValue } from "./spacing";
 import type { AppFeedConfig } from "./feed";
 
-export type LogoView = "icon" | "none" | "full";
+export type LogoView = "icon" | "none" | "full" | "compact";
+
+export const LOGO_VIEWS: readonly LogoView[] = ["icon", "none", "full", "compact"];
 export type CoverFit = "cover" | "contain";
 
 export type { AppFeedConfig, FeedHeaderRow, FeedMethod } from "./feed";
